@@ -29,13 +29,11 @@ module Http2
         q = 1
 
         while (q > 0) do
-          q = i/128
-          r = i%128
-
+          q, r = i.divmod(128)
           r += 128 if (q > 0)
-          bytes.push(r)
-
           i = q
+
+          bytes.push(r)
         end
 
         return bytes.pack('C*')
