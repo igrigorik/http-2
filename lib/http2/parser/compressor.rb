@@ -45,20 +45,17 @@ module Http2
 
     class Decompressor
 
-      def integer(buf, n, cursor = 0)
+      def integer(buf, n)
         limit = 2**n - 1
+        i = !n.zero? ? (buf.getbyte & limit) : 0
 
-        i = buf.unpack('C').first & limit
-        cursor = 1 if !n.zero?
+        m = 0
+        buf.each_byte do |byte|
+          i += ((byte & 127) << m)
+          m += 7
 
-        if i == limit
-          m = 0
-          begin
-            i += (buf[cursor].unpack('C').first & 127) << m
-            m += 7
-            cursor += 1
-          end while !(buf[cursor - 1].unpack('C').first & 128).zero?
-        end
+          break if (byte & 128).zero?
+        end if (i == limit)
 
         return i
       end
