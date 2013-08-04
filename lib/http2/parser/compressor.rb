@@ -39,6 +39,18 @@ module Http2
         return bytes.pack('C*')
       end
 
+      # String literal representation
+      # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.2.2
+      #
+      # 1. The string length, defined as the number of bytes needed to store
+      # its UTF-8 representation, is represented as an integer with a zero
+      # bits prefix. If the string length is strictly less than 128, it is
+      # represented as one byte.
+      # 2. The string value represented as a list of UTF-8 character
+      #
+      def string(str)
+        [integer(str.bytesize, 0), str]
+      end
     end
 
     class Decompressor
@@ -58,6 +70,9 @@ module Http2
         return i
       end
 
+      def string(buf)
+        buf.read(integer(buf, 0)).force_encoding('utf-8')
+      end
     end
 
   end

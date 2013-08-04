@@ -3,33 +3,59 @@ require 'stringio'
 
 describe Http2::Parser do
 
-  context "integer representation" do
+  context "compressor literal representation" do
     let(:c) { Compressor.new }
     let(:d) { Decompressor.new }
 
-    it "encoding 10 using a 5-bit prefix" do
-      buf = c.integer(10, 5)
-      buf.should eq [10].pack('C')
-      d.integer(StringIO.new(buf), 5).should eq 10
+    context "integer" do
+      it "should encode 10 using a 5-bit prefix" do
+        buf = c.integer(10, 5)
+        buf.should eq [10].pack('C')
+        d.integer(StringIO.new(buf), 5).should eq 10
+      end
+
+      it "should encode 10 using a 0-bit prefix" do
+        buf = c.integer(10, 0)
+        buf.should eq [10].pack('C')
+        d.integer(StringIO.new(buf), 0).should eq 10
+      end
+
+      it "should encode 1337 using a 5-bit prefix" do
+        buf = c.integer(1337, 5)
+        buf.should eq [31,128+26,10].pack('C*')
+        d.integer(StringIO.new(buf), 5).should eq 1337
+      end
+
+      it "should encode 1337 using a 0-bit prefix" do
+        buf = c.integer(1337,0)
+        buf.should eq [128+57,10].pack('C*')
+        d.integer(StringIO.new(buf), 0).should eq 1337
+      end
     end
 
-    it "encoding 10 using a 0-bit prefix" do
-      buf = c.integer(10, 0)
-      buf.should eq [10].pack('C')
-      d.integer(StringIO.new(buf), 0).should eq 10
+    context "string" do
+      it "should encode ascii" do
+        ascii = "abcdefghij"
+        len, str = c.string(ascii)
+
+        len.should eq c.integer(10,0)
+        str.should eq ascii
+
+        buf = StringIO.new(len+str+"trailer")
+        d.string(buf).should eq ascii
+      end
+
+      it "should encode utf-8" do
+        utf8 = "éáűőúöüó€"
+        len, str = c.string(utf8)
+
+        len.should eq c.integer(19,0)
+        str.should eq utf8
+
+        buf = StringIO.new(len+str+"trailer")
+        d.string(buf).should eq utf8
+      end
     end
 
-    it "encoding 1337 using a 5-bit prefix" do
-      buf = c.integer(1337, 5)
-      buf.should eq [31,128+26,10].pack('C*')
-      d.integer(StringIO.new(buf), 5).should eq 1337
-    end
-
-    it "encoding 1337 using a 0-bit prefix" do
-      buf = c.integer(1337,0)
-      buf.should eq [128+57,10].pack('C*')
-      d.integer(StringIO.new(buf), 0).should eq 1337
-    end
   end
-
 end
