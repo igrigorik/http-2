@@ -1,12 +1,10 @@
-require 'helper'
-require 'stringio'
+require "helper"
 
-describe Http2::Parser do
+describe Http2::Parser::Header do
+  let(:c) { Compressor.new }
+  let(:d) { Decompressor.new }
 
-  context "compressor literal representation" do
-    let(:c) { Compressor.new }
-    let(:d) { Decompressor.new }
-
+  context "literal representation" do
     context "integer" do
       it "should encode 10 using a 5-bit prefix" do
         buf = c.integer(10, 5)
@@ -67,6 +65,63 @@ describe Http2::Parser do
         d.string(buf).should eq utf8
       end
     end
-
   end
+
+  context "header representation" do
+    it "should handle indexed representation" do
+      h = {name: 10, type: :indexed}
+
+      indexed = StringIO.new(c.header(h))
+      d.header(indexed).should eq h
+    end
+
+    context "literal w/o indexing representation" do
+      it "should handle indexed header" do
+        h = {name: 10, value: "my-value", type: :noindex}
+
+        literal = StringIO.new(c.header(h))
+        d.header(literal).should eq h
+      end
+
+      it "should handle literal header" do
+        h = {name: "x-custom", value: "my-value", type: :noindex}
+
+        literal = StringIO.new(c.header(h))
+        d.header(literal).should eq h
+      end
+    end
+
+    context "literal w/ incremental indexing" do
+      it "should handle indexed header" do
+        h = {name: 10, value: "my-value", type: :incremental}
+
+        literal = StringIO.new(c.header(h))
+        d.header(literal).should eq h
+      end
+
+      it "should handle literal header" do
+        h = {name: "x-custom", value: "my-value", type: :incremental}
+
+        literal = StringIO.new(c.header(h))
+        d.header(literal).should eq h
+      end
+    end
+
+    context "literal w/ substitution indexing" do
+      it "should handle indexed header" do
+        h = {name: 1, value: "my-value", index: 10, type: :substitution}
+
+        literal = StringIO.new(c.header(h))
+        d.header(literal).should eq h
+      end
+
+      it "should handle literal header" do
+        h = {name: 1, value: "my-value", index: 10, type: :substitution}
+
+        literal = StringIO.new(c.header(h))
+        d.header(literal).should eq h
+      end
+    end
+  end
+
 end
