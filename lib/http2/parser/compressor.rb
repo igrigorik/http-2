@@ -9,14 +9,14 @@ module Http2
       # Integer representation:
       # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.2.1
       #
-      # 1. If I < 2^N - 1, encode I on N bits
-      # 2. Else, encode 2^N - 1 on N bits and do the following steps:
-      #  1. Set I to (I - (2^N - 1)) and Q to 1
-      #  2. While Q > 0
-      #    1. Compute Q and R, quotient and remainder of I divided by 2^7
-      #    2. If Q is strictly greater than 0, write one 1 bit; otherwise, write one 0 bit
-      #    3. Encode R on the next 7 bits
-      #    4. I = Q
+      # If I < 2^N - 1, encode I on N bits
+      # Else, encode 2^N - 1 on N bits and do the following steps:
+      #  Set I to (I - (2^N - 1)) and Q to 1
+      #  While Q > 0
+      #    Compute Q and R, quotient and remainder of I divided by 2^7
+      #    If Q is strictly greater than 0, write one 1 bit; otherwise, write one 0 bit
+      #    Encode R on the next 7 bits
+      #    I = Q
       #
       def integer(i, n)
         limit = 2**n - 1
@@ -49,7 +49,7 @@ module Http2
       # 2. The string value represented as a list of UTF-8 character
       #
       def string(str)
-        [integer(str.bytesize, 0), str]
+        [integer(str.bytesize, 0), str.force_encoding('binary')]
       end
     end
 
@@ -71,7 +71,7 @@ module Http2
       end
 
       def string(buf)
-        buf.read(integer(buf, 0)).force_encoding('utf-8')
+        buf.read(integer(buf, 0)).force_encoding('binary')
       end
     end
 
