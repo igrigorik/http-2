@@ -6,9 +6,9 @@ module Http2
       end
 
       HEADREP = {
-        indexed: {prefix: 7, pattern: 0x80},
-        noindex: {prefix: 5, pattern: 0x60},
-        incremental: {prefix: 5, pattern: 0x40},
+        indexed:      {prefix: 7, pattern: 0x80},
+        noindex:      {prefix: 5, pattern: 0x60},
+        incremental:  {prefix: 5, pattern: 0x40},
         substitution: {prefix: 6, pattern: 0x00}
       }
 
@@ -57,14 +57,12 @@ module Http2
         # 2. The string value represented as a list of UTF-8 character
         #
         def string(str)
-          [integer(str.bytesize, 0), str.force_encoding('binary')]
+          integer(str.bytesize, 0) + str.force_encoding('binary')
         end
 
         # Header representation
         # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.3
         #
-        #
-
         def header(h)
           buffers = []
 
@@ -74,9 +72,9 @@ module Http2
             buffers << integer(h[:name], rep[:prefix])
 
           else
-            if h[:name].is_a? Integer # indexed name
+            if h[:name].is_a? Integer
               buffers << integer(h[:name], rep[:prefix])
-            else # new name
+            else
               buffers << integer(0, rep[:prefix])
               buffers << string(h[:name])
             end
@@ -88,7 +86,7 @@ module Http2
             buffers << string(h[:value])
           end
 
-          # apply pattern on first byte
+          # set header representation pattern on first byte
           fb = buffers.first[0].unpack("C").first | rep[:pattern]
           buffers.first.setbyte(0, fb)
 
@@ -118,26 +116,17 @@ module Http2
         end
 
         def header(buf)
-          header = {}
-
           peek = (buf.getbyte >> 5) << 5
           buf.seek(-1, IO::SEEK_CUR)
 
-          if peek == HEADREP[:indexed][:pattern]
-            header[:type] = :indexed
-            header[:name] = integer(buf, HEADREP[:indexed][:prefix])
+          header = {}
+          header[:type], type = HEADREP.select do |t, desc|
+            peek = (peek >> 6) << 6 if t == :incremental
+            peek == desc[:pattern]
+          end.first
 
-          else
-            header[:type] = if (peek == HEADREP[:noindex][:pattern])
-              :noindex
-            elsif (peek == HEADREP[:incremental][:pattern])
-              :incremental
-            elsif ((peek >> 6) << 6) == HEADREP[:substitution][:pattern]
-              :substitution
-            end
-
-            header[:name] = integer(buf, HEADREP[header[:type]][:prefix])
-
+          header[:name] = integer(buf, type[:prefix])
+          if header[:type] != :indexed
             if header[:name].zero?
               header[:name] = string(buf)
             end

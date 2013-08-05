@@ -34,34 +34,25 @@ describe Http2::Parser::Header do
     context "string" do
       it "should handle ascii codepoints" do
         ascii = "abcdefghij"
-        len, str = c.string(ascii)
+        str = c.string(ascii)
 
-        len.should eq c.integer(ascii.bytesize,0)
-        str.should eq ascii
-
-        buf = StringIO.new(len+str+"trailer")
+        buf = StringIO.new(str+"trailer")
         d.string(buf).should eq ascii
       end
 
       it "should handle utf-8 codepoints" do
         utf8 = "éáűőúöüó€"
-        len, str = c.string(utf8)
+        str = c.string(utf8)
 
-        len.should eq c.integer(utf8.bytesize,0)
-        str.should eq utf8
-
-        buf = StringIO.new(len+str+"trailer")
+        buf = StringIO.new(str+"trailer")
         d.string(buf).should eq utf8
       end
 
       it "should handle long utf-8 strings" do
         utf8 = "éáűőúöüó€"*100
-        len, str = c.string(utf8)
+        str = c.string(utf8)
 
-        len.should eq c.integer(utf8.bytesize,0)
-        str.should eq utf8
-
-        buf = StringIO.new(len+str+"trailer")
+        buf = StringIO.new(str+"trailer")
         d.string(buf).should eq utf8
       end
     end
@@ -116,7 +107,7 @@ describe Http2::Parser::Header do
       end
 
       it "should handle literal header" do
-        h = {name: 1, value: "my-value", index: 10, type: :substitution}
+        h = {name: "x-new", value: "my-value", index: 10, type: :substitution}
 
         literal = StringIO.new(c.header(h))
         d.header(literal).should eq h
