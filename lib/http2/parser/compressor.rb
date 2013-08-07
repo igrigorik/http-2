@@ -3,6 +3,190 @@ module Http2
     module Header
 
       class CompressionContext
+
+        REQ_DEFAULTS = [
+          [':scheme'            ,'http' ],
+          [':scheme'            ,'https'],
+          [':host'              ,''     ],
+          [':path'              ,'/'    ],
+          [':method'            ,'get'  ],
+          ['accept'             ,''     ],
+          ['accept-charset'     ,''     ],
+          ['accept-encoding'    ,''     ],
+          ['accept-language'    ,''     ],
+          ['cookie'             ,''     ],
+          ['if-modified-since'  ,''     ],
+          ['keep-alive'         ,''     ],
+          ['user-agent'         ,''     ],
+          ['proxy-connection'   ,''     ],
+          ['referer'            ,''     ],
+          ['accept-datetime'    ,''     ],
+          ['authorization'      ,''     ],
+          ['allow'              ,''     ],
+          ['cache-control'      ,''     ],
+          ['connection'         ,''     ],
+          ['content-length'     ,''     ],
+          ['content-md5'        ,''     ],
+          ['content-type'       ,''     ],
+          ['date'               ,''     ],
+          ['expect'             ,''     ],
+          ['from'               ,''     ],
+          ['if-match'           ,''     ],
+          ['if-none-match'      ,''     ],
+          ['if-range'           ,''     ],
+          ['if-unmodified-since',''     ],
+          ['max-forwards'       ,''     ],
+          ['pragma'             ,''     ],
+          ['proxy-authorization',''     ],
+          ['range'              ,''     ],
+          ['te'                 ,''     ],
+          ['upgrade'            ,''     ],
+          ['via'                ,''     ],
+          ['warning'            ,''     ]
+        ];
+
+        RESP_DEFAULTS = [
+          [':status'                    ,'200'],
+          ['age'                        ,''   ],
+          ['cache-control'              ,''   ],
+          ['content-length'             ,''   ],
+          ['content-type'               ,''   ],
+          ['date'                       ,''   ],
+          ['etag'                       ,''   ],
+          ['expires'                    ,''   ],
+          ['last-modified'              ,''   ],
+          ['server'                     ,''   ],
+          ['set-cookie'                 ,''   ],
+          ['vary'                       ,''   ],
+          ['via'                        ,''   ],
+          ['access-control-allow-origin',''   ],
+          ['accept-ranges'              ,''   ],
+          ['allow'                      ,''   ],
+          ['connection'                 ,''   ],
+          ['content-disposition'        ,''   ],
+          ['content-encoding'           ,''   ],
+          ['content-language'           ,''   ],
+          ['content-location'           ,''   ],
+          ['content-md5'                ,''   ],
+          ['content-range'              ,''   ],
+          ['link'                       ,''   ],
+          ['location'                   ,''   ],
+          ['p3p'                        ,''   ],
+          ['pragma'                     ,''   ],
+          ['proxy-authenticate'         ,''   ],
+          ['refresh'                    ,''   ],
+          ['retry-after'                ,''   ],
+          ['strict-transport-security'  ,''   ],
+          ['trailer'                    ,''   ],
+          ['transfer-encoding'          ,''   ],
+          ['warning'                    ,''   ],
+          ['www-authenticate'           ,''   ]
+        ];
+
+        attr_reader :table, :refset, :workset
+
+        def initialize(type, limit = 4096)
+          @table = (type == :request) ? REQ_DEFAULTS.dup : RESP_DEFAULTS.dup
+          @limit = limit
+          @refset = []
+          @workset = []
+        end
+
+        # differential coding
+        # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-3.1
+        #
+        def process(cmd)
+          # indexed representation
+          if cmd[:type] == :indexed
+            # For an indexed representation, the decoder checks whether the index
+            # is present in the working set. If true, the corresponding entry is
+            # removed from the working set. If several entries correspond to this
+            # encoded index, all these entries are removed from the working set.
+            # If the index is not present in the working set, it is used to
+            # retrieve the corresponding header from the header table, and a new
+            # entry is added to the working set representing this header.
+            cur = @workset.find_index {|(i,v)| i == cmd[:name]}
+
+            if cur
+              @workset.delete_at(cur)
+            else
+              @workset.push [cmd[:name], @table[cmd[:name]]]
+            end
+
+          else
+            # For a literal representation, a new entry is added to the working
+            # set representing this header. If the literal representation specifies
+            # that the header is to be indexed, the header is added accordingly to
+            # the header table, and its index is included in the entry in the working
+            # set. Otherwise, the entry in the working set contains an undefined index.
+            if cmd[:name].is_a? Integer
+              k,v = @table[cmd[:name]]
+
+              cmd[:index] = cmd[:name]
+              cmd[:name] = k
+              cmd[:value] ||= v
+            end
+
+            newval = [cmd[:name], cmd[:value]]
+
+            if cmd[:type] != :noindex
+              size_check cmd
+              cmd[:index] = @table.size if cmd[:type] == :incremental
+
+              if cmd[:type] == :prepend
+                @table = [newval] + @table
+              else
+                @table[cmd[:index]] = newval
+              end
+            end
+
+            @workset.push [cmd[:index], newval]
+          end
+        end
+
+        # Before adding a new entry to the header table or changing an existing
+        # one, a check has to be performed to ensure that the change will not
+        # cause the table to grow in size beyond the SETTINGS_MAX_BUFFER_SIZE
+        # limit. If necessary, one or more items from the beginning of the
+        # table are removed until there is enough free space available to make
+        # the modification.  Dropping an entry from the beginning of the table
+        # causes the index positions of the remaining entries in the table to
+        # be decremented by 1.
+        def size_check(cmd)
+          cursize = @table.join.bytesize + 32
+          cmdsize = cmd[:name].bytesize + cmd[:value].bytesize
+
+          cur = 0
+          while (cursize + cmdsize) > @limit do
+            e = @table.shift
+
+            # When using substitution indexing, it is possible that the existing
+            # item being replaced might be one of the items removed when performing
+            # the necessary size adjustment.  In such cases, the substituted value
+            # being added to the header table is inserted at the beginning of the
+            # header table (at index position #0) and the index positions of the
+            # other remaining entries in the table are incremented by 1.
+            if cmd[:type] == :substitution && cur == cmd[:index]
+               cmd[:type] = :prepend
+             end
+
+            cursize -= e.join.bytesize
+          end
+        end
+
+        # First, upon starting the decoding of a new set of headers, the
+        # reference set of headers is interpreted into the working set of
+        # headers: for each header in the reference set, an entry is added to
+        # the working set, containing the header name, its value, and its
+        # current index in the header table.
+        def update_sets
+          # new refset is the the workset sans headers not in header table
+          @refset = @workset.reject {|(i,h)| !@table.include? h}
+
+          # new workset is the refset with index of each header in header table
+          @workset = @refset.collect {|(i,h)| [@table.find_index(h), h]}
+        end
+
       end
 
       HEADREP = {
@@ -44,7 +228,7 @@ module Http2
             bytes.push(r)
           end
 
-          return bytes.pack('C*')
+          bytes.pack('C*')
         end
 
         # String literal representation
@@ -108,7 +292,7 @@ module Http2
             break if (byte & 128).zero?
           end if (i == limit)
 
-          return i
+          i
         end
 
         def string(buf)
