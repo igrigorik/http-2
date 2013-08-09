@@ -14,16 +14,14 @@ describe Http2::Parser::Header do
         cc.table.size.should eq 35
       end
 
-      it "should be initialized with empty reference and working sets" do
+      it "should be initialized with empty working set" do
         cc = CompressionContext.new(:request)
-        cc.refset.should be_empty
         cc.workset.should be_empty
       end
 
-      it "should update working and reference sets based on prior state" do
+      it "should update working set based on prior state" do
         cc = CompressionContext.new(:request)
         cc.update_sets
-        cc.refset.should be_empty
         cc.workset.should be_empty
 
         # TODO test after adding some data

@@ -83,12 +83,11 @@ module Http2
           ['www-authenticate'           ,''   ]
         ];
 
-        attr_reader :table, :refset, :workset
+        attr_reader :table, :workset
 
         def initialize(type, limit = 4096)
           @table = (type == :request) ? REQ_DEFAULTS.dup : RESP_DEFAULTS.dup
           @limit = limit
-          @refset = []
           @workset = []
         end
 
@@ -181,10 +180,10 @@ module Http2
         # current index in the header table.
         def update_sets
           # new refset is the the workset sans headers not in header table
-          @refset = @workset.reject {|(i,h)| !@table.include? h}
+          refset = @workset.reject {|(i,h)| !@table.include? h}
 
           # new workset is the refset with index of each header in header table
-          @workset = @refset.collect {|(i,h)| [@table.find_index(h), h]}
+          @workset = refset.collect {|(i,h)| [@table.find_index(h), h]}
         end
 
       end
