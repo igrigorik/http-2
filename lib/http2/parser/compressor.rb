@@ -123,9 +123,9 @@ module Http2
             if cmd[:name].is_a? Integer
               k,v = @table[cmd[:name]]
 
-              cmd[:index] = cmd[:name]
-              cmd[:name] = k
+              cmd[:index] ||= cmd[:name]
               cmd[:value] ||= v
+              cmd[:name] = k
             end
 
             newval = [cmd[:name], cmd[:value]]

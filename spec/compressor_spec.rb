@@ -138,6 +138,38 @@ describe Http2::Parser::Header do
       end
     end
 
+    context "integration" do
+      before (:all) { @cc = CompressionContext.new(:request) }
+
+      it "should match first header set in spec appendix" do
+        req_headers = [
+          {name: 3, value: "/my-example/index.html"},
+          {name: 12, value: "my-user-agent"},
+          {name: "x-my-header", value: "first"}
+        ]
+
+        req_headers.each {|h| @cc.process(h.merge({type: :incremental})) }
+
+        @cc.table[38].should eq [":path", "/my-example/index.html"]
+        @cc.table[39].should eq ["user-agent", "my-user-agent"]
+        @cc.table[40].should eq req_headers[2].values
+      end
+
+      it "should match second header set in spec appendix" do
+        @cc.process({name: 38, type: :indexed})
+        @cc.process({name: 39, type: :indexed})
+        @cc.process({
+          name: 3, value: "/my-example/resources/script.js",
+          index: 38, type: :substitution
+        })
+        @cc.process({name: 40, value: "second", type: :incremental})
+
+        @cc.table[38].should eq [":path", "/my-example/resources/script.js"]
+        @cc.table[39].should eq ["user-agent", "my-user-agent"]
+        @cc.table[40].should eq ["x-my-header", "first"]
+        @cc.table[41].should eq ["x-my-header", "second"]
+      end
+    end
   end
 
 
