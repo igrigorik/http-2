@@ -92,6 +92,16 @@ describe Http2::Parser::Header do
             (cc.table - original_table).should eq [["x-custom", "random"]]
             (original_table - cc.table).should eq [["warning", ""]]
           end
+
+          it "should raise error on invalid substitution index" do
+            lambda {
+              cc = CompressionContext.new(:request)
+              cc.process({
+                name: "x-custom", value: "random",
+                index: 1000, type: :substitution
+              })
+            }.should raise_error(HeaderException)
+          end
         end
 
         context "size bounds" do

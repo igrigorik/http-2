@@ -2,6 +2,8 @@ module Http2
   module Parser
     module Header
 
+      class HeaderException < Exception; end
+
       class CompressionContext
 
         REQ_DEFAULTS = [
@@ -130,13 +132,17 @@ module Http2
 
             if cmd[:type] != :noindex
               size_check cmd
-              cmd[:index] = @table.size if cmd[:type] == :incremental
 
-              if cmd[:type] == :prepend
+              case cmd[:type]
+              when :incremental
+                cmd[:index] = @table.size
+              when :substitution
+                raise HeaderException.new("invalid index") if @table[cmd[:index]].nil?
+              when :prepend
                 @table = [newval] + @table
-              else
-                @table[cmd[:index]] = newval
               end
+
+              @table[cmd[:index]] = newval
             end
 
             @workset.push [cmd[:index], newval]
