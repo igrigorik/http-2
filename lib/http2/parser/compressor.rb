@@ -252,34 +252,32 @@ module Http2
         # Header representation
         # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.3
         #
-        def header(h)
-          buffers = []
-
+        def header(h, buffer = "")
           rep = HEADREP[h[:type]]
 
           if h[:type] == :indexed
-            buffers << integer(h[:name], rep[:prefix])
+            buffer << integer(h[:name], rep[:prefix])
 
           else
             if h[:name].is_a? Integer
-              buffers << integer(h[:name], rep[:prefix])
+              buffer << integer(h[:name], rep[:prefix])
             else
-              buffers << integer(0, rep[:prefix])
-              buffers << string(h[:name])
+              buffer << integer(0, rep[:prefix])
+              buffer << string(h[:name])
             end
 
             if h[:type] == :substitution
-              buffers << integer(h[:index], 0)
+              buffer << integer(h[:index], 0)
             end
 
-            buffers << string(h[:value])
+            buffer << string(h[:value])
           end
 
           # set header representation pattern on first byte
-          fb = buffers.first[0].unpack("C").first | rep[:pattern]
-          buffers.first.setbyte(0, fb)
+          fb = buffer[0].unpack("C").first | rep[:pattern]
+          buffer.setbyte(0, fb)
 
-          buffers.join
+          buffer
         end
       end
 
