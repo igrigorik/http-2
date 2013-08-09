@@ -1,11 +1,10 @@
 require "helper"
 
 describe Http2::Parser::Header do
-  let(:c) { Compressor.new }
-  let(:d) { Decompressor.new }
-
   context "differential coding" do
     context "shared compression context" do
+      before(:each) { @cc = CompressionContext.new(:request) }
+
       it "should be initialized with pre-defined headers" do
         cc = CompressionContext.new(:request)
         cc.table.size.should eq 38
@@ -15,88 +14,79 @@ describe Http2::Parser::Header do
       end
 
       it "should be initialized with empty working set" do
-        cc = CompressionContext.new(:request)
-        cc.workset.should be_empty
+        @cc.workset.should be_empty
       end
 
       it "should update working set based on prior state" do
-        cc = CompressionContext.new(:request)
-        cc.update_sets
-        cc.workset.should be_empty
+        @cc.update_sets
+        @cc.workset.should be_empty
 
         # TODO test after adding some data
       end
 
       context "processing" do
         it "should toggle index representation headers in working set" do
-          cc = CompressionContext.new(:request)
-          cc.process({name: 0, type: :indexed})
-          cc.workset.first.should eq [0, [":scheme", "http"]]
+          @cc.process({name: 0, type: :indexed})
+          @cc.workset.first.should eq [0, [":scheme", "http"]]
 
-          cc.process({name: 0, type: :indexed})
-          cc.workset.should be_empty
+          @cc.process({name: 0, type: :indexed})
+          @cc.workset.should be_empty
         end
 
         context "no indexing" do
           it "should process indexed header with literal value" do
-            cc = CompressionContext.new(:request)
-            original_table = cc.table
+            original_table = @cc.table
 
-            cc.process({name: 3, value: "/path", type: :noindex})
-            cc.workset.first.should eq [3, [":path", "/path"]]
-            cc.table.should eq original_table
+            @cc.process({name: 3, value: "/path", type: :noindex})
+            @cc.workset.first.should eq [3, [":path", "/path"]]
+            @cc.table.should eq original_table
           end
 
           it "should process indexed header with default value" do
-            cc = CompressionContext.new(:request)
-            original_table = cc.table
+            original_table = @cc.table
 
-            cc.process({name: 3, type: :noindex})
-            cc.workset.first.should eq [3, [":path", "/"]]
-            cc.table.should eq original_table
+            @cc.process({name: 3, type: :noindex})
+            @cc.workset.first.should eq [3, [":path", "/"]]
+            @cc.table.should eq original_table
           end
 
           it "should process literal header with literal value" do
-            cc = CompressionContext.new(:request)
-            original_table = cc.table
+            original_table = @cc.table
 
-            cc.process({name: "x-custom", value: "random", type: :noindex})
-            cc.workset.first.should eq [nil, ["x-custom", "random"]]
-            cc.table.should eq original_table
+            @cc.process({name: "x-custom", value: "random", type: :noindex})
+            @cc.workset.first.should eq [nil, ["x-custom", "random"]]
+            @cc.table.should eq original_table
           end
         end
 
         context "incremental indexing" do
           it "should process literal header with literal value" do
-            cc = CompressionContext.new(:request)
-            original_table = cc.table.dup
+            original_table = @cc.table.dup
 
-            cc.process({name: "x-custom", value: "random", type: :incremental})
-            cc.workset.first.should eq [original_table.size, ["x-custom", "random"]]
-            (cc.table - original_table).should eq [["x-custom", "random"]]
+            @cc.process({name: "x-custom", value: "random", type: :incremental})
+            @cc.workset.first.should eq [original_table.size, ["x-custom", "random"]]
+            (@cc.table - original_table).should eq [["x-custom", "random"]]
           end
         end
 
         context "substitution indexing" do
           it "should process literal header with literal value" do
-            cc = CompressionContext.new(:request)
-            original_table = cc.table.dup
+            original_table = @cc.table.dup
             idx = original_table.size-1
 
-            cc.process({
+            @cc.process({
               name: "x-custom", value: "random",
               index: idx, type: :substitution
             })
 
-            cc.workset.first.should eq [idx, ["x-custom", "random"]]
-            (cc.table - original_table).should eq [["x-custom", "random"]]
-            (original_table - cc.table).should eq [["warning", ""]]
+            @cc.workset.first.should eq [idx, ["x-custom", "random"]]
+            (@cc.table - original_table).should eq [["x-custom", "random"]]
+            (original_table - @cc.table).should eq [["warning", ""]]
           end
 
           it "should raise error on invalid substitution index" do
             lambda {
-              cc = CompressionContext.new(:request)
-              cc.process({
+              @cc.process({
                 name: "x-custom", value: "random",
                 index: 1000, type: :substitution
               })
@@ -172,6 +162,8 @@ describe Http2::Parser::Header do
     end
   end
 
+  let(:c) { Compressor.new }
+  let(:d) { Decompressor.new }
 
   context "literal representation" do
     context "integer" do
