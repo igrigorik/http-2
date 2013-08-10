@@ -2,8 +2,8 @@ require "helper"
 
 describe Http2::Parser::Header do
 
-  let(:c) { Compressor.new }
-  let(:d) { Decompressor.new }
+  let(:c) { Compressor.new :request }
+  let(:d) { Decompressor.new :response }
 
   context "literal representation" do
     context "integer" do
@@ -278,7 +278,64 @@ describe Http2::Parser::Header do
   end
 
   context "encode and decode" do
-    it "should encode header hash"
-    it "should decode commands to header hash"
+    # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#appendix-B
+
+    before (:all) { @cc = Compressor.new(:request) }
+
+    it "should match first header set in spec appendix" do
+      req_headers = [
+        [":path", "/my-example/index.html"],
+        ["user-agent", "my-user-agent"],
+        ["x-my-header", "first"]
+      ]
+
+      bytes = [
+        0x44, # (literal header with incremental indexing, name index = 3)
+        0x16, # (header value string length = 22)
+        "/my-example/index.html".bytes,
+        0x4D, # (literal header with incremental indexing, name index = 12)
+        0x0D, # (header value string length = 13)
+        "my-user-agent".bytes,
+        0x40, # (literal header with incremental indexing, new name)
+        0x0B, # (header name string length = 11)
+        "x-my-header".bytes,
+        0x05, # (header value string length = 5)
+        "first".bytes
+      ].flatten
+
+      @cc.encode(req_headers).bytes.should eq bytes
+    end
+
+    it "should match second header set in spec appendix" do
+      pending "not clear how encoder should determine type of encoding"
+
+      req_headers = [
+        [":path", "/my-example/resources/script.js"],
+        ["user-agent", "my-user-agent"],
+        ["x-my-header", "second"]
+      ]
+
+      bytes = [
+        0xa6, # (indexed header, index = 38: removal from reference set)
+        0xa8, # (indexed header, index = 40: removal from reference set)
+        0x04, # (literal header, substitution indexing, name index = 3)
+        0x26, # (replaced entry index = 38)
+        0x1f, # (header value string length = 31)
+        "/my-example/resources/script.js".bytes,
+        0x5f,
+        0x0a, # (literal header, incremental indexing, name index = 40)
+        0x06, # (header value string length = 6)
+        "second".bytes
+      ].flatten
+
+      b = @cc.encode(req_headers).bytes
+
+      p bytes.map {|c| c.chr}.join
+      p b.map {|c| c.chr}.join
+
+      b.should eq bytes
+    end
+
+    xit "should decode commands to header hash"
   end
 end

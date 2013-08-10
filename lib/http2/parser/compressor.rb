@@ -88,6 +88,7 @@ module Http2
         attr_reader :table, :workset
 
         def initialize(type, limit = 4096)
+          @type = type
           @table = (type == :request) ? REQ_DEFAULTS.dup : RESP_DEFAULTS.dup
           @limit = limit
           @workset = []
@@ -192,6 +193,46 @@ module Http2
           @workset = refset.collect {|(i,h)| [@table.find_index(h), h]}
         end
 
+        def active?(idx)
+          !@workset.find {|i,_| i == idx }.nil?
+        end
+
+        def default?(idx)
+          t = (@type == :request) ? REQ_DEFAULTS : RESP_DEFAULTS
+          idx < t.size
+        end
+
+        def addcmd(header)
+          # check if we have an exact match in header table
+          if idx = @table.index(header)
+            if !active? idx
+              return { name: idx, value: idx, type: :noindex }
+            end
+          end
+
+          # check if we have a partial match on header name
+          if idx = @table.index {|(k,_)| k == header.first}
+            if !active? idx
+              cmd = { name: idx, value: header.last}
+
+              # use incremental indexing for non default headers
+              if default? idx
+                cmd[:type] = :incremental
+              else
+                cmd[:type] = :substitution
+                cmd[:index] = idx
+              end
+
+              return cmd
+            end
+          end
+
+          return { name: header.first, value: header.last, type: :incremental }
+        end
+
+        def removecmd(idx)
+          {name: idx, type: :indexed}
+        end
       end
 
       HEADREP = {
@@ -202,6 +243,9 @@ module Http2
       }
 
       class Compressor
+        def initialize(type)
+          @cc = CompressionContext.new(type)
+        end
 
         # Integer representation:
         # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.2.1
@@ -260,7 +304,7 @@ module Http2
 
           else
             if h[:name].is_a? Integer
-              buffer << integer(h[:name], rep[:prefix])
+              buffer << integer(h[:name]+1, rep[:prefix])
             else
               buffer << integer(0, rep[:prefix])
               buffer << string(h[:name])
@@ -279,9 +323,36 @@ module Http2
 
           buffer
         end
+
+        def encode(headers)
+          commands = []
+          @cc.update_sets
+
+          # Remove missing headers from the working set
+          @cc.workset.each do |idx, (wk,wv)|
+            if headers.find {|(hk,hv)| hk == wk && hv == wv }.nil?
+              commands.push @cc.removecmd idx
+            end
+          end
+
+          # Add missing headers to the working set
+          headers.each do |(hk,hv)|
+            if @cc.workset.find {|i,(wk,wv)| hk == wk && hv == wv}.nil?
+              commands.push @cc.addcmd [hk, hv]
+            end
+          end
+
+          commands.map do |cmd|
+            @cc.process cmd.dup
+            header cmd
+          end.join
+        end
       end
 
       class Decompressor
+        def initialize(type)
+          @cc = CompressionContext.new(type)
+        end
 
         def integer(buf, n)
           limit = 2**n - 1
@@ -314,7 +385,8 @@ module Http2
 
           header[:name] = integer(buf, type[:prefix])
           if header[:type] != :indexed
-            if header[:name].zero?
+            header[:name] -= 1
+            if header[:name] == -1
               header[:name] = string(buf)
             end
 
