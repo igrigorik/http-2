@@ -401,12 +401,7 @@ module Http2
 
         def decode(buf)
           @cc.update_sets
-
-          while !buf.eof?
-            h = header(buf)
-            @cc.process(h)
-          end
-
+          @cc.process(header(buf)) while !buf.eof?
           @cc.workset.map {|i,header| header}
         end
       end
