@@ -212,19 +212,18 @@ module Http2
 
           # check if we have a partial match on header name
           if idx = @table.index {|(k,_)| k == header.first}
-            if !active? idx
-              cmd = { name: idx, value: header.last}
+            # default to incremental indexing
+            cmd = { name: idx, value: header.last, type: :incremental}
 
-              # use incremental indexing for non default headers
-              if default? idx
-                cmd[:type] = :incremental
-              else
-                cmd[:type] = :substitution
-                cmd[:index] = idx
-              end
+            # TODO: implement substitution strategy (if it makes sense)
+            # if default? idx
+            #   cmd[:type] = :incremental
+            # else
+            #   cmd[:type] = :substitution
+            #   cmd[:index] = idx
+            # end
 
-              return cmd
-            end
+            return cmd
           end
 
           return { name: header.first, value: header.last, type: :incremental }

@@ -310,7 +310,7 @@ describe Http2::Parser::Header do
     end
 
     it "should decode first header set in spec appendix" do
-      @dc.decode(StringIO.new(E1_BYTES.pack("U*"))).should eq E1_HEADERS
+      @dc.decode(StringIO.new(E1_BYTES.pack("C*"))).should eq E1_HEADERS
     end
 
     E2_BYTES = [
@@ -333,18 +333,22 @@ describe Http2::Parser::Header do
     ]
 
     it "should match second header set in spec appendix" do
-      pending "not clear how encoder should determine type of encoding"
-      bytes = @cc.encode(E2_HEADERS).bytes
+      # Force incremental indexing, the spec doesn't specify any strategy
+      # for deciding when to use incremental vs substitution indexing, and
+      # early implementations defer to incremental by default:
+      # - https://github.com/sludin/http2-perl/blob/master/lib/HTTP2/Draft/Compress.pm#L157
+      # - https://github.com/MSOpenTech/http2-katana/blob/master/Shared/SharedProtocol/Compression/HeadersDeltaCompression/CompressionProcessor.cs#L259
+      # - https://hg.mozilla.org/try/file/9d9a29992e4d/netwerk/protocol/http/Http2CompressionDraft00.cpp#l636
+      #
+      e2bytes = E2_BYTES.dup
+      e2bytes[2] = 0x44     # incremental indexing, name index = 3
+      e2bytes.delete_at(3)  # remove replacement index byte
 
-      # p bytes.map {|c| c.chr}.join
-      # p b.map {|c| c.chr}.join
-
-      bytes.should eq E2_BYTES
+      @cc.encode(E2_HEADERS).bytes.should eq e2bytes
     end
 
     it "should decode second header set in spec appendix" do
       @dc.decode(StringIO.new(E2_BYTES.pack("C*"))).should match_array E2_HEADERS
     end
-
   end
 end
