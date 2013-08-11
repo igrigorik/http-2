@@ -350,5 +350,13 @@ describe Http2::Parser::Header do
     it "should decode second header set in spec appendix" do
       @dc.decode(StringIO.new(E2_BYTES.pack("C*"))).should match_array E2_HEADERS
     end
+
+    it "encode-decode should be invariant" do
+      cc = Compressor.new(:request)
+      dc = Decompressor.new(:request)
+
+      E1_HEADERS.should match_array dc.decode(StringIO.new(cc.encode(E1_HEADERS)))
+      E2_HEADERS.should match_array dc.decode(StringIO.new(cc.encode(E2_HEADERS)))
+    end
   end
 end

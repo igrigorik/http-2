@@ -1,11 +1,9 @@
 module Http2
   module Parser
     module Header
-
       class HeaderException < Exception; end
 
       class CompressionContext
-
         REQ_DEFAULTS = [
           [':scheme'            ,'http' ],
           [':scheme'            ,'https'],
