@@ -374,13 +374,13 @@ module Http2
         end
 
         def header(buf)
-          peek = (buf.getbyte >> 5) << 5
+          peek = buf.getbyte
           buf.seek(-1, IO::SEEK_CUR)
 
           header = {}
           header[:type], type = HEADREP.select do |t, desc|
-            peek = (peek >> 6) << 6 if t == :incremental
-            peek == desc[:pattern]
+            mask = (peek >> desc[:prefix]) << desc[:prefix]
+            mask == desc[:pattern]
           end.first
 
           header[:name] = integer(buf, type[:prefix])
@@ -398,6 +398,17 @@ module Http2
           end
 
           header
+        end
+
+        def decode(buf)
+          @cc.update_sets
+
+          while !buf.eof?
+            h = header(buf)
+            @cc.process(h)
+          end
+
+          @cc.workset.map {|i,header| header}
         end
       end
 

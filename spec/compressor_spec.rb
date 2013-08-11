@@ -280,62 +280,71 @@ describe Http2::Parser::Header do
   context "encode and decode" do
     # http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#appendix-B
 
-    before (:all) { @cc = Compressor.new(:request) }
+    before (:all) do
+     @cc = Compressor.new(:request)
+     @dc = Decompressor.new(:request)
+    end
+
+    E1_BYTES = [
+      0x44, # (literal header with incremental indexing, name index = 3)
+      0x16, # (header value string length = 22)
+      "/my-example/index.html".bytes,
+      0x4D, # (literal header with incremental indexing, name index = 12)
+      0x0D, # (header value string length = 13)
+      "my-user-agent".bytes,
+      0x40, # (literal header with incremental indexing, new name)
+      0x0B, # (header name string length = 11)
+      "x-my-header".bytes,
+      0x05, # (header value string length = 5)
+      "first".bytes
+    ].flatten
+
+    E1_HEADERS = [
+      [":path", "/my-example/index.html"],
+      ["user-agent", "my-user-agent"],
+      ["x-my-header", "first"]
+    ]
 
     it "should match first header set in spec appendix" do
-      req_headers = [
-        [":path", "/my-example/index.html"],
-        ["user-agent", "my-user-agent"],
-        ["x-my-header", "first"]
-      ]
-
-      bytes = [
-        0x44, # (literal header with incremental indexing, name index = 3)
-        0x16, # (header value string length = 22)
-        "/my-example/index.html".bytes,
-        0x4D, # (literal header with incremental indexing, name index = 12)
-        0x0D, # (header value string length = 13)
-        "my-user-agent".bytes,
-        0x40, # (literal header with incremental indexing, new name)
-        0x0B, # (header name string length = 11)
-        "x-my-header".bytes,
-        0x05, # (header value string length = 5)
-        "first".bytes
-      ].flatten
-
-      @cc.encode(req_headers).bytes.should eq bytes
+      @cc.encode(E1_HEADERS).bytes.should eq E1_BYTES
     end
+
+    it "should decode first header set in spec appendix" do
+      @dc.decode(StringIO.new(E1_BYTES.pack("U*"))).should eq E1_HEADERS
+    end
+
+    E2_BYTES = [
+      0xa6, # (indexed header, index = 38: removal from reference set)
+      0xa8, # (indexed header, index = 40: removal from reference set)
+      0x04, # (literal header, substitution indexing, name index = 3)
+      0x26, # (replaced entry index = 38)
+      0x1f, # (header value string length = 31)
+      "/my-example/resources/script.js".bytes,
+      0x5f,
+      0x0a, # (literal header, incremental indexing, name index = 40)
+      0x06, # (header value string length = 6)
+      "second".bytes
+    ].flatten
+
+    E2_HEADERS = [
+      [":path", "/my-example/resources/script.js"],
+      ["user-agent", "my-user-agent"],
+      ["x-my-header", "second"]
+    ]
 
     it "should match second header set in spec appendix" do
       pending "not clear how encoder should determine type of encoding"
+      bytes = @cc.encode(E2_HEADERS).bytes
 
-      req_headers = [
-        [":path", "/my-example/resources/script.js"],
-        ["user-agent", "my-user-agent"],
-        ["x-my-header", "second"]
-      ]
+      # p bytes.map {|c| c.chr}.join
+      # p b.map {|c| c.chr}.join
 
-      bytes = [
-        0xa6, # (indexed header, index = 38: removal from reference set)
-        0xa8, # (indexed header, index = 40: removal from reference set)
-        0x04, # (literal header, substitution indexing, name index = 3)
-        0x26, # (replaced entry index = 38)
-        0x1f, # (header value string length = 31)
-        "/my-example/resources/script.js".bytes,
-        0x5f,
-        0x0a, # (literal header, incremental indexing, name index = 40)
-        0x06, # (header value string length = 6)
-        "second".bytes
-      ].flatten
-
-      b = @cc.encode(req_headers).bytes
-
-      p bytes.map {|c| c.chr}.join
-      p b.map {|c| c.chr}.join
-
-      b.should eq bytes
+      bytes.should eq E2_BYTES
     end
 
-    xit "should decode commands to header hash"
+    it "should decode second header set in spec appendix" do
+      @dc.decode(StringIO.new(E2_BYTES.pack("C*"))).should match_array E2_HEADERS
+    end
+
   end
 end
