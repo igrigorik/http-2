@@ -6,6 +6,7 @@ module Http2
 
       MAX_PAYLOAD_SIZE = 2**16-1
       MAX_STREAM_ID = 0x7fffffff
+      RBIT          = 0x7fffffff
 
       FRAME_TYPES = {
         data:          0x0,
@@ -21,10 +22,12 @@ module Http2
       }
 
       FRAME_FLAGS = {
-        data: {},
+        data: {
+          end_stream:  0, reserved: 1
+        },
         headers: {
-          endstream:  0x1, reserved: 0x2,
-          endheaders: 0x4, priority: 0x8
+          end_stream:  0, reserved: 1,
+          end_headers: 2, priority: 3
         }
       }
 
@@ -32,6 +35,7 @@ module Http2
       # http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
       #
       HEADERPACK = "SCCL"
+      UINT32 = "L"
 
       def commonHeader(frame)
         header = []
@@ -46,6 +50,7 @@ module Http2
           position = FRAME_FLAGS[frame[:type]][f]
           raise FramingException.new("Invalid frame flag (#{f}) for #{frame[:type]}") if !position
           acc |= (1 << position)
+          acc
         end
 
         header << (frame[:stream] || 0)
@@ -63,13 +68,41 @@ module Http2
           acc
         end
 
-        frame[:stream] = stream & 0x7fffffff
+        frame[:stream] = stream & RBIT
         frame
+      end
+
+      def generate(frame)
+        bytes = commonHeader(frame)
+
+        case frame[:type]
+        when :data
+          bytes += frame[:payload]
+        when :headers
+          if frame[:flags].include? :priority
+            bytes += [frame[:priority] & RBIT].pack(UINT32)
+          end
+
+          bytes += frame[:payload]
+        end
+
+        bytes
       end
 
       def parse(buf)
         frame = readCommonHeader(buf)
 
+        case frame[:type]
+        when :data
+          frame[:payload] = buf.read(frame[:length])
+
+        when :headers
+          if frame[:flags].include? :priority
+            frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
+          end
+
+          frame[:payload] = buf.read(frame[:length])
+        end
         # frame specific logic
 
         frame
