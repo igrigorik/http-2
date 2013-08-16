@@ -29,7 +29,8 @@ module Http2
           end_stream:  0, reserved: 1,
           end_headers: 2, priority: 3
         },
-        priority: {}
+        priority: {},
+        rst_stream: {}
       }
 
       # Frame header:
@@ -84,10 +85,11 @@ module Http2
           if frame[:flags].include? :priority
             bytes += [frame[:priority] & RBIT].pack(UINT32)
           end
-
           bytes += frame[:payload]
         when :priority
           bytes += [frame[:priority] & RBIT].pack(UINT32)
+        when :rst_stream
+          bytes += [frame[:payload]].pack(UINT32)
         end
 
         bytes
@@ -99,15 +101,15 @@ module Http2
         case frame[:type]
         when :data
           frame[:payload] = buf.read(frame[:length])
-
         when :headers
           if frame[:flags].include? :priority
             frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
           end
           frame[:payload] = buf.read(frame[:length])
-
         when :priority
           frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
+        when :rst_stream
+          frame[:payload] = buf.read(4).unpack(UINT32).first
         end
 
         frame

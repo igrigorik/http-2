@@ -115,7 +115,20 @@ describe Http2::Parser::Framer do
       bytes.should eq [0x4,0x2,0x0,0x1,0xf].pack("SCCLL")
       f.parse(StringIO.new(bytes)).should eq frame
     end
-
   end
 
+  context "RST_STREAM" do
+    it "should generate and parse bytes" do
+      frame = {
+        length: 4,
+        type: :rst_stream,
+        stream: 1,
+        payload: 10
+      }
+
+      bytes = f.generate(frame)
+      bytes.should eq [0x4,0x3,0x0,0x1,0xa].pack("SCCLL")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+  end
 end
