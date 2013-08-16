@@ -211,13 +211,14 @@ describe Http2::Parser::Header do
 
         context "size bounds" do
           it "should drop headers from beginning of table" do
-            cc = CompressionContext.new(:request, 1024)
+            cc = CompressionContext.new(:request, 2048)
             original_table = cc.table.dup
-            original_size = original_table.join.bytesize
+            original_size = original_table.join.bytesize +
+                            original_table.size * 32
 
             cc.process({
               name: "x-custom",
-              value: "a" * (1024-original_size-32),
+              value: "a" * (2048 - original_size),
               type: :incremental
             })
 
@@ -226,13 +227,14 @@ describe Http2::Parser::Header do
            end
 
           it "should prepend on dropped substitution index" do
-            cc = CompressionContext.new(:request, 1024)
+            cc = CompressionContext.new(:request, 2048)
             original_table = cc.table.dup
-            original_size = original_table.join.bytesize
+            original_size = original_table.join.bytesize +
+                            original_table.size * 32
 
             cc.process({
               name: "x-custom",
-              value: "a" * (1024-original_size-32),
+              value: "a" * (2048 - original_size),
               index: 0, type: :substitution
             })
 

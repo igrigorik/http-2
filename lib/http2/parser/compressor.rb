@@ -157,8 +157,8 @@ module Http2
         # causes the index positions of the remaining entries in the table to
         # be decremented by 1.
         def size_check(cmd)
-          cursize = @table.join.bytesize + 32
-          cmdsize = cmd[:name].bytesize + cmd[:value].bytesize
+          cursize = @table.join.bytesize + @table.size * 32
+          cmdsize = cmd[:name].bytesize + cmd[:value].bytesize + 32
 
           cur = 0
           while (cursize + cmdsize) > @limit do
@@ -174,7 +174,7 @@ module Http2
                cmd[:type] = :prepend
              end
 
-            cursize -= e.join.bytesize
+            cursize -= (e.join.bytesize + 32)
           end
         end
 
