@@ -102,4 +102,20 @@ describe Http2::Parser::Framer do
     end
   end
 
+  context "PRIORITY" do
+    it "should generate and parse bytes" do
+      frame = {
+        length: 4,
+        type: :priority,
+        stream: 1,
+        priority: 15
+      }
+
+      bytes = f.generate(frame)
+      bytes.should eq [0x4,0x2,0x0,0x1,0xf].pack("SCCLL")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+
+  end
+
 end

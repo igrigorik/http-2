@@ -17,8 +17,8 @@ module Http2
         push_promise:  0x5,
         ping:          0x6,
         goaway:        0x7,
-        priority:      0x8,
-        window_update: 0x9
+        window_update: 0x9,
+        continuation:  0xa
       }
 
       FRAME_FLAGS = {
@@ -28,7 +28,8 @@ module Http2
         headers: {
           end_stream:  0, reserved: 1,
           end_headers: 2, priority: 3
-        }
+        },
+        priority: {}
       }
 
       # Frame header:
@@ -39,6 +40,7 @@ module Http2
 
       def commonHeader(frame)
         header = []
+        frame[:flags] ||= []
 
         raise FramingException.new("Frame size is too large: #{frame[:length]}") if frame[:length] > MAX_PAYLOAD_SIZE
         raise FramingException.new("Invalid frame type (#{frame[:type]})") if !FRAME_TYPES[frame[:type]]
@@ -84,6 +86,8 @@ module Http2
           end
 
           bytes += frame[:payload]
+        when :priority
+          bytes += [frame[:priority] & RBIT].pack(UINT32)
         end
 
         bytes
@@ -100,10 +104,11 @@ module Http2
           if frame[:flags].include? :priority
             frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
           end
-
           frame[:payload] = buf.read(frame[:length])
+
+        when :priority
+          frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
         end
-        # frame specific logic
 
         frame
       end
