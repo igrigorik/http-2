@@ -131,4 +131,50 @@ describe Http2::Parser::Framer do
       f.parse(StringIO.new(bytes)).should eq frame
     end
   end
+
+  context "SETTINGS" do
+    let(:frame) {
+      {
+        length: 8,
+        type: :settings,
+        stream: 0,
+        payload: {
+          settings_max_concurrent_streams: 10
+        }
+      }
+    }
+
+    it "should generate and parse bytes" do
+
+      bytes = f.generate(frame)
+      bytes.should eq [0x8,0x4,0x0,0x0, 0x4,0xa].pack("SCCLLL")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+
+    it "should encode custom settings" do
+      frame[:length] = 8*3
+      frame[:payload] = {
+        settings_max_concurrent_streams: 10,
+        settings_initial_window_size:    20,
+        55 => 30
+      }
+
+      f.parse(StringIO.new(f.generate(frame))).should eq frame
+
+    end
+
+    it "should raise exception on invalid stream ID" do
+      expect {
+        frame[:stream] = 1
+        f.generate(frame)
+      }.to raise_error(FramingException, /Invalid stream ID/)
+    end
+
+    it "should raise exception on invalid setting" do
+      expect {
+        frame[:payload] = {random: 23}
+        f.generate(frame)
+      }.to raise_error(FramingException, /Unknown settings ID/)
+    end
+  end
 end

@@ -7,6 +7,7 @@ module Http2
       MAX_PAYLOAD_SIZE = 2**16-1
       MAX_STREAM_ID = 0x7fffffff
       RBIT          = 0x7fffffff
+      RBYTE         = 0x0fffffff
 
       FRAME_TYPES = {
         data:          0x0,
@@ -30,7 +31,14 @@ module Http2
           end_headers: 2, priority: 3
         },
         priority: {},
-        rst_stream: {}
+        rst_stream: {},
+        settings: {}
+      }
+
+      DEFINED_SETTINGS = {
+        settings_max_concurrent_streams: 4,
+        settings_initial_window_size:    7,
+        settings_flow_control_options:   10
       }
 
       # Frame header:
@@ -90,6 +98,23 @@ module Http2
           bytes += [frame[:priority] & RBIT].pack(UINT32)
         when :rst_stream
           bytes += [frame[:payload]].pack(UINT32)
+        when :settings
+          if frame[:stream] != 0
+            raise FramingException.new("Invalid stream ID (#{frame[:stream]})")
+          end
+
+          frame[:payload].each do |(k,v)|
+            if !k.is_a? Integer
+              k = DEFINED_SETTINGS[k]
+
+              if k.nil?
+                raise FramingException.new("Unknown settings ID for #{k}")
+              end
+            end
+
+            bytes += [k & RBYTE].pack(UINT32)
+            bytes += [v].pack(UINT32)
+          end
         end
 
         bytes
@@ -110,6 +135,15 @@ module Http2
           frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
         when :rst_stream
           frame[:payload] = buf.read(4).unpack(UINT32).first
+        when :settings
+          frame[:payload] = {}
+          (frame[:length] / 8).times do
+            id  = buf.read(4).unpack(UINT32).first & RBYTE
+            val = buf.read(4).unpack(UINT32).first
+
+            name, _ = DEFINED_SETTINGS.select { |name, v| v == id }.first
+            frame[:payload][name || id] = val
+          end
         end
 
         frame
