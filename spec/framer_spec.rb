@@ -194,4 +194,29 @@ describe Http2::Parser::Framer do
       f.parse(StringIO.new(bytes)).should eq frame
     end
   end
+
+  context "PING" do
+    let(:frame) {
+      {
+        length: 8,
+        stream: 1,
+        type: :ping,
+        flags: [:pong],
+        payload: '12345678'
+      }
+    }
+
+    it "should generate and parse bytes" do
+      bytes = f.generate(frame)
+      bytes.should eq [0x8,0x6,0x1,0x1,*'12345678'.bytes].pack("SCCLC*")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+
+    it "should raise exception on invalid payload" do
+      expect {
+        frame[:payload] = "1234"
+        f.generate(frame)
+      }.to raise_error(FramingException, /Invalid payload size/)
+    end
+  end
 end

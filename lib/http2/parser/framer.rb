@@ -33,9 +33,8 @@ module Http2
         priority: {},
         rst_stream: {},
         settings: {},
-        push_promise: {
-          end_push_promise: 0
-        }
+        push_promise: { end_push_promise: 0 },
+        ping: { pong: 0 }
       }
 
       DEFINED_SETTINGS = {
@@ -132,6 +131,14 @@ module Http2
         when :push_promise
           bytes += [frame[:promise_stream] & RBIT].pack(UINT32)
           bytes += frame[:payload]
+
+        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.6
+        when :ping
+          if frame[:payload].bytesize != 8
+            raise FramingException.new("Invalid payload size \
+                                      (#{frame[:payload].size} != 8 bytes)")
+          end
+          bytes += frame[:payload]
         end
 
         bytes
@@ -163,6 +170,8 @@ module Http2
           end
         when :push_promise
           frame[:promise_stream] = buf.read(4).unpack(UINT32).first & RBIT
+          frame[:payload] = buf.read(frame[:length])
+        when :ping
           frame[:payload] = buf.read(frame[:length])
         end
 
