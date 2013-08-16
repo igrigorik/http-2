@@ -177,4 +177,21 @@ describe Http2::Parser::Framer do
       }.to raise_error(FramingException, /Unknown settings ID/)
     end
   end
+
+  context "PUSH_PROMISE" do
+    it "should generate and parse bytes" do
+      frame = {
+        length: 15,
+        type: :push_promise,
+        flags: [:end_push_promise],
+        stream: 1,
+        promise_stream: 2,
+        payload: 'headers'
+      }
+
+      bytes = f.generate(frame)
+      bytes.should eq [0xf,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("SCCLLC*")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+  end
 end

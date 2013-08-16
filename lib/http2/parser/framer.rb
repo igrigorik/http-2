@@ -32,7 +32,10 @@ module Http2
         },
         priority: {},
         rst_stream: {},
-        settings: {}
+        settings: {},
+        push_promise: {
+          end_push_promise: 0
+        }
       }
 
       DEFINED_SETTINGS = {
@@ -87,17 +90,26 @@ module Http2
         bytes = commonHeader(frame)
 
         case frame[:type]
+        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.1
         when :data
           bytes += frame[:payload]
+
+        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.2
         when :headers
           if frame[:flags].include? :priority
             bytes += [frame[:priority] & RBIT].pack(UINT32)
           end
           bytes += frame[:payload]
+
+        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.3
         when :priority
           bytes += [frame[:priority] & RBIT].pack(UINT32)
+
+        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.4
         when :rst_stream
           bytes += [frame[:payload]].pack(UINT32)
+
+        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.5
         when :settings
           if frame[:stream] != 0
             raise FramingException.new("Invalid stream ID (#{frame[:stream]})")
@@ -115,6 +127,11 @@ module Http2
             bytes += [k & RBYTE].pack(UINT32)
             bytes += [v].pack(UINT32)
           end
+
+        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.6
+        when :push_promise
+          bytes += [frame[:promise_stream] & RBIT].pack(UINT32)
+          bytes += frame[:payload]
         end
 
         bytes
@@ -144,6 +161,9 @@ module Http2
             name, _ = DEFINED_SETTINGS.select { |name, v| v == id }.first
             frame[:payload][name || id] = val
           end
+        when :push_promise
+          frame[:promise_stream] = buf.read(4).unpack(UINT32).first & RBIT
+          frame[:payload] = buf.read(frame[:length])
         end
 
         frame
