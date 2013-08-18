@@ -262,4 +262,20 @@ describe Http2::Parser::Framer do
     end
   end
 
+  context "CONTINUATION" do
+    it "should generate and parse bytes" do
+      frame = {
+        length: 12,
+        type: :continuation,
+        stream: 1,
+        flags: [:end_stream, :end_headers],
+        payload: 'header-block'
+      }
+
+      bytes = f.generate(frame)
+      bytes.should eq [0xc,0xa,0x3,0x1,*'header-block'.bytes].pack("SCCLC*")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+  end
+
 end

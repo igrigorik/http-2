@@ -37,7 +37,10 @@ module Http2
         push_promise: { end_push_promise: 0 },
         ping:         { pong: 0 },
         goaway:       {},
-        window_update:{}
+        window_update:{},
+        continuation: {
+          end_stream: 0, end_headers: 1
+        }
       }
 
       DEFINED_SETTINGS = {
@@ -152,6 +155,9 @@ module Http2
 
         when :window_update
           bytes += [frame[:increment] & RBIT].pack(UINT32)
+
+        when :continuation
+          bytes += frame[:payload]
         end
 
         bytes
@@ -194,6 +200,8 @@ module Http2
           frame[:payload] = buf.read(size) if size > 0
         when :window_update
           frame[:increment] = buf.read(4).unpack(UINT32).first & RBIT
+        when :continuation
+          frame[:payload] = buf.read(frame[:length])
         end
 
         frame
