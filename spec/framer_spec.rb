@@ -128,9 +128,7 @@ describe Http2::Parser::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x3,0x0,0x1,0x5].pack("SCCLL")
-      b = f.parse(StringIO.new(bytes))
-      p [b, frame]
-      b.should eq frame
+      f.parse(StringIO.new(bytes)).should eq frame
     end
   end
 
