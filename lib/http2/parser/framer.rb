@@ -6,6 +6,7 @@ module Http2
 
       MAX_PAYLOAD_SIZE = 2**16-1
       MAX_STREAM_ID = 0x7fffffff
+      MAX_WINDOWINC = 0x7fffffff
       RBIT          = 0x7fffffff
       RBYTE         = 0x0fffffff
 
@@ -35,7 +36,8 @@ module Http2
         settings:     {},
         push_promise: { end_push_promise: 0 },
         ping:         { pong: 0 },
-        goaway:       {}
+        goaway:       {},
+        window_update:{}
       }
 
       DEFINED_SETTINGS = {
@@ -52,11 +54,13 @@ module Http2
 
       def commonHeader(frame)
         header = []
-        frame[:flags] ||= []
+        frame[:flags]  ||= []
+        frame[:stream] ||= 0
 
         raise FramingException.new("Frame size is too large: #{frame[:length]}") if frame[:length] > MAX_PAYLOAD_SIZE
         raise FramingException.new("Invalid frame type (#{frame[:type]})") if !FRAME_TYPES[frame[:type]]
         raise FramingException.new("Stream ID (#{frame[:stream]}) is too large") if frame[:stream] > MAX_STREAM_ID
+        # raise FramingException.new("Window increment (#{frame[:increment]}) is too large") if frame[:increment] > MAX_WINDOWINC
 
         header << frame[:length]
         header << FRAME_TYPES[frame[:type]]
@@ -67,7 +71,7 @@ module Http2
           acc
         end
 
-        header << (frame[:stream] || 0)
+        header << frame[:stream]
         header.pack(HEADERPACK) # 16,8,8,32
       end
 
@@ -145,6 +149,9 @@ module Http2
           bytes += [frame[:last_stream] & RBIT].pack(UINT32)
           bytes += [frame[:error]].pack(UINT32)
           bytes += frame[:payload] if frame[:payload]
+
+        when :window_update
+          bytes += [frame[:increment] & RBIT].pack(UINT32)
         end
 
         bytes
@@ -185,6 +192,8 @@ module Http2
 
           size = frame[:length] - 8
           frame[:payload] = buf.read(size) if size > 0
+        when :window_update
+          frame[:increment] = buf.read(4).unpack(UINT32).first & RBIT
         end
 
         frame

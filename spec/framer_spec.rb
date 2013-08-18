@@ -247,4 +247,19 @@ describe Http2::Parser::Framer do
       f.parse(StringIO.new(bytes)).should eq frame
     end
   end
+
+  context "WINDOW_UPDATE" do
+    it "should generate and parse bytes" do
+      frame = {
+        length: 4,
+        type: :window_update,
+        increment: 10
+      }
+
+      bytes = f.generate(frame)
+      bytes.should eq [0x4,0x9,0x0,0x0,0xa].pack("SCCLL")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+  end
+
 end
