@@ -123,7 +123,7 @@ describe Http2::Parser::Framer do
         length: 4,
         type: :rst_stream,
         stream: 1,
-        payload: 10
+        error: 10
       }
 
       bytes = f.generate(frame)
@@ -217,6 +217,34 @@ describe Http2::Parser::Framer do
         frame[:payload] = "1234"
         f.generate(frame)
       }.to raise_error(FramingException, /Invalid payload size/)
+    end
+  end
+
+  context "GOAWAY" do
+    let(:frame) {
+      {
+        length: 13,
+        stream: 1,
+        type: :goaway,
+        last_stream: 2,
+        error: 15,
+        payload: 'debug'
+      }
+    }
+
+    it "should generate and parse bytes" do
+      bytes = f.generate(frame)
+      bytes.should eq [0xd,0x7,0x0,0x1,0x2,0xf,*'debug'.bytes].pack("SCCLLLC*")
+      f.parse(StringIO.new(bytes)).should eq frame
+    end
+
+    it "should treat debug payload as optional" do
+      frame.delete :payload
+      frame[:length] = 0x8
+
+      bytes = f.generate(frame)
+      bytes.should eq [0x8,0x7,0x0,0x1,0x2,0xf].pack("SCCLLL")
+      f.parse(StringIO.new(bytes)).should eq frame
     end
   end
 end

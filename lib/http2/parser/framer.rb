@@ -30,11 +30,12 @@ module Http2
           end_stream:  0, reserved: 1,
           end_headers: 2, priority: 3
         },
-        priority: {},
-        rst_stream: {},
-        settings: {},
+        priority:     {},
+        rst_stream:   {},
+        settings:     {},
         push_promise: { end_push_promise: 0 },
-        ping: { pong: 0 }
+        ping:         { pong: 0 },
+        goaway:       {}
       }
 
       DEFINED_SETTINGS = {
@@ -106,7 +107,7 @@ module Http2
 
         # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.4
         when :rst_stream
-          bytes += [frame[:payload]].pack(UINT32)
+          bytes += [frame[:error]].pack(UINT32)
 
         # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.5
         when :settings
@@ -139,6 +140,11 @@ module Http2
                                       (#{frame[:payload].size} != 8 bytes)")
           end
           bytes += frame[:payload]
+
+        when :goaway
+          bytes += [frame[:last_stream] & RBIT].pack(UINT32)
+          bytes += [frame[:error]].pack(UINT32)
+          bytes += frame[:payload] if frame[:payload]
         end
 
         bytes
@@ -158,7 +164,7 @@ module Http2
         when :priority
           frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
         when :rst_stream
-          frame[:payload] = buf.read(4).unpack(UINT32).first
+          frame[:error] = buf.read(4).unpack(UINT32).first
         when :settings
           frame[:payload] = {}
           (frame[:length] / 8).times do
@@ -173,6 +179,12 @@ module Http2
           frame[:payload] = buf.read(frame[:length])
         when :ping
           frame[:payload] = buf.read(frame[:length])
+        when :goaway
+          frame[:last_stream] = buf.read(4).unpack(UINT32).first & RBIT
+          frame[:error] = buf.read(4).unpack(UINT32).first
+
+          size = frame[:length] - 8
+          frame[:payload] = buf.read(size) if size > 0
         end
 
         frame
