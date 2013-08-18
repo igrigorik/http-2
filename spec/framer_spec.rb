@@ -123,12 +123,14 @@ describe Http2::Parser::Framer do
         length: 4,
         type: :rst_stream,
         stream: 1,
-        error: 10
+        error: :stream_closed
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x4,0x3,0x0,0x1,0xa].pack("SCCLL")
-      f.parse(StringIO.new(bytes)).should eq frame
+      bytes.should eq [0x4,0x3,0x0,0x1,0x5].pack("SCCLL")
+      b = f.parse(StringIO.new(bytes))
+      p [b, frame]
+      b.should eq frame
     end
   end
 
@@ -227,14 +229,14 @@ describe Http2::Parser::Framer do
         stream: 1,
         type: :goaway,
         last_stream: 2,
-        error: 15,
+        error: :no_error,
         payload: 'debug'
       }
     }
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
-      bytes.should eq [0xd,0x7,0x0,0x1,0x2,0xf,*'debug'.bytes].pack("SCCLLLC*")
+      bytes.should eq [0xd,0x7,0x0,0x1,0x2,0x0,*'debug'.bytes].pack("SCCLLLC*")
       f.parse(StringIO.new(bytes)).should eq frame
     end
 
@@ -243,7 +245,7 @@ describe Http2::Parser::Framer do
       frame[:length] = 0x8
 
       bytes = f.generate(frame)
-      bytes.should eq [0x8,0x7,0x0,0x1,0x2,0xf].pack("SCCLLL")
+      bytes.should eq [0x8,0x7,0x0,0x1,0x2,0x0].pack("SCCLLL")
       f.parse(StringIO.new(bytes)).should eq frame
     end
   end

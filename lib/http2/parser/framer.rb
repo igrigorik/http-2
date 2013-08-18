@@ -49,6 +49,18 @@ module Http2
         settings_flow_control_options:   10
       }
 
+      DEFINED_ERRORS = {
+        no_error:           0,
+        protocol_error:     1,
+        internal_error:     2,
+        flow_control_error: 3,
+        stream_closed:      5,
+        frame_too_large:    6,
+        refused_stream:     7,
+        cancel:             8,
+        compression_error:  9
+      }
+
       # Frame header:
       # http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
       #
@@ -114,7 +126,7 @@ module Http2
 
         # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.4
         when :rst_stream
-          bytes += [frame[:error]].pack(UINT32)
+          bytes += pack_error frame[:error]
 
         # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.5
         when :settings
@@ -150,7 +162,7 @@ module Http2
 
         when :goaway
           bytes += [frame[:last_stream] & RBIT].pack(UINT32)
-          bytes += [frame[:error]].pack(UINT32)
+          bytes += pack_error frame[:error]
           bytes += frame[:payload] if frame[:payload]
 
         when :window_update
@@ -177,7 +189,8 @@ module Http2
         when :priority
           frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
         when :rst_stream
-          frame[:error] = buf.read(4).unpack(UINT32).first
+          frame[:error] = unpack_error buf.read(4).unpack(UINT32).first
+
         when :settings
           frame[:payload] = {}
           (frame[:length] / 8).times do
@@ -194,7 +207,7 @@ module Http2
           frame[:payload] = buf.read(frame[:length])
         when :goaway
           frame[:last_stream] = buf.read(4).unpack(UINT32).first & RBIT
-          frame[:error] = buf.read(4).unpack(UINT32).first
+          frame[:error] = unpack_error buf.read(4).unpack(UINT32).first
 
           size = frame[:length] - 8
           frame[:payload] = buf.read(size) if size > 0
@@ -205,6 +218,25 @@ module Http2
         end
 
         frame
+      end
+
+      private
+
+      def pack_error(e)
+        if !e.is_a? Integer
+          e = DEFINED_ERRORS[e]
+
+          if e.nil?
+            raise FramingException.new("Unknown error ID for #{e}")
+          end
+        end
+
+        [e].pack(UINT32)
+      end
+
+      def unpack_error(e)
+        name, _ = DEFINED_ERRORS.select { |name, v| v == e }.first
+        name || error
       end
 
     end
