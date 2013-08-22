@@ -1,29 +1,19 @@
-# Http2::Parser
+# Net::HTTP2
 
-TODO: Write a gem description
+Pure ruby implementation of HTTP 2.0 protocol: parsing, frame generation, header compression, etc. Current implementation is based on:
 
-## Installation
+* draft-ietf-httpbis-http2-05
+* draft-ietf-httpbis-header-compression-01
 
-Add this line to your application's Gemfile:
+Since the underlying specifications are still evolving, treat the implementation as a work in progress as well! To get started, check out the specs directory. The library is designed for integration with client/server implementations.
 
-    gem 'http2-parser'
+Interested in contributing? There is plenty to do!
 
-And then execute:
+* +Session+ and +Stream+ interfaces
+* Client/server implementations
+* Better API documentation
 
-    $ bundle
 
-Or install it yourself as:
+### License
 
-    $ gem install http2-parser
-
-## Usage
-
-TODO: Write usage instructions here
-
-## Contributing
-
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+(MIT License) - Copyright (c) 2013 Ilya Grigorik
