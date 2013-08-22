@@ -61,21 +61,22 @@ module Net
         compression_error:  9
       }
 
-      # Frame header:
-      # http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
-      #
       HEADERPACK = "SCCL"
       UINT32 = "L"
 
+      # Frame header:
+      # http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
+      #
       def commonHeader(frame)
         header = []
-        frame[:flags]  ||= []
-        frame[:stream] ||= 0
 
-        raise FramingException.new("Frame size is too large: #{frame[:length]}") if frame[:length] > MAX_PAYLOAD_SIZE
-        raise FramingException.new("Invalid frame type (#{frame[:type]})") if !FRAME_TYPES[frame[:type]]
-        raise FramingException.new("Stream ID (#{frame[:stream]}) is too large") if frame[:stream] > MAX_STREAM_ID
-        # raise FramingException.new("Window increment (#{frame[:increment]}) is too large") if frame[:increment] > MAX_WINDOWINC
+        raise FramingException.new("Invalid frame type (#{frame[:type]})")                 if !FRAME_TYPES[frame[:type]]
+        raise FramingException.new("Frame size is too large: #{frame[:length]}")           if frame[:length] > MAX_PAYLOAD_SIZE
+        raise FramingException.new("Stream ID (#{frame[:stream]}) is too large")           if frame[:stream] > MAX_STREAM_ID
+
+        if frame[:type] == :window_update and frame[:increment] > MAX_WINDOWINC
+          raise FramingException.new("Window increment (#{frame[:increment]}) is too large")
+        end
 
         header << frame[:length]
         header << FRAME_TYPES[frame[:type]]
@@ -105,30 +106,36 @@ module Net
         frame
       end
 
+      # http://tools.ietf.org/html/draft-ietf-httpbis-http2
+      #
       def generate(frame)
-        bytes = commonHeader(frame)
+        bytes  = ''
+        length = 0
+
+        frame[:flags]  ||= []
+        frame[:stream] ||= 0
 
         case frame[:type]
-        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.1
         when :data
-          bytes += frame[:payload]
+          bytes  += frame[:payload]
+          length += frame[:payload].bytesize
 
-        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.2
         when :headers
           if frame[:flags].include? :priority
-            bytes += [frame[:priority] & RBIT].pack(UINT32)
+            bytes  += [frame[:priority] & RBIT].pack(UINT32)
+            length += 4
           end
-          bytes += frame[:payload]
+          bytes  += frame[:payload]
+          length += frame[:payload].bytesize
 
-        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.3
         when :priority
-          bytes += [frame[:priority] & RBIT].pack(UINT32)
+          bytes  += [frame[:priority] & RBIT].pack(UINT32)
+          length += 4
 
-        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.4
         when :rst_stream
-          bytes += pack_error frame[:error]
+          bytes  += pack_error frame[:error]
+          length += 4
 
-        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.5
         when :settings
           if frame[:stream] != 0
             raise FramingException.new("Invalid stream ID (#{frame[:stream]})")
@@ -143,36 +150,45 @@ module Net
               end
             end
 
-            bytes += [k & RBYTE].pack(UINT32)
-            bytes += [v].pack(UINT32)
+            bytes  += [k & RBYTE].pack(UINT32)
+            bytes  += [v].pack(UINT32)
+            length += 8
           end
 
-        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.6
         when :push_promise
-          bytes += [frame[:promise_stream] & RBIT].pack(UINT32)
-          bytes += frame[:payload]
+          bytes  += [frame[:promise_stream] & RBIT].pack(UINT32)
+          bytes  += frame[:payload]
+          length += 4 + frame[:payload].bytesize
 
-        # http://tools.ietf.org/html/draft-ietf-httpbis-http2-05#section-6.6
         when :ping
           if frame[:payload].bytesize != 8
             raise FramingException.new("Invalid payload size \
                                       (#{frame[:payload].size} != 8 bytes)")
           end
-          bytes += frame[:payload]
+          bytes  += frame[:payload]
+          length += 8
 
         when :goaway
-          bytes += [frame[:last_stream] & RBIT].pack(UINT32)
-          bytes += pack_error frame[:error]
-          bytes += frame[:payload] if frame[:payload]
+          bytes  += [frame[:last_stream] & RBIT].pack(UINT32)
+          bytes  += pack_error frame[:error]
+          length += 8
+
+          if frame[:payload]
+            bytes  += frame[:payload]
+            length += frame[:payload].bytesize
+          end
 
         when :window_update
-          bytes += [frame[:increment] & RBIT].pack(UINT32)
+          bytes  += [frame[:increment] & RBIT].pack(UINT32)
+          length += 4
 
         when :continuation
-          bytes += frame[:payload]
+          bytes  += frame[:payload]
+          length += frame[:payload].bytesize
         end
 
-        bytes
+        frame[:length] ||= length
+        commonHeader(frame) + bytes
       end
 
       def parse(buf)

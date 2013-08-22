@@ -278,4 +278,34 @@ describe Net::HTTP2::Framer do
     end
   end
 
+  context "serialize" do
+    it "should determine frame length" do
+      frames = [
+        [{type: :data, stream: 1, flags: [:end_stream], payload: "abc"}, 3],
+        [{type: :headers, stream: 1, payload: "abc"}, 3],
+        [{type: :priority, stream: 3, priority: 30}, 4],
+        [{type: :rst_stream, stream: 3, error: 100}, 4],
+        [{type: :settings, payload: {settings_max_concurrent_streams: 10}}, 8],
+        [{type: :push_promise, promise_stream: 5, payload: "abc"}, 7],
+        [{type: :ping, payload: "blob"*2}, 8],
+        [{type: :goaway, last_stream: 5, error: 20, payload: "blob"}, 12],
+        [{type: :window_update, stream: 1, increment: 1024}, 4],
+        [{type: :continuation, stream: 1, payload: "abc"}, 3]
+      ]
+
+      frames.each do |(frame, size)|
+        bytes = f.generate(frame)
+        StringIO.new(bytes).read(2).unpack("S").first.should eq size
+      end
+    end
+
+    it "should compress input headers"
+    it "should split large data frames"
+  end
+
+  context "deserialize" do
+    it "should emit multiple frames from input"
+    it "should process full frames only"
+  end
+
 end
