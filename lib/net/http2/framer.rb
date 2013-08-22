@@ -1,5 +1,5 @@
-module Http2
-  module Parser
+module Net
+  module HTTP2
     class FramingException < Exception; end
 
     class Framer

@@ -1,6 +1,6 @@
 require "helper"
 
-describe Http2::Parser::Framer do
+describe Net::HTTP2::Framer do
 
   let(:f) { Framer.new }
 

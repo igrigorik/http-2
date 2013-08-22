@@ -1,5 +1,5 @@
-module Http2
-  module Parser
+module Net
+  module HTTP2
     module Header
       class HeaderException < Exception; end
 

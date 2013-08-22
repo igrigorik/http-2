@@ -1,6 +1,6 @@
 require "helper"
 
-describe Http2::Parser::Header do
+describe Net::HTTP2::Header do
 
   let(:c) { Compressor.new :request }
   let(:d) { Decompressor.new :response }

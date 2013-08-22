@@ -1,5 +1,5 @@
-require 'http2/parser'
+require 'net/http2'
 
-include Http2::Parser
-include Http2::Parser::Header
+include Net::HTTP2
+include Net::HTTP2::Header
 
