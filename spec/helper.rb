@@ -13,7 +13,7 @@ DATA = {
 
 HEADERS = {
   type: :headers,
-  flags: [:end_stream, :reserved, :end_headers],
+  flags: [:reserved, :end_headers],
   stream: 1,
   payload: 'header-block'
 }

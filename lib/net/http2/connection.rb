@@ -25,7 +25,9 @@ end
 
 # s.on_headers {}
 # s.on_data {}
-# s.on_finish {}
+#
+# s.on_open {}
+# s.on_close {}
 
 
 # conn.on_stream do |s|

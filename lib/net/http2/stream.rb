@@ -17,6 +17,9 @@ module Net
         @state = :idle
       end
 
+      def on_open(&blk); @on_open = blk; end
+      def on_close(&blk); @on_close = blk; end
+
       def process(frame)
         transition(frame, false)
 
@@ -90,14 +93,20 @@ module Net
         #    "reserved (remote)".
         when :idle
           if sending
-            @state = case frame[:type]
-            when :push_promise then :reserved_local
-            when :headers      then :open
+            case frame[:type]
+            when :push_promise
+              @state = :reserved_local
+            when :headers
+              emit(:open)
+              @state = :half_closed_local if end_stream?(frame)
             else StreamError.new; end # local error, don't send RST_STREAM
           else
-            @state = case frame[:type]
-            when :push_promise then :reserved_remote
-            when :headers      then :open
+            case frame[:type]
+            when :push_promise
+              @state = :reserved_remote
+            when :headers
+              emit(:open)
+              @state = :half_closed_remote if end_stream?(frame)
             else stream_error; end
           end
 
@@ -117,11 +126,11 @@ module Net
           if sending
             @state = case frame[:type]
             when :headers     then :half_closed_remote
-            when :rst_stream  then :closed
+            when :rst_stream  then emit(:closed, frame)
             else stream_error; end
           else
             @state = case frame[:type]
-            when :rst_stream  then :closed
+            when :rst_stream  then emit(:closed, frame)
             when :priority    then @state
             else stream_error; end
           end
@@ -139,16 +148,60 @@ module Net
         when :reserved_remote
           if sending
             @state = case frame[:type]
-            when :rst_stream then :closed
+            when :rst_stream then emit(:closed, frame)
             when :priority then @state
             else stream_error; end
           else
             @state = case frame[:type]
             when :headers     then :half_closed_local
-            when :rst_stream  then :closed
+            when :rst_stream  then emit(:closed, frame)
             else stream_error; end
           end
+
+        # The "open" state is where both peers can send frames of any type.
+        # In this state, sending peers observe advertised stream level flow
+        # control limits (Section 5.2).
+        # * From this state either endpoint can send a frame with a END_STREAM
+        #   flag set, which causes the stream to transition into one of the
+        #   "half closed" states: an endpoint sending a END_STREAM flag causes
+        #   the stream state to become "half closed (local)"; an endpoint
+        #   receiving a END_STREAM flag causes the stream state to become
+        #   "half closed (remote)".
+        # * Either endpoint can send a RST_STREAM frame from this state,
+        #   causing it to transition immediately to "closed".
+        when :open
+          if sending
+            @state = case frame[:type]
+            when :data, :headers, :continuation
+              frame[:flags].include?(:end_stream) ? :half_closed_local : @state
+            when :rst_stream then emit(:closed, frame)
+            else @state; end
+          else
+            @state = case frame[:type]
+            when :data, :headers, :continuation
+              frame[:flags].include?(:end_stream) ? :half_closed_remote : @state
+            when :rst_stream then emit(:closed, frame)
+            else @state; end
+          end
         end
+      end
+
+      def emit(state, frame = nil)
+        @state = state
+
+        case state
+        when :open   then @on_open.call if @on_open
+        when :closed then @on_close.call(frame[:error]) if @on_close
+        end
+
+        @state
+      end
+
+      def end_stream?(frame)
+        case frame[:type]
+        when :data, :headers, :continuation
+          frame[:flags].include?(:end_stream)
+        else false; end
       end
 
       def stream_error(msg = nil)
@@ -159,4 +212,3 @@ module Net
     end
   end
 end
-
