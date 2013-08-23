@@ -93,10 +93,9 @@ module Net
 
       def readCommonHeader(buf)
         frame = {}
-
         frame[:length], type, flags, stream = buf.read(8).unpack(HEADERPACK)
-        frame[:type], _ = FRAME_TYPES.select { |t,pos| type == pos }.first
 
+        frame[:type], _ = FRAME_TYPES.select { |t,pos| type == pos }.first
         frame[:flags] = FRAME_FLAGS[frame[:type]].reduce([]) do |acc, (name, pos)|
           acc << name if (flags & (1 << pos)) > 0
           acc
@@ -193,7 +192,13 @@ module Net
       end
 
       def parse(buf)
+        return nil if buf.size - buf.pos < 8
         frame = readCommonHeader(buf)
+
+        if buf.size - buf.pos < frame[:length]
+          buf.seek(-8, IO::SEEK_CUR)
+          return nil
+        end
 
         case frame[:type]
         when :data
