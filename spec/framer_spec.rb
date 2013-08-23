@@ -74,7 +74,7 @@ describe Net::HTTP2::Framer do
   context "HEADERS" do
     it "should generate and parse bytes" do
       frame = {
-        length: 20,
+        length: 12,
         type: :headers,
         flags: [:end_stream, :reserved, :end_headers],
         stream: 1,
@@ -82,13 +82,13 @@ describe Net::HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x14,0x1,0x7,0x1,*'header-block'.bytes].pack("SCCLC*")
+      bytes.should eq [0xc,0x1,0x7,0x1,*'header-block'.bytes].pack("SCCLC*")
       f.parse(StringIO.new(bytes)).should eq frame
     end
 
     it "should carry an optional stream priority" do
       frame = {
-        length: 20,
+        length: 16,
         type: :headers,
         flags: [:end_headers, :priority],
         stream: 1,
@@ -97,7 +97,7 @@ describe Net::HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x14,0x1,0xc,0x1,0xf,*'header-block'.bytes].pack("SCCLLC*")
+      bytes.should eq [0x10,0x1,0xc,0x1,0xf,*'header-block'.bytes].pack("SCCLLC*")
       f.parse(StringIO.new(bytes)).should eq frame
     end
   end
@@ -181,7 +181,7 @@ describe Net::HTTP2::Framer do
   context "PUSH_PROMISE" do
     it "should generate and parse bytes" do
       frame = {
-        length: 15,
+        length: 11,
         type: :push_promise,
         flags: [:end_push_promise],
         stream: 1,
@@ -190,7 +190,7 @@ describe Net::HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0xf,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("SCCLLC*")
+      bytes.should eq [0xb,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("SCCLLC*")
       f.parse(StringIO.new(bytes)).should eq frame
     end
   end

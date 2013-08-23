@@ -74,7 +74,7 @@ module Net
         raise FramingException.new("Frame size is too large: #{frame[:length]}")           if frame[:length] > MAX_PAYLOAD_SIZE
         raise FramingException.new("Stream ID (#{frame[:stream]}) is too large")           if frame[:stream] > MAX_STREAM_ID
 
-        if frame[:type] == :window_update and frame[:increment] > MAX_WINDOWINC
+        if frame[:type] == :window_update && frame[:increment] > MAX_WINDOWINC
           raise FramingException.new("Window increment (#{frame[:increment]}) is too large")
         end
 
@@ -125,6 +125,7 @@ module Net
             bytes  += [frame[:priority] & RBIT].pack(UINT32)
             length += 4
           end
+
           bytes  += frame[:payload]
           length += frame[:payload].bytesize
 
@@ -187,7 +188,7 @@ module Net
           length += frame[:payload].bytesize
         end
 
-        frame[:length] ||= length
+        frame[:length] = length
         commonHeader(frame) + bytes
       end
 
