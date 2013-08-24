@@ -175,17 +175,13 @@ module Net
           if sending
             @state = case frame[:type]
             when :data, :headers, :continuation
-              if frame[:flags].include?(:end_stream)
-                :half_closed_local
-              else @state; end
+              end_stream?(frame) ? :half_closed_local : @state
             when :rst_stream then emit(:local_rst, frame)
             else @state; end
           else
             @state = case frame[:type]
             when :data, :headers, :continuation
-              if frame[:flags].include?(:end_stream)
-                :half_closed_remote
-              else @state; end
+              end_stream?(frame) ? :half_closed_remote : @state
             when :rst_stream then emit(:remote_rst, frame)
             else @state; end
           end
@@ -208,9 +204,7 @@ module Net
           else
             @state = case frame[:type]
             when :data, :headers, :continuation
-              if frame[:flags].include?(:end_stream)
-                emit(:remote_closed, frame)
-              else @state; end
+              end_stream?(frame) ? emit(:remote_closed, frame) : @state
             when :rst_stream then emit(:remote_rst, frame)
             else @state; end
           end
@@ -229,9 +223,7 @@ module Net
           if sending
             @state = case frame[:type]
             when :data, :headers, :continuation
-              if frame[:flags].include?(:end_stream)
-                emit(:local_closed, frame)
-              else @state; end
+              end_stream?(frame) ? emit(:local_closed, frame) : @state
             when :rst_stream then emit(:local_rst, frame)
             else @state; end
           else
@@ -242,7 +234,7 @@ module Net
             end
           end
 
-        # An endpoint MUST NOT send frames on a closed stream.  An endpoint
+        # An endpoint MUST NOT send frames on a closed stream. An endpoint
         # that receives a frame after receiving a RST_STREAM or a frame
         # containing a END_STREAM flag on that stream MUST treat that as a
         # stream error (Section 5.4.2) of type STREAM_CLOSED.
@@ -255,12 +247,12 @@ module Net
         # If this state is reached as a result of sending a RST_STREAM
         # frame, the peer that receives the RST_STREAM might have already
         # sent - or enqueued for sending - frames on the stream that cannot
-        # be withdrawn.  An endpoint MUST ignore frames that it receives on
+        # be withdrawn. An endpoint MUST ignore frames that it receives on
         # closed streams after it has sent a RST_STREAM frame.
         #
         # An endpoint might receive a PUSH_PROMISE or a CONTINUATION frame
-        # after it sends RST_STREAM.  PUSH_PROMISE causes a stream to become
-        # "reserved".  If promised streams are not desired, a RST_STREAM can
+        # after it sends RST_STREAM. PUSH_PROMISE causes a stream to become
+        # "reserved". If promised streams are not desired, a RST_STREAM can
         # be used to close any of those streams.
         when :closed
           if sending
