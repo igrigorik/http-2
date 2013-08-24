@@ -1,5 +1,8 @@
 module Net
   module HTTP2
+
+    DEFAULT_FLOW_WINDOW = 65535
+
     class Connection
       def initialize()
         @next_streamID = 0 # todo

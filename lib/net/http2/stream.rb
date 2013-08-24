@@ -7,13 +7,14 @@ module Net
     class Stream
       DEFAULT_PRIORITY = 2**30
 
-      attr_reader :state, :priority
+      attr_reader :state, :priority, :window
 
       def initialize(conn, id, priority = DEFAULT_PRIORITY)
         @conn = conn
         @id = id
 
         @priority = priority
+        @window = DEFAULT_FLOW_WINDOW
         @state  = :idle
         @error  = false
         @closed = false
@@ -28,6 +29,8 @@ module Net
         case frame[:type]
         when :priority
           @priority = frame[:priority]
+        when :window_update
+          @window += frame[:increment]
         end
       end
 
@@ -37,6 +40,8 @@ module Net
         case frame[:type]
         when :priority
           @priority = frame[:priority]
+        when :data
+          @window -= frame[:payload].bytesize
         end
       end
 

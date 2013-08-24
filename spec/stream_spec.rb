@@ -1,13 +1,12 @@
 require "helper"
 
 describe Net::HTTP2::Stream do
+  before(:each) do
+    @conn = Connection.new
+    @stream = @conn.allocate_stream
+  end
 
   context "stream states" do
-    before(:each) do
-      @conn = Connection.new
-      @stream = @conn.allocate_stream
-    end
-
     it "should initiliaze all streams to IDLE" do
       @stream.state.should eq :idle
     end
@@ -356,27 +355,52 @@ describe Net::HTTP2::Stream do
         end
       end
     end
+  end # end stream states
 
-
-    context "flow control" do
-      it "should observe stream level flow control limits"
+  context "flow control" do
+    it "should initialize to default flow control window" do
+      @stream.window.should eq DEFAULT_FLOW_WINDOW
     end
 
-    # * flow control logic
-    #   - initialize to default setting
-    #   - decrement on send
-    #   - process window_update
-    #
-    # * API / hooks for listening to PROMISE / HEADERS frames
-    # * API for sending .promise, .headers, .data, .reset
-    # * Private "send" API which pushes data to Connection object
-    #   - push frames
+    it "should update window size on DATA frames only" do
+      @stream.send HEADERS # go to open
+      @stream.window.should eq DEFAULT_FLOW_WINDOW
+
+      (FRAME_TYPES - [DATA]).each do |frame|
+        s = @stream.dup
+        s.send frame
+        s.window.should eq DEFAULT_FLOW_WINDOW
+      end
+
+      @stream.send DATA
+      @stream.window.should eq DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize
+    end
+
+    it "should update window size on receipt of WINDOW_UPDATE" do
+      @stream.send HEADERS
+      @stream.send DATA
+      @stream.process WINDOW_UPDATE
+
+      @stream.window.should eq (
+        DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize + WINDOW_UPDATE[:increment]
+      )
+    end
+  end
+
+  context "API" do
+    context ".promise" do
+      it "should allocate a new push stream"
+    end
+
+    context ".header" do
+      it "should emit HEADERS frames"
+      it "should use CONTINUATION frame for multi-frame payloads"
+    end
+
+    context ".data" do
+      it "should emit DATA frames"
+      it "should split large data payloads into multiple DATA frames"
+      it "should observe session flow control"
+    end
   end
 end
-
-
-
-
-
-
-
