@@ -173,17 +173,17 @@ module Net
         #   causing it to transition immediately to "closed".
         when :open
           if sending
-            @state = case frame[:type]
+            case frame[:type]
             when :data, :headers, :continuation
-              end_stream?(frame) ? :half_closed_local : @state
+              @state = :half_closed_local if end_stream?(frame)
             when :rst_stream then emit(:local_rst, frame)
-            else @state; end
+            end
           else
-            @state = case frame[:type]
+            case frame[:type]
             when :data, :headers, :continuation
-              end_stream?(frame) ? :half_closed_remote : @state
+              @state = :half_closed_remote if end_stream?(frame)
             when :rst_stream then emit(:remote_rst, frame)
-            else @state; end
+            end
           end
 
         # A stream that is "half closed (local)" cannot be used for sending
@@ -202,11 +202,13 @@ module Net
               stream_error
             end
           else
-            @state = case frame[:type]
+            case frame[:type]
             when :data, :headers, :continuation
-              end_stream?(frame) ? emit(:remote_closed, frame) : @state
+              emit(:remote_closed, frame) if end_stream?(frame)
             when :rst_stream then emit(:remote_rst, frame)
-            else @state; end
+            when :window_update, :priority
+              frame[:igore] = true
+            end
           end
 
         # A stream that is "half closed (remote)" is no longer being used by
@@ -221,17 +223,16 @@ module Net
         # RST_STREAM frame.
         when :half_closed_remote
           if sending
-            @state = case frame[:type]
+            case frame[:type]
             when :data, :headers, :continuation
-              end_stream?(frame) ? emit(:local_closed, frame) : @state
+              emit(:local_closed, frame) if end_stream?(frame)
             when :rst_stream then emit(:local_rst, frame)
-            else @state; end
-          else
-            if frame[:type] == :rst_stream
-              emit(:remote_rst, frame)
-            else
-              stream_error(:stream_closed)
             end
+          else
+            case frame[:type]
+            when :rst_stream then emit(:remote_rst, frame)
+            when :window_update then frame[:ignore] = true
+            else stream_error(:stream_closed); end
           end
 
         # An endpoint MUST NOT send frames on a closed stream. An endpoint

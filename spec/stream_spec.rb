@@ -224,6 +224,12 @@ describe Net::HTTP2::Stream do
         @stream.state.should eq :closed
       end
 
+      it "should ignore received WINDOW_UPDATE, PRIORITY frames" do
+        expect { @stream.process WINDOW_UPDATE }.to_not raise_error
+        expect { @stream.process PRIORITY }.to_not raise_error
+        @stream.state.should eq :half_closed_local
+      end
+
       it "should fire on_close callback on close transition" do
         closed = false
         @stream.on_close { closed = true }
@@ -238,7 +244,7 @@ describe Net::HTTP2::Stream do
       before(:each) { @stream.process HEADERS_END_STREAM }
 
       it "should raise STREAM_CLOSED error on reciept of frames" do
-        (FRAME_TYPES - [RST_STREAM]).each do |frame|
+        (FRAME_TYPES - [RST_STREAM, WINDOW_UPDATE]).each do |frame|
           expect {
             @stream.dup.process frame
           }.to raise_error(StreamError, /stream closed/i)
@@ -263,6 +269,11 @@ describe Net::HTTP2::Stream do
       it "should transition to closed on reciept of RST_STREAM frame" do
         @stream.process RST_STREAM
         @stream.state.should eq :closed
+      end
+
+      it "should ignore received WINDOW_UPDATE frames" do
+        expect { @stream.process WINDOW_UPDATE }.to_not raise_error
+        @stream.state.should eq :half_closed_remote
       end
 
       it "should fire on_close callback on close transition" do
