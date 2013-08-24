@@ -18,6 +18,13 @@ HEADERS = {
   payload: 'header-block'
 }
 
+HEADERS_END_STREAM = {
+  type: :headers,
+  flags: [:reserved, :end_headers, :end_stream],
+  stream: 1,
+  payload: 'header-block'
+}
+
 PRIORITY = {
   type: :priority,
   stream: 1,

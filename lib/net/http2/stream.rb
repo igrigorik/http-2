@@ -183,6 +183,54 @@ module Net
             when :rst_stream then emit(:closed, frame)
             else @state; end
           end
+
+        # A stream that is "half closed (local)" cannot be used for sending
+        # frames.
+        # A stream transitions from this state to "closed" when a frame that
+        # contains a END_STREAM flag is received, or when either peer sends
+        # a RST_STREAM frame.
+        # A receiver can ignore WINDOW_UPDATE or PRIORITY frames in this
+        # state.  These frame types might arrive for a short period after a
+        # frame bearing the END_STREAM flag is sent.
+        when :half_closed_local
+          if sending
+            if frame[:type] == :rst_stream
+              emit(:closed, frame)
+            else
+              stream_error
+            end
+          else
+            @state = case frame[:type]
+            when :data, :headers, :continuation
+              frame[:flags].include?(:end_stream) ? emit(:closed, frame) : @state
+            when :rst_stream then emit(:closed, frame)
+            else @state; end
+          end
+
+        # A stream that is "half closed (remote)" is no longer being used by
+        # the peer to send frames.  In this state, an endpoint is no longer
+        # obligated to maintain a receiver flow control window if it
+        # performs flow control.
+        # If an endpoint receives additional frames for a stream that is in
+        # this state it MUST respond with a stream error (Section 5.4.2) of
+        # type STREAM_CLOSED.
+        # A stream can transition from this state to "closed" by sending a
+        # frame that contains a END_STREAM flag, or when either peer sends a
+        # RST_STREAM frame.
+        when :half_closed_remote
+          if sending
+            @state = case frame[:type]
+            when :data, :headers, :continuation
+              frame[:flags].include?(:end_stream) ? emit(:closed, frame) : @state
+            when :rst_stream then emit(:closed, frame)
+            else @state; end
+          else
+            if frame[:type] == :rst_stream
+              emit(:closed, frame)
+            else
+              stream_error(:stream_closed)
+            end
+          end
         end
       end
 
@@ -204,9 +252,9 @@ module Net
         else false; end
       end
 
-      def stream_error(msg = nil)
-        send({type: :rst_stream, stream: @id, error: :protocol_error})
-        raise StreamError.new(msg)
+      def stream_error(error = :protocol_error)
+        send({type: :rst_stream, stream: @id, error: error})
+        raise StreamError.new(error.to_s.gsub('_',' '))
       end
 
     end

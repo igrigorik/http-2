@@ -195,6 +195,86 @@ describe Net::HTTP2::Stream do
       end
     end
 
+    context "half closed (local)" do
+      before(:each) { @stream.send HEADERS_END_STREAM }
+
+      it "should raise error on attempt to send frames" do
+        (FRAME_TYPES - [RST_STREAM]).each do |frame|
+          expect { @stream.dup.send frame }.to raise_error StreamError
+        end
+      end
+
+      it "should transition to closed on receipt of END_STREAM flag" do
+        [DATA, HEADERS, CONTINUATION].each do |frame|
+          s, f = @stream.dup, frame.dup
+          f[:flags] = [:end_stream]
+
+          s.process f
+          s.state.should eq :closed
+        end
+      end
+
+      it "should transition to closed on receipt of RST_STREAM frame" do
+        @stream.process RST_STREAM
+        @stream.state.should eq :closed
+      end
+
+      it "should transition to closed if RST_STREAM frame is sent" do
+        @stream.send RST_STREAM
+        @stream.state.should eq :closed
+      end
+
+      it "should fire on_close callback on close transition" do
+        closed = false
+        @stream.on_close { closed = true }
+        @stream.process RST_STREAM
+
+        @stream.state.should eq :closed
+        closed.should be_true
+      end
+    end
+
+    context "half closed (remote)" do
+      before(:each) { @stream.process HEADERS_END_STREAM }
+
+      it "should raise STREAM_CLOSED error on reciept of frames" do
+        (FRAME_TYPES - [RST_STREAM]).each do |frame|
+          expect {
+            @stream.dup.process frame
+          }.to raise_error(StreamError, /stream closed/i)
+        end
+      end
+
+      it "should transition to closed if END_STREAM flag is sent" do
+        [DATA, HEADERS, CONTINUATION].each do |frame|
+          s, f = @stream.dup, frame.dup
+          f[:flags] = [:end_stream]
+
+          s.send f
+          s.state.should eq :closed
+        end
+      end
+
+      it "should transition to closed if RST_STREAM is sent" do
+        @stream.close
+        @stream.state.should eq :closed
+      end
+
+      it "should transition to closed on reciept of RST_STREAM frame" do
+        @stream.process RST_STREAM
+        @stream.state.should eq :closed
+      end
+
+      it "should fire on_close callback on close transition" do
+        closed = false
+        @stream.on_close { closed = true }
+        @stream.close
+
+        @stream.state.should eq :closed
+        closed.should be_true
+      end
+    end
+
     context "flow control" do
       it "should observe stream level flow control limits"
     end
