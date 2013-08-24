@@ -14,7 +14,9 @@ module Net
         @id = id
 
         @priority = priority
-        @state = :idle
+        @state  = :idle
+        @error  = false
+        @closed = false
       end
 
       def on_open(&blk); @on_open = blk; end
@@ -126,11 +128,11 @@ module Net
           if sending
             @state = case frame[:type]
             when :headers     then :half_closed_remote
-            when :rst_stream  then emit(:closed, frame)
+            when :rst_stream  then emit(:local_rst, frame)
             else stream_error; end
           else
             @state = case frame[:type]
-            when :rst_stream  then emit(:closed, frame)
+            when :rst_stream  then emit(:remote_rst, frame)
             when :priority    then @state
             else stream_error; end
           end
@@ -148,13 +150,13 @@ module Net
         when :reserved_remote
           if sending
             @state = case frame[:type]
-            when :rst_stream then emit(:closed, frame)
+            when :rst_stream then emit(:local_rst, frame)
             when :priority then @state
             else stream_error; end
           else
             @state = case frame[:type]
             when :headers     then :half_closed_local
-            when :rst_stream  then emit(:closed, frame)
+            when :rst_stream  then emit(:remote_rst, frame)
             else stream_error; end
           end
 
@@ -173,14 +175,18 @@ module Net
           if sending
             @state = case frame[:type]
             when :data, :headers, :continuation
-              frame[:flags].include?(:end_stream) ? :half_closed_local : @state
-            when :rst_stream then emit(:closed, frame)
+              if frame[:flags].include?(:end_stream)
+                :half_closed_local
+              else @state; end
+            when :rst_stream then emit(:local_rst, frame)
             else @state; end
           else
             @state = case frame[:type]
             when :data, :headers, :continuation
-              frame[:flags].include?(:end_stream) ? :half_closed_remote : @state
-            when :rst_stream then emit(:closed, frame)
+              if frame[:flags].include?(:end_stream)
+                :half_closed_remote
+              else @state; end
+            when :rst_stream then emit(:remote_rst, frame)
             else @state; end
           end
 
@@ -195,15 +201,17 @@ module Net
         when :half_closed_local
           if sending
             if frame[:type] == :rst_stream
-              emit(:closed, frame)
+              emit(:local_rst, frame)
             else
               stream_error
             end
           else
             @state = case frame[:type]
             when :data, :headers, :continuation
-              frame[:flags].include?(:end_stream) ? emit(:closed, frame) : @state
-            when :rst_stream then emit(:closed, frame)
+              if frame[:flags].include?(:end_stream)
+                emit(:remote_closed, frame)
+              else @state; end
+            when :rst_stream then emit(:remote_rst, frame)
             else @state; end
           end
 
@@ -221,25 +229,64 @@ module Net
           if sending
             @state = case frame[:type]
             when :data, :headers, :continuation
-              frame[:flags].include?(:end_stream) ? emit(:closed, frame) : @state
-            when :rst_stream then emit(:closed, frame)
+              if frame[:flags].include?(:end_stream)
+                emit(:local_closed, frame)
+              else @state; end
+            when :rst_stream then emit(:local_rst, frame)
             else @state; end
           else
             if frame[:type] == :rst_stream
-              emit(:closed, frame)
+              emit(:remote_rst, frame)
             else
               stream_error(:stream_closed)
+            end
+          end
+
+        # An endpoint MUST NOT send frames on a closed stream.  An endpoint
+        # that receives a frame after receiving a RST_STREAM or a frame
+        # containing a END_STREAM flag on that stream MUST treat that as a
+        # stream error (Section 5.4.2) of type STREAM_CLOSED.
+        #
+        # WINDOW_UPDATE or PRIORITY frames can be received in this state for
+        # a short period after a a frame containing an END_STREAM flag is
+        # sent.  Until the remote peer receives and processes the frame
+        # bearing the END_STREAM flag, it might send either frame type.
+        #
+        # If this state is reached as a result of sending a RST_STREAM
+        # frame, the peer that receives the RST_STREAM might have already
+        # sent - or enqueued for sending - frames on the stream that cannot
+        # be withdrawn.  An endpoint MUST ignore frames that it receives on
+        # closed streams after it has sent a RST_STREAM frame.
+        #
+        # An endpoint might receive a PUSH_PROMISE or a CONTINUATION frame
+        # after it sends RST_STREAM.  PUSH_PROMISE causes a stream to become
+        # "reserved".  If promised streams are not desired, a RST_STREAM can
+        # be used to close any of those streams.
+        when :closed
+          if sending
+            case frame[:type]
+            when :rst_stream then # ignore
+            else raise StreamError.new('stream closed'); end # already closed
+          else
+            case @closed
+            when :remote_rst, :remote_closed
+              stream_error(:stream_closed) if !(frame[:type] == :rst_stream)
+            when :local_rst, :local_closed
+              frame[:ignore] = true
             end
           end
         end
       end
 
       def emit(state, frame = nil)
-        @state = state
-
         case state
-        when :open   then @on_open.call if @on_open
-        when :closed then @on_close.call(frame[:error]) if @on_close
+        when :open
+          @state = state
+          @on_open.call if @on_open
+        when :local_closed, :remote_closed, :local_rst, :remote_rst
+          @closed = state
+          @state  = :closed
+          @on_close.call(frame[:error]) if @on_close
         end
 
         @state
@@ -253,6 +300,8 @@ module Net
       end
 
       def stream_error(error = :protocol_error)
+        @error = error
+
         send({type: :rst_stream, stream: @id, error: error})
         raise StreamError.new(error.to_s.gsub('_',' '))
       end

@@ -275,6 +275,78 @@ describe Net::HTTP2::Stream do
       end
     end
 
+    context "closed" do
+      context "remote closed stream" do
+        before(:each) do
+          @stream.send HEADERS_END_STREAM     # half closed local
+          @stream.process HEADERS_END_STREAM  # closed by remote
+        end
+
+        it "should raise STREAM_CLOSED on attempt to send frames" do
+          (FRAME_TYPES - [RST_STREAM]).each do |frame|
+            expect {
+              @stream.dup.send frame
+            }.to raise_error(StreamError, /stream closed/i)
+          end
+        end
+
+        it "should raise STREAM_CLOSED on receipt of frame" do
+          (FRAME_TYPES - [RST_STREAM]).each do |frame|
+            expect {
+              @stream.dup.process frame
+            }.to raise_error(StreamError, /stream closed/i)
+          end
+        end
+
+        it "should allow RST_STREAM to be sent" do
+          expect { @stream.send RST_STREAM }.to_not raise_error
+        end
+
+        it "should not send RST_STREAM on receipt of RST_STREAM" do
+          expect { @stream.process RST_STREAM }.to_not raise_error
+        end
+      end
+
+      context "local closed via RST_STREAM frame" do
+        before(:each) do
+          @stream.send HEADERS     # open
+          @stream.send RST_STREAM  # closed by local
+        end
+
+        it "should ignore received frames" do
+          (FRAME_TYPES - [PUSH_PROMISE]).each do |frame|
+            expect {
+              @stream.dup.process frame
+            }.to_not raise_error
+          end
+        end
+
+        it "should transition to reserved remote on PUSH_PROMISE" do
+          # An endpoint might receive a PUSH_PROMISE frame after it sends
+          # RST_STREAM.  PUSH_PROMISE causes a stream to become "reserved".
+          # The RST_STREAM does not cancel any promised stream.  Therefore, if
+          # promised streams are not desired, a RST_STREAM can be used to
+          # close any of those streams.
+
+          pending "huh?"
+        end
+      end
+
+     context "local closed via END_STREAM flag" do
+        before(:each) do
+          @stream.send HEADERS  # open
+          @stream.send DATA     # contains end_stream flag
+        end
+
+        it "should ignore received frames" do
+          FRAME_TYPES.each do |frame|
+            expect { @stream.dup.process frame }.to_not raise_error
+          end
+        end
+      end
+    end
+
+
     context "flow control" do
       it "should observe stream level flow control limits"
     end
