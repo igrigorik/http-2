@@ -90,8 +90,8 @@ describe Net::HTTP2::Stream do
       end
 
       it "should reprioritize stream on PRIORITY" do
-        @stream.reprioritize(30)
-        @stream.priority.should eq 30
+        @stream.send PRIORITY
+        @stream.priority.should eq 15
       end
     end
 
@@ -388,19 +388,65 @@ describe Net::HTTP2::Stream do
   end
 
   context "API" do
-    context ".promise" do
-      it "should allocate a new push stream"
+    it ".priority should emit PRIORITY frame" do
+      @stream.should_receive(:send) do |frame|
+        frame[:type].should eq :priority
+        frame[:priority].should eq 30
+      end
+
+      @stream.priority = 30
     end
 
-    context ".header" do
-      it "should emit HEADERS frames"
-      it "should use CONTINUATION frame for multi-frame payloads"
+    it ".headers should emit HEADERS frames" do
+      payload = {
+        ':method' => 'GET',
+        ':scheme' => 'http',
+        ':host'   => 'www.example.org',
+        ':path'   => '/resource',
+        'custom'  => 'value'
+      }
+
+      @stream.should_receive(:send) do |frame|
+        frame[:type].should eq :headers
+        frame[:payload].should eq payload
+        frame[:flags].should eq [:end_headers]
+      end
+
+      @stream.headers(payload, end_stream: false, end_headers: true)
     end
 
-    context ".data" do
-      it "should emit DATA frames"
-      it "should split large data payloads into multiple DATA frames"
-      it "should observe session flow control"
+    it ".promise should emit PUSH_PROMISE frame" do
+      payload = {
+        ':status'        => 200,
+        'content-length' => 123,
+        'content-type'   => 'image/jpg'
+      }
+
+      @stream.should_receive(:send) do |frame|
+        frame[:type].should eq :push_promise
+        frame[:payload].should eq payload
+        frame[:promise_stream].should be_nil
+      end
+
+      @stream.promise(payload)
     end
+
+    it ".promise should return a new push stream object"
+
+    it ".data should emit DATA frames" do
+      @stream.should_receive(:send) do |frame|
+        frame[:type].should eq :data
+        frame[:payload].should eq "text"
+        frame[:flags].should be_empty
+      end
+      @stream.data("text", end_stream: false)
+
+      @stream.should_receive(:send) do |frame|
+        frame[:flags].should eq [:end_stream]
+      end
+      @stream.data("text")
+    end
+
+    it ".data should observe session flow control"
   end
 end

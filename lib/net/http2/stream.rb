@@ -43,14 +43,37 @@ module Net
         when :data
           @window -= frame[:payload].bytesize
         end
+
+        frame[:stream] = @id
+
+        @conn.send frame
       end
 
-      def reprioritize(pri)
-        send({type: :priority, stream: @id, priority: pri})
+      def headers(head, end_headers: true, end_stream: false)
+        flags = []
+        flags << :end_headers if end_headers
+        flags << :end_stream  if end_stream
+
+        send({type: :headers, flags: flags, payload: head})
+      end
+
+      def promise(head)
+        send({type: :push_promise, payload: head})
+      end
+
+      def priority=(p)
+        send({type: :priority, priority: p})
+      end
+
+      def data(d, end_stream: true)
+        flags = []
+        flags << :end_stream if end_stream
+
+        send({type: :data, flags: flags, payload: d})
       end
 
       def close(error = :stream_closed)
-        send({type: :rst_stream, stream: @id, error: error})
+        send({type: :rst_stream, error: error})
       end
 
       private

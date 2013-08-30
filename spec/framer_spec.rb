@@ -321,4 +321,9 @@ describe Net::HTTP2::Framer do
     f.parse(buf).should eq frame
     buf.eof.should be_true
   end
+
+  it "should split large HEADERS frames"
+  it "should splti large PUSH_PROMISE frames"
+  it "should split large DATA frames"
+
 end

@@ -14,6 +14,9 @@ module Net
         @next_streamID += 2
         @streams[@next_streamID] = Stream.new(self, @next_streamID)
       end
+
+      def send(frame)
+      end
     end
   end
 end
