@@ -41,7 +41,8 @@ SETTINGS = {
   type: :settings,
   stream: 0,
   payload: {
-    settings_max_concurrent_streams: 10
+    settings_max_concurrent_streams: 10,
+    settings_flow_control_options: 1
   }
 }
 
@@ -84,3 +85,10 @@ FRAME_TYPES = [
   DATA, HEADERS, PRIORITY, RST_STREAM, SETTINGS, PUSH_PROMISE,
   PING, GOAWAY, WINDOW_UPDATE, CONTINUATION
 ]
+
+def set_stream_id(bytes, id)
+  head = bytes.slice!(0,4).unpack("SCCL")
+  head[3] = id
+
+  head.pack("SCCL") + bytes
+end

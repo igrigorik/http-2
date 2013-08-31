@@ -8,9 +8,7 @@ module Net
       DEFAULT_PRIORITY = 2**30
 
       def initialize(conn, id, priority = DEFAULT_PRIORITY)
-        @conn = conn
         @id = id
-
         @priority = priority
         @window = DEFAULT_FLOW_WINDOW
         @state  = :idle
@@ -31,6 +29,7 @@ module Net
 
       def send(frame)
         transition(frame, true)
+        frame[:stream] = @id
 
         case frame[:type]
         when :priority
@@ -39,9 +38,7 @@ module Net
           @window -= frame[:payload].bytesize
         end
 
-        frame[:stream] = @id
-
-        @conn.send frame
+        emit(:frame, frame)
       end
 
       def headers(head, end_headers: true, end_stream: false)
@@ -150,7 +147,7 @@ module Net
         when :reserved_local
           if sending
             @state = case frame[:type]
-            when :headers     then :half_closed_remote
+            when :headers     then event(:half_closed_remote)
             when :rst_stream  then event(:local_rst, frame)
             else stream_error; end
           else
@@ -178,7 +175,7 @@ module Net
             else stream_error; end
           else
             @state = case frame[:type]
-            when :headers     then :half_closed_local
+            when :headers     then event(:half_closed_local)
             when :rst_stream  then event(:remote_rst, frame)
             else stream_error; end
           end
@@ -296,7 +293,7 @@ module Net
 
       def event(state, frame = nil)
         case state
-        when :open
+        when :open, :half_closed_local, :half_closed_remote
           @state = state
           emit(:active)
         when :local_closed, :remote_closed, :local_rst, :remote_rst

@@ -3,7 +3,7 @@ require "helper"
 describe Net::HTTP2::Stream do
   before(:each) do
     @conn = Connection.new
-    @stream = @conn.allocate_stream
+    @stream = @conn.new_stream
   end
 
   context "stream states" do
@@ -131,7 +131,7 @@ describe Net::HTTP2::Stream do
       end
 
       it "should transition to half closed if remote opened with END_STREAM" do
-        s = @conn.allocate_stream
+        s = @conn.new_stream
         hclose = HEADERS.dup
         hclose[:flags] = [:end_stream]
 
@@ -140,7 +140,7 @@ describe Net::HTTP2::Stream do
       end
 
       it "should transition to half closed if local opened with END_STREAM" do
-        s = @conn.allocate_stream
+        s = @conn.new_stream
         hclose = HEADERS.dup
         hclose[:flags] = [:end_stream]
 
@@ -158,12 +158,12 @@ describe Net::HTTP2::Stream do
         @stream.state.should eq :closed
       end
 
-      it "should fire on_open callback on open transition" do
+      it "should emit :active on open transition" do
         openp, openr = false, false
-        sp = @conn.allocate_stream
-        sr = @conn.allocate_stream
-        sp.on_open { openp = true }
-        sr.on_open { openr = true }
+        sp = @conn.new_stream
+        sr = @conn.new_stream
+        sp.on(:active) { openp = true }
+        sr.on(:active) { openr = true }
 
         sp.process HEADERS
         sr.send HEADERS
@@ -172,12 +172,12 @@ describe Net::HTTP2::Stream do
         openr.should be_true
       end
 
-      it "should fire on_close callback on close transition" do
+      it "should emit :close on close transition" do
         closep, closer = false, false
         sp, sr = @stream.dup, @stream.dup
 
-        sp.on_close { closep = true }
-        sr.on_close { closer = true }
+        sp.on(:close) { closep = true }
+        sr.on(:close) { closer = true }
 
         sp.process RST_STREAM
         sr.close
@@ -186,9 +186,9 @@ describe Net::HTTP2::Stream do
         closer.should be_true
       end
 
-      it "should emit reason in on_close callback" do
+      it "should emit reason with :close event" do
         reason = nil
-        @stream.on_close {|r| reason = r }
+        @stream.on(:close) {|r| reason = r }
         @stream.process RST_STREAM
         reason.should_not be_nil
       end
@@ -229,9 +229,9 @@ describe Net::HTTP2::Stream do
         @stream.state.should eq :half_closed_local
       end
 
-      it "should fire on_close callback on close transition" do
+      it "should emit :close event on close transition" do
         closed = false
-        @stream.on_close { closed = true }
+        @stream.on(:close) { closed = true }
         @stream.process RST_STREAM
 
         @stream.state.should eq :closed
@@ -275,9 +275,9 @@ describe Net::HTTP2::Stream do
         @stream.state.should eq :half_closed_remote
       end
 
-      it "should fire on_close callback on close transition" do
+      it "should emit :close event on close transition" do
         closed = false
-        @stream.on_close { closed = true }
+        @stream.on(:close) { closed = true }
         @stream.close
 
         @stream.state.should eq :closed
@@ -447,6 +447,6 @@ describe Net::HTTP2::Stream do
       @stream.data("text")
     end
 
-    it ".data should observe session flow control"
+    it ".data should observe stream flow control"
   end
 end

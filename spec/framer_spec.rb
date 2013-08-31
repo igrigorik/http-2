@@ -146,7 +146,7 @@ describe Net::HTTP2::Framer do
     it "should generate and parse bytes" do
 
       bytes = f.generate(frame)
-      bytes.should eq [0x8,0x4,0x0,0x0, 0x4,0xa].pack("SCCLLL")
+      bytes.should eq [0x8,0x4,0x0,0x0,0x4,0xa].pack("SCCLLL")
       f.parse(StringIO.new(bytes)).should eq frame
     end
 
@@ -321,9 +321,5 @@ describe Net::HTTP2::Framer do
     f.parse(buf).should eq frame
     buf.eof.should be_true
   end
-
-  it "should split large HEADERS frames"
-  it "should splti large PUSH_PROMISE frames"
-  it "should split large DATA frames"
 
 end
