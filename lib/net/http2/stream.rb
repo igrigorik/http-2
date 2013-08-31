@@ -1,13 +1,11 @@
 module Net
   module HTTP2
 
-    class ProtocolError < Exception; end
-    class StreamError < ProtocolError; end
-
     class Stream
-      DEFAULT_PRIORITY = 2**30
+      include Emitter
+      attr_reader :state, :priority, :window, :id
 
-      attr_reader :state, :priority, :window
+      DEFAULT_PRIORITY = 2**30
 
       def initialize(conn, id, priority = DEFAULT_PRIORITY)
         @conn = conn
@@ -19,9 +17,6 @@ module Net
         @error  = false
         @closed = false
       end
-
-      def on_open(&blk); @on_open = blk; end
-      def on_close(&blk); @on_close = blk; end
 
       def process(frame)
         transition(frame, false)
@@ -127,7 +122,7 @@ module Net
             when :push_promise
               @state = :reserved_local
             when :headers
-              emit(:open)
+              event(:open) # transition through open to half closed
               @state = :half_closed_local if end_stream?(frame)
             else StreamError.new; end # local error, don't send RST_STREAM
           else
@@ -135,7 +130,7 @@ module Net
             when :push_promise
               @state = :reserved_remote
             when :headers
-              emit(:open)
+              event(:open) # transition through open to half closed
               @state = :half_closed_remote if end_stream?(frame)
             else stream_error; end
           end
@@ -156,11 +151,11 @@ module Net
           if sending
             @state = case frame[:type]
             when :headers     then :half_closed_remote
-            when :rst_stream  then emit(:local_rst, frame)
+            when :rst_stream  then event(:local_rst, frame)
             else stream_error; end
           else
             @state = case frame[:type]
-            when :rst_stream  then emit(:remote_rst, frame)
+            when :rst_stream  then event(:remote_rst, frame)
             when :priority    then @state
             else stream_error; end
           end
@@ -178,13 +173,13 @@ module Net
         when :reserved_remote
           if sending
             @state = case frame[:type]
-            when :rst_stream then emit(:local_rst, frame)
+            when :rst_stream then event(:local_rst, frame)
             when :priority then @state
             else stream_error; end
           else
             @state = case frame[:type]
             when :headers     then :half_closed_local
-            when :rst_stream  then emit(:remote_rst, frame)
+            when :rst_stream  then event(:remote_rst, frame)
             else stream_error; end
           end
 
@@ -204,13 +199,13 @@ module Net
             case frame[:type]
             when :data, :headers, :continuation
               @state = :half_closed_local if end_stream?(frame)
-            when :rst_stream then emit(:local_rst, frame)
+            when :rst_stream then event(:local_rst, frame)
             end
           else
             case frame[:type]
             when :data, :headers, :continuation
               @state = :half_closed_remote if end_stream?(frame)
-            when :rst_stream then emit(:remote_rst, frame)
+            when :rst_stream then event(:remote_rst, frame)
             end
           end
 
@@ -225,15 +220,15 @@ module Net
         when :half_closed_local
           if sending
             if frame[:type] == :rst_stream
-              emit(:local_rst, frame)
+              event(:local_rst, frame)
             else
               stream_error
             end
           else
             case frame[:type]
             when :data, :headers, :continuation
-              emit(:remote_closed, frame) if end_stream?(frame)
-            when :rst_stream then emit(:remote_rst, frame)
+              event(:remote_closed, frame) if end_stream?(frame)
+            when :rst_stream then event(:remote_rst, frame)
             when :window_update, :priority
               frame[:igore] = true
             end
@@ -253,12 +248,12 @@ module Net
           if sending
             case frame[:type]
             when :data, :headers, :continuation
-              emit(:local_closed, frame) if end_stream?(frame)
-            when :rst_stream then emit(:local_rst, frame)
+              event(:local_closed, frame) if end_stream?(frame)
+            when :rst_stream then event(:local_rst, frame)
             end
           else
             case frame[:type]
-            when :rst_stream then emit(:remote_rst, frame)
+            when :rst_stream then event(:remote_rst, frame)
             when :window_update then frame[:ignore] = true
             else stream_error(:stream_closed); end
           end
@@ -299,15 +294,15 @@ module Net
         end
       end
 
-      def emit(state, frame = nil)
+      def event(state, frame = nil)
         case state
         when :open
           @state = state
-          @on_open.call if @on_open
+          emit(:active)
         when :local_closed, :remote_closed, :local_rst, :remote_rst
           @closed = state
           @state  = :closed
-          @on_close.call(frame[:error]) if @on_close
+          emit(:close, frame[:error])
         end
 
         @state
