@@ -385,6 +385,30 @@ describe Net::HTTP2::Stream do
         DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize + WINDOW_UPDATE[:increment]
       )
     end
+
+    it "should observe session flow control" do
+      settings, data = SETTINGS.dup, DATA.dup
+      settings[:payload] = { settings_initial_window_size: 1000 }
+      settings[:stream] = 0
+
+      framer = Framer.new
+      @conn << framer.generate(settings)
+
+      s1 = @conn.new_stream
+      s1.send HEADERS
+      s1.send data.merge({payload: "x" * 900, flags: []})
+      s1.window.should eq 100
+
+      s1.send data.merge({payload: "x" * 200})
+      s1.window.should eq 0
+      s1.buffered_amount.should eq 100
+
+      @conn << framer.generate(WINDOW_UPDATE.merge({
+        stream: s1.id, increment: 1000
+      }))
+      s1.buffered_amount.should eq 0
+      s1.window.should eq 900
+    end
   end
 
   context "API" do
@@ -415,6 +439,8 @@ describe Net::HTTP2::Stream do
       @stream.headers(payload, end_stream: false, end_headers: true)
     end
 
+    it ".data should split large HEADERS frames"
+
     it ".promise should emit PUSH_PROMISE frame" do
       payload = {
         ':status'        => 200,
@@ -431,6 +457,7 @@ describe Net::HTTP2::Stream do
       @stream.promise(payload)
     end
 
+    it ".promise should split large PUSH_PROMISE frames"
     it ".promise should return a new push stream object"
 
     it ".data should emit DATA frames" do
@@ -447,6 +474,6 @@ describe Net::HTTP2::Stream do
       @stream.data("text")
     end
 
-    it ".data should observe stream flow control"
+    it ".data should split large DATA frames"
   end
 end

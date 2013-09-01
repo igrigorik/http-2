@@ -3,6 +3,8 @@ module Net
 
     class Stream
       include Emitter
+      include FrameSplitter
+
       attr_reader :state, :priority, :window, :id
 
       def initialize(conn, id, priority, window)
@@ -12,6 +14,7 @@ module Net
         @state  = :idle
         @error  = false
         @closed = false
+        @send_buffer = []
 
         on(:window) { |v| @window = v }
       end
@@ -24,6 +27,7 @@ module Net
           @priority = frame[:priority]
         when :window_update
           @window += frame[:increment]
+          send_data
         end
       end
 
@@ -32,10 +36,11 @@ module Net
         frame[:stream] = @id
 
         case frame[:type]
+        when :data
+          send_data(frame)
+          return
         when :priority
           @priority = frame[:priority]
-        when :data
-          emit(:window, @window - frame[:payload].bytesize)
         end
 
         emit(:frame, frame)

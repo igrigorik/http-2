@@ -32,7 +32,7 @@ describe Net::HTTP2::Emitter do
   end
 
   it "should allow events with no callbacks" do
-    expect { @w.emit(:missing) }.should_not raise_error
+    expect { @w.emit(:missing) }.to_not raise_error
   end
 
   it "should execute callback exactly once" do

@@ -152,9 +152,6 @@ describe Net::HTTP2::Connection do
   context "framing" do
     it "should buffer incomplete received frames"
     it "should apply header (de)compression"
-    it "should split large HEADERS frames"
-    it "should split large PUSH_PROMISE frames"
-    it "should split large DATA frames"
   end
 
   context "connection management" do

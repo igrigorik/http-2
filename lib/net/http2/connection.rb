@@ -6,6 +6,9 @@ module Net
     CONNECTION_HEADER   = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
     class Connection
+      include FrameSplitter
+      include Emitter
+
       attr_accessor :type, :window, :state, :error
       attr_accessor :stream_limit, :active_stream_count
 
@@ -60,48 +63,13 @@ module Net
       end
       alias :<< :receive
 
-      def buffered_amount
-        @send_buffer.map {|f| f[:length] }.reduce(:+) || 0
-      end
-
       private
 
       def process(frame)
         if frame[:type] != :data
           # send immediately
         else
-          @send_buffer.push frame
-          send_data
-        end
-      end
-
-      def send_data
-        while @window > 0 && !@send_buffer.empty? do
-          frame = @send_buffer.shift
-
-          sent, frame_size = 0, frame[:payload].bytesize
-
-          if frame_size > @window
-            payload = frame.delete(:payload)
-            chunk   = frame.dup
-
-            frame[:payload] = payload.slice!(0, @window)
-            chunk[:length]  = payload.bytesize
-            chunk[:payload] = payload
-
-            # if no longer last frame in sequence...
-            if frame[:flags].include? :end_stream
-              frame[:flags] -= [:end_stream]
-            end
-
-            @send_buffer.unshift chunk
-            sent = @window
-          else
-            sent = frame_size
-          end
-
-          # TODO: send immediately
-          @window -= sent
+          send_data(frame)
         end
       end
 
