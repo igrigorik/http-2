@@ -88,8 +88,29 @@ describe Net::HTTP2::Connection do
       @conn.window.should eq DEFAULT_FLOW_WINDOW
     end
 
-    it "should observe stream flow control"
-    it "should observe connection flow control"
+    it "should update connection and stream windows on SETTINGS" do
+      settings, data = SETTINGS.dup, DATA.dup
+      settings[:payload] = { settings_initial_window_size: 1024 }
+      data[:payload] = 'x'*2048
+
+      stream = @conn.new_stream
+
+      stream.send data
+      stream.window.should eq (DEFAULT_FLOW_WINDOW - 2048)
+      @conn.window.should  eq (DEFAULT_FLOW_WINDOW - 2048)
+
+      @conn << f.generate(settings)
+      @conn.window.should  eq -1024
+      stream.window.should eq -1024
+    end
+
+    it "should initialize streams with window specified by peer" do
+      settings = SETTINGS.dup
+      settings[:payload] = { settings_initial_window_size: 1024 }
+
+      @conn << f.generate(settings)
+      @conn.new_stream.window.should eq 1024
+    end
 
     it "should support global disable of flow control" do
       @conn << f.generate(SETTINGS)
@@ -103,6 +124,28 @@ describe Net::HTTP2::Connection do
           @conn.dup << f.generate(frame)
         end
       }.to raise_error(FlowControlError)
+    end
+
+    it "should observe connection flow control" do
+      settings, data = SETTINGS.dup, DATA.dup
+      settings[:payload] = { settings_initial_window_size: 1000 }
+
+      @conn << f.generate(settings)
+      s1 = @conn.new_stream
+      s2 = @conn.new_stream
+
+      s1.send HEADERS
+      s1.send data.merge({payload: "x" * 900})
+      @conn.window.should eq 100
+
+      s2.send HEADERS
+      s2.send data.merge({payload: "x" * 200})
+      @conn.window.should eq 0
+      @conn.buffered_amount.should eq 100
+
+      @conn << f.generate(WINDOW_UPDATE.merge({stream: 0, increment: 1000}))
+      @conn.buffered_amount.should eq 0
+      @conn.window.should eq 900
     end
   end
 

@@ -5,15 +5,15 @@ module Net
       include Emitter
       attr_reader :state, :priority, :window, :id
 
-      DEFAULT_PRIORITY = 2**30
-
-      def initialize(conn, id, priority = DEFAULT_PRIORITY)
+      def initialize(conn, id, priority, window)
         @id = id
         @priority = priority
-        @window = DEFAULT_FLOW_WINDOW
+        @window = window
         @state  = :idle
         @error  = false
         @closed = false
+
+        on(:window) { |v| @window = v }
       end
 
       def process(frame)
@@ -35,7 +35,7 @@ module Net
         when :priority
           @priority = frame[:priority]
         when :data
-          @window -= frame[:payload].bytesize
+          emit(:window, @window - frame[:payload].bytesize)
         end
 
         emit(:frame, frame)

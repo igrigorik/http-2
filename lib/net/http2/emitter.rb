@@ -1,11 +1,6 @@
 module Net
   module HTTP2
     module Emitter
-
-      class OnceProc < Proc
-        attr_accessor :once
-      end
-
       def add_listener(event, &block)
         raise Exception.new("must provide callback") if !block_given?
         listeners(event.to_sym).push block

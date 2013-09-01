@@ -6,21 +6,21 @@ include Net::HTTP2::Header
 
 DATA = {
   type: :data,
-  flags: [:end_stream, :reserved],
+  flags: [:end_stream],
   stream: 1,
   payload: 'text'
 }
 
 HEADERS = {
   type: :headers,
-  flags: [:reserved, :end_headers],
+  flags: [:end_headers],
   stream: 1,
   payload: 'header-block'
 }
 
 HEADERS_END_STREAM = {
   type: :headers,
-  flags: [:reserved, :end_headers, :end_stream],
+  flags: [:end_headers, :end_stream],
   stream: 1,
   payload: 'header-block'
 }

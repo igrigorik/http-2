@@ -2,6 +2,7 @@ module Net
   module HTTP2
 
     DEFAULT_FLOW_WINDOW = 65535
+    DEFAULT_PRIORITY    = 2**30
     CONNECTION_HEADER   = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
     class Connection
@@ -20,6 +21,7 @@ module Net
         @window = DEFAULT_FLOW_WINDOW
         @window_limit = DEFAULT_FLOW_WINDOW
 
+        @send_buffer = []
         @state = :new
         @error = nil
       end
@@ -28,14 +30,14 @@ module Net
         raise StreamLimitExceeded.new if @active_stream_count == @stream_limit
 
         @stream_id += 2
-        stream = Stream.new(self, @stream_id)
+        stream = Stream.new(self, @stream_id, DEFAULT_PRIORITY, @window)
 
         # Streams that are in the "open" state, or either of the "half closed"
         # states count toward the maximum number of streams that an endpoint is
         # permitted to open.
         stream.once(:active) { @active_stream_count += 1 }
         stream.once(:close)  { @active_stream_count -= 1 }
-        stream.on(:frame) {|frame| process(frame) }
+        stream.on(:frame)    { |frame| process(frame) }
 
         @streams[@stream_id] = stream
       end
@@ -58,10 +60,49 @@ module Net
       end
       alias :<< :receive
 
+      def buffered_amount
+        @send_buffer.map {|f| f[:length] }.reduce(:+) || 0
+      end
+
       private
 
       def process(frame)
-        # TODO
+        if frame[:type] != :data
+          # send immediately
+        else
+          @send_buffer.push frame
+          send_data
+        end
+      end
+
+      def send_data
+        while @window > 0 && !@send_buffer.empty? do
+          frame = @send_buffer.shift
+
+          sent, frame_size = 0, frame[:payload].bytesize
+
+          if frame_size > @window
+            payload = frame.delete(:payload)
+            chunk   = frame.dup
+
+            frame[:payload] = payload.slice!(0, @window)
+            chunk[:length]  = payload.bytesize
+            chunk[:payload] = payload
+
+            # if no longer last frame in sequence...
+            if frame[:flags].include? :end_stream
+              frame[:flags] -= [:end_stream]
+            end
+
+            @send_buffer.unshift chunk
+            sent = @window
+          else
+            sent = frame_size
+          end
+
+          # TODO: send immediately
+          @window -= sent
+        end
       end
 
       def connection_management(frame)
@@ -74,10 +115,11 @@ module Net
         when :connected
           case frame[:type]
           when :settings
+            connection_settings(frame)
           when :window_update
             flow_control_allowed?
             @window += frame[:increment]
-            # TODO: callback to send more data
+            send_data
           else
             connection_error
           end
@@ -104,6 +146,10 @@ module Net
           when :settings_initial_window_size
             flow_control_allowed?
             @window = @window - @window_limit + v
+            @streams.each do |id, stream|
+              stream.emit(:window, stream.window - @window_limit + v)
+            end
+
             @window_limit = v
 
           # Flow control can be disabled the entire connection using the
