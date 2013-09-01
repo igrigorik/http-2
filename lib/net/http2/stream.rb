@@ -66,6 +66,11 @@ module Net
         flags = []
         flags << :end_stream if end_stream
 
+        while d.bytesize > MAX_FRAME_SIZE do
+          payload = d.slice!(0, MAX_FRAME_SIZE)
+          send({type: :data, payload: payload})
+        end
+
         send({type: :data, flags: flags, payload: d})
       end
 

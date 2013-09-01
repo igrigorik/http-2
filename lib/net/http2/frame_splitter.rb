@@ -1,6 +1,8 @@
 module Net
   module HTTP2
 
+    MAX_FRAME_SIZE = 2**14-1
+
     module FrameSplitter
       def buffered_amount
         @send_buffer.map {|f| f[:length] }.reduce(:+) || 0

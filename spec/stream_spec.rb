@@ -439,8 +439,6 @@ describe Net::HTTP2::Stream do
       @stream.headers(payload, end_stream: false, end_headers: true)
     end
 
-    it ".data should split large HEADERS frames"
-
     it ".promise should emit PUSH_PROMISE frame" do
       payload = {
         ':status'        => 200,
@@ -457,7 +455,6 @@ describe Net::HTTP2::Stream do
       @stream.promise(payload)
     end
 
-    it ".promise should split large PUSH_PROMISE frames"
     it ".promise should return a new push stream object"
 
     it ".data should emit DATA frames" do
@@ -474,6 +471,12 @@ describe Net::HTTP2::Stream do
       @stream.data("text")
     end
 
-    it ".data should split large DATA frames"
+    it ".data should split large DATA frames" do
+      data = "x" * Net::HTTP2::MAX_FRAME_SIZE * 2
+
+      @stream.stub(:send)
+      @stream.should_receive(:send).exactly(3).times
+      @stream.data(data + "x")
+    end
   end
 end
