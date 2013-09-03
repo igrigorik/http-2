@@ -81,7 +81,62 @@ describe Net::HTTP2::Connection do
 
       expect { @conn.new_stream }.to raise_error(StreamLimitExceeded)
     end
+
+    context "push" do
+      it "should raise error on PUSH_PROMISE against stream 0" do
+        expect {
+          @conn << set_stream_id(f.generate(PUSH_PROMISE), 0)
+        }.to raise_error(ProtocolError)
+      end
+
+      it "should raise error on PUSH_PROMISE against bogus stream" do
+        expect {
+          @conn << set_stream_id(f.generate(PUSH_PROMISE), 31415)
+        }.to raise_error(ProtocolError)
+      end
+
+      it "should raise error on PUSH_PROMISE against non-idle stream" do
+        expect {
+          s = @conn.new_stream
+          s.send HEADERS
+
+          @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
+          @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
+       }.to raise_error(ProtocolError)
+      end
+
+      it "should emit stream object for received PUSH_PROMISE" do
+        s = @conn.new_stream
+        s.send HEADERS
+
+        promise = nil
+        @conn.on(:promise) {|s| promise = s }
+        @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
+
+        promise.id.should eq 2
+        promise.state.should eq :reserved_remote
+      end
+
+      it "should auto RST_STREAM promises against locally-RST stream" do
+        s = @conn.new_stream
+        s.send HEADERS
+        s.close
+
+        @conn.stub(:process)
+        @conn.should_receive(:process) do |frame|
+          frame[:type].should eq :rst_stream
+          frame[:stream].should eq 2
+        end
+
+        @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
+      end
+    end
   end
+
+  # TODO: should connection/stream buffer split HEADERS/PROMISE frames?
+  # .. must decompress in order
+  # .. does incomplete HEADERS transition to open?
+  #
 
   context "flow control" do
     it "should initialize to default flow window" do

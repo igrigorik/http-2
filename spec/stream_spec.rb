@@ -331,15 +331,13 @@ describe Net::HTTP2::Stream do
           end
         end
 
-        it "should transition to reserved remote on PUSH_PROMISE" do
+        #it "should transition to reserved remote on PUSH_PROMISE" do
           # An endpoint might receive a PUSH_PROMISE frame after it sends
           # RST_STREAM.  PUSH_PROMISE causes a stream to become "reserved".
-          # The RST_STREAM does not cancel any promised stream.  Therefore, if
-          # promised streams are not desired, a RST_STREAM can be used to
-          # close any of those streams.
-
-          pending "huh?"
-        end
+          # ...
+          # We're auto RST'ing PUSH streams in connection class, hence
+          # skipping this transition for now.
+        #end
       end
 
      context "local closed via END_STREAM flag" do
@@ -438,24 +436,6 @@ describe Net::HTTP2::Stream do
 
       @stream.headers(payload, end_stream: false, end_headers: true)
     end
-
-    it ".promise should emit PUSH_PROMISE frame" do
-      payload = {
-        ':status'        => 200,
-        'content-length' => 123,
-        'content-type'   => 'image/jpg'
-      }
-
-      @stream.should_receive(:send) do |frame|
-        frame[:type].should eq :push_promise
-        frame[:payload].should eq payload
-        frame[:promise_stream].should be_nil
-      end
-
-      @stream.promise(payload)
-    end
-
-    it ".promise should return a new push stream object"
 
     it ".data should emit DATA frames" do
       @stream.should_receive(:send) do |frame|

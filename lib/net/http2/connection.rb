@@ -9,8 +9,8 @@ module Net
       include FrameSplitter
       include Emitter
 
-      attr_accessor :type, :window, :state, :error
-      attr_accessor :stream_limit, :active_stream_count
+      attr_reader :type, :window, :state, :error
+      attr_reader :stream_limit, :active_stream_count
 
       def initialize(type = :client)
         @type = type
@@ -33,16 +33,7 @@ module Net
         raise StreamLimitExceeded.new if @active_stream_count == @stream_limit
 
         @stream_id += 2
-        stream = Stream.new(self, @stream_id, DEFAULT_PRIORITY, @window)
-
-        # Streams that are in the "open" state, or either of the "half closed"
-        # states count toward the maximum number of streams that an endpoint is
-        # permitted to open.
-        stream.once(:active) { @active_stream_count += 1 }
-        stream.once(:close)  { @active_stream_count -= 1 }
-        stream.on(:frame)    { |frame| process(frame) }
-
-        @streams[@stream_id] = stream
+        activate_stream(@stream_id)
       end
 
       def receive(data)
@@ -57,7 +48,56 @@ module Net
           if (frame[:stream] == 0 || frame[:type] == :settings)
             connection_management(frame)
           else
-            @streams[frame[:stream]].process frame
+            case frame[:type]
+            when :push_promise
+              # HEADERS, PUSH_PROMISE and CONTINUATION frames carry data that
+              # can modify the compression context maintained by a receiver.
+              # An endpoint receiving HEADERS, PUSH_PROMISE or CONTINUATION
+              # frames MUST reassemble header blocks and perform decompression
+              # even if the frames are to be discarded, which is likely to
+              # occur after a stream is reset.
+
+              # TODO ...
+
+
+              # PUSH_PROMISE frames MUST be associated with an existing, peer-
+              # initiated stream... A receiver MUST treat the receipt of a
+              # PUSH_PROMISE on a stream that is neither "open" nor
+              # "half-closed (local)" as a connection error (Section 5.4.1) of
+              # type PROTOCOL_ERROR. Similarly, a receiver MUST treat the
+              # receipt of a PUSH_PROMISE that promises an illegal stream
+              # identifier (Section 5.1.1) (that is, an identifier for a stream
+              # that is not currently in the "idle" state) as a connection error
+              # (Section 5.4.1) of type PROTOCOL_ERROR, unless the receiver
+              # recently sent a RST_STREAM frame to cancel the associated stream.
+              parent = @streams[frame[:stream]]
+              pid = frame[:promise_stream]
+
+              connection_error if parent.nil?
+              connection_error if @streams.include? pid
+
+              if !(parent.state == :open || parent.state == :half_closed_local)
+                # An endpoint might receive a PUSH_PROMISE frame after it sends
+                # RST_STREAM.  PUSH_PROMISE causes a stream to become "reserved".
+                # The RST_STREAM does not cancel any promised stream.  Therefore, if
+                # promised streams are not desired, a RST_STREAM can be used to
+                # close any of those streams.
+                if parent.closed == :local_rst
+                  # We can either (a) 'resurrect' the parent, or (b) RST_STREAM
+                  # ... sticking with (b), might need to revisit later.
+                  process({type: :rst_stream, stream: pid, error: :refused_stream})
+                else
+                  connection_error
+                end
+              end
+
+              stream = activate_stream(pid)
+              stream.process(frame)
+
+              emit(:promise, stream)
+            else
+              @streams[frame[:stream]].process frame
+            end
           end
         end
       end
@@ -138,6 +178,19 @@ module Net
         if @window_limit == Float::INFINITY
           connection_error(:flow_control_error)
         end
+      end
+
+      def activate_stream(id)
+        stream = Stream.new(id, DEFAULT_PRIORITY, @window)
+
+        # Streams that are in the "open" state, or either of the "half closed"
+        # states count toward the maximum number of streams that an endpoint is
+        # permitted to open.
+        stream.once(:active) { @active_stream_count += 1 }
+        stream.once(:close)  { @active_stream_count -= 1 }
+        stream.on(:frame)    { |frame| process(frame) }
+
+        @streams[id] = stream
       end
 
       def connection_error(error = :protocol_error)

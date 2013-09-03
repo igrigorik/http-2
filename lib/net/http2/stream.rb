@@ -5,9 +5,9 @@ module Net
       include Emitter
       include FrameSplitter
 
-      attr_reader :state, :priority, :window, :id
+      attr_reader :state, :priority, :window, :id, :closed
 
-      def initialize(conn, id, priority, window)
+      def initialize(id, priority, window)
         @id = id
         @priority = priority
         @window = window
@@ -52,10 +52,6 @@ module Net
         flags << :end_stream  if end_stream
 
         send({type: :headers, flags: flags, payload: head})
-      end
-
-      def promise(head)
-        send({type: :push_promise, payload: head})
       end
 
       def priority=(p)

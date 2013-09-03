@@ -87,7 +87,7 @@ FRAME_TYPES = [
 ]
 
 def set_stream_id(bytes, id)
-  head = bytes.slice!(0,4).unpack("SCCL")
+  head = bytes.slice!(0,8).unpack("SCCL")
   head[3] = id
 
   head.pack("SCCL") + bytes
