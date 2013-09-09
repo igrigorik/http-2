@@ -28,7 +28,6 @@ module Net
         @send_buffer = []
         @state = :new
         @error = nil
-
       end
 
       def new_stream
@@ -51,7 +50,6 @@ module Net
             connection_management(frame)
           else
 
-
             # Header blocks MUST be transmitted as a contiguous sequence of
             # frames, with no interleaved frames of any other type, or from any
             # other stream.  The last frame in a sequence of HEADERS/CONTINUATION
@@ -64,20 +62,16 @@ module Net
             # the block to reconstruct the header set.
 
             case frame[:type]
-            # when :headers
+            when :headers
+              stream = @streams[frame[:stream]]
+              if stream.nil?
+                stream = activate_stream(frame[:stream], frame[:priority])
+                emit(:stream, stream)
+              end
 
+              stream.process(frame)
 
             when :push_promise
-              # HEADERS, PUSH_PROMISE and CONTINUATION frames carry data that
-              # can modify the compression context maintained by a receiver.
-              # An endpoint receiving HEADERS, PUSH_PROMISE or CONTINUATION
-              # frames MUST reassemble header blocks and perform decompression
-              # even if the frames are to be discarded, which is likely to
-              # occur after a stream is reset.
-
-              # TODO ...
-
-
               # PUSH_PROMISE frames MUST be associated with an existing, peer-
               # initiated stream... A receiver MUST treat the receipt of a
               # PUSH_PROMISE on a stream that is neither "open" nor
@@ -110,9 +104,8 @@ module Net
               end
 
               stream = activate_stream(pid)
-              stream.process(frame)
-
               emit(:promise, stream)
+              stream.process(frame)
             else
               @streams[frame[:stream]].process frame
             end
@@ -198,8 +191,8 @@ module Net
         end
       end
 
-      def activate_stream(id)
-        stream = Stream.new(id, DEFAULT_PRIORITY, @window)
+      def activate_stream(id, priority = DEFAULT_PRIORITY)
+        stream = Stream.new(id, priority, @window)
 
         # Streams that are in the "open" state, or either of the "half closed"
         # states count toward the maximum number of streams that an endpoint is

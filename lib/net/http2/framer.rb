@@ -128,6 +128,10 @@ module Net
           length += frame[:payload].bytesize
 
         when :headers
+          if frame[:priority]
+            frame[:flags] << :priority if !frame[:flags].include? :priority
+          end
+
           if frame[:flags].include? :priority
             bytes  += [frame[:priority] & RBIT].pack(UINT32)
             length += 4

@@ -82,6 +82,18 @@ describe Net::HTTP2::Connection do
       expect { @conn.new_stream }.to raise_error(StreamLimitExceeded)
     end
 
+    it "should initialize stream with HEADERS priority value" do
+      @conn << f.generate(SETTINGS)
+
+      stream, headers = nil, HEADERS.dup
+      headers[:priority] = 20
+
+      @conn.on(:stream) {|s| stream = s }
+      @conn << f.generate(headers)
+
+      stream.priority.should eq 20
+    end
+
     context "push" do
       it "should raise error on PUSH_PROMISE against stream 0" do
         expect {
