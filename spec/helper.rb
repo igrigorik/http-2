@@ -77,7 +77,7 @@ WINDOW_UPDATE = {
 CONTINUATION = {
   type: :continuation,
   flags: [:end_headers],
-  payload: 'header-block'
+  payload: '-second-block'
 }
 
 FRAME_TYPES = [

@@ -26,6 +26,7 @@ module Net
 
         @recv_buffer = Buffer.new
         @send_buffer = []
+        @continuation = []
         @state = :new
         @error = nil
       end
@@ -41,6 +42,20 @@ module Net
         @recv_buffer << data
 
         while frame = @framer.parse(@recv_buffer) do
+          # Header blocks MUST be transmitted as a contiguous sequence of frames
+          # with no interleaved frames of any other type, or from any other stream.
+          if !@continuation.empty?
+            if frame[:type]  != :continuation ||
+               frame[:stream] != @continuation.first[:stream]
+              connection_error
+            end
+
+            if !frame[:flags].include? :end_headers
+              @continuation << frame
+              return
+            end
+          end
+
           # SETTINGS frames always apply to a connection, never a single stream.
           # The stream identifier for a settings frame MUST be zero.  If an
           # endpoint receives a SETTINGS frame whose stream identifier field is
@@ -50,19 +65,19 @@ module Net
             connection_management(frame)
           else
 
-            # Header blocks MUST be transmitted as a contiguous sequence of
-            # frames, with no interleaved frames of any other type, or from any
-            # other stream.  The last frame in a sequence of HEADERS/CONTINUATION
-            # frames MUST have the END_HEADERS flag set.  The last frame in a
-            # sequence of PUSH_PROMISE/CONTINUATION frames MUST have the
-            # END_PUSH_PROMISE/END_HEADERS flag set (respectively).
-            #
-            # ... The receiving endpoint reassembles the header block by
+            # The receiving endpoint reassembles the header block by
             # concatenating the individual fragments, then decompresses
             # the block to reconstruct the header set.
 
             case frame[:type]
             when :headers
+              # The last frame in a sequence of HEADERS/CONTINUATION
+              # frames MUST have the END_HEADERS flag set.
+              if !frame[:flags].include? :end_headers
+                @continuation << frame
+                return
+              end
+
               stream = @streams[frame[:stream]]
               if stream.nil?
                 stream = activate_stream(frame[:stream], frame[:priority])
@@ -72,6 +87,13 @@ module Net
               stream.process(frame)
 
             when :push_promise
+              # The last frame in a sequence of PUSH_PROMISE/CONTINUATION
+              # frames MUST have the END_PUSH_PROMISE/END_HEADERS flag set
+              if !frame[:flags].include? :end_push_promise
+                @continuation << frame
+                return
+              end
+
               # PUSH_PROMISE frames MUST be associated with an existing, peer-
               # initiated stream... A receiver MUST treat the receipt of a
               # PUSH_PROMISE on a stream that is neither "open" nor

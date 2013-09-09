@@ -129,7 +129,7 @@ module Net
 
         when :headers
           if frame[:priority]
-            frame[:flags] << :priority if !frame[:flags].include? :priority
+            frame[:flags] += [:priority] if !frame[:flags].include? :priority
           end
 
           if frame[:flags].include? :priority

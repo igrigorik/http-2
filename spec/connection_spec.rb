@@ -227,9 +227,18 @@ describe Net::HTTP2::Connection do
     end
 
     it "should decompress header blocks regardless of stream state"
-    it "should require that split header blocks is a contiguous sequence"
     it "should decode non-contiguous header blocks"
 
+    it "should require that split header blocks are a contiguous sequence" do
+      headers, continutation = HEADERS.dup, CONTINUATION.dup
+      headers[:flags] = []
+
+      @conn << f.generate(SETTINGS)
+      @conn << f.generate(headers)
+      (FRAME_TYPES - [CONTINUATION]).each do |frame|
+        expect { @conn << f.generate(frame) }.to raise_error(ProtocolError)
+      end
+    end
   end
 
   context "connection management" do
