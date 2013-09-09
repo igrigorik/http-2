@@ -38,6 +38,11 @@ module Net
         activate_stream(@stream_id)
       end
 
+      def ping(data, &blk)
+        process({type: :ping, stream: 0, payload: data})
+        once(:pong, &blk) if blk
+      end
+
       def receive(data)
         @recv_buffer << data
 
@@ -61,10 +66,9 @@ module Net
           # endpoint receives a SETTINGS frame whose stream identifier field is
           # anything other than 0x0, the endpoint MUST respond with a connection
           # error (Section 5.4.1) of type PROTOCOL_ERROR.
-          if (frame[:stream] == 0 || frame[:type] == :settings)
+          if frame[:stream] == 0 || frame[:type] == :settings
             connection_management(frame)
           else
-
             # The receiving endpoint reassembles the header block by
             # concatenating the individual fragments, then decompresses
             # the block to reconstruct the header set.
@@ -161,6 +165,15 @@ module Net
             flow_control_allowed?
             @window += frame[:increment]
             send_data
+          when :ping
+            if frame[:flags].include? :pong
+              emit(:pong, frame[:payload])
+            else
+              process({
+                type: :ping, stream: 0,
+                flags: [:pong], payload: frame[:payload]
+              })
+            end
           else
             connection_error
           end

@@ -242,8 +242,37 @@ describe Net::HTTP2::Connection do
   end
 
   context "connection management" do
-    it "should generate PING frames"
-    it "should respond to PING frames"
+    it "should generate PING frames" do
+      @conn.stub(:process)
+      @conn.should_receive(:process) do |frame|
+        frame[:type].should eq :ping
+        frame[:payload].should eq "somedata"
+      end
+
+      @conn.ping("somedata")
+    end
+
+    it "should fire callback on PONG" do
+      @conn << f.generate(SETTINGS)
+
+      pong = nil
+      @conn.ping("12345678") {|d| pong = d }
+      @conn << f.generate(PONG)
+      pong.should eq "12345678"
+    end
+
+    it "should respond to PING frames" do
+      @conn << f.generate(SETTINGS)
+      @conn.stub(:process)
+      @conn.should_receive(:process) do |frame|
+        frame[:type].should eq :ping
+        frame[:flags].should eq [:pong]
+        frame[:payload].should eq "12345678"
+      end
+
+      @conn << f.generate(PING)
+    end
+
     it "should close connection on GOAWAY"
   end
 end

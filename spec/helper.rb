@@ -55,7 +55,13 @@ PUSH_PROMISE = {
 }
 
 PING = {
-  stream: 1,
+  stream: 0,
+  type: :ping,
+  payload: '12345678'
+}
+
+PONG = {
+  stream: 0,
   type: :ping,
   flags: [:pong],
   payload: '12345678'
