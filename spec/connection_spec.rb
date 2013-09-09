@@ -133,11 +133,6 @@ describe Net::HTTP2::Connection do
     end
   end
 
-  # TODO: should connection/stream buffer split HEADERS/PROMISE frames?
-  # .. must decompress in order
-  # .. does incomplete HEADERS transition to open?
-  #
-
   context "flow control" do
     it "should initialize to default flow window" do
       @conn.window.should eq DEFAULT_FLOW_WINDOW
@@ -205,8 +200,24 @@ describe Net::HTTP2::Connection do
   end
 
   context "framing" do
-    it "should buffer incomplete received frames"
-    it "should apply header (de)compression"
+    it "should buffer incomplete frames" do
+      settings = SETTINGS.dup
+      settings[:payload] = { settings_initial_window_size: 1000 }
+      @conn << f.generate(settings)
+
+      frame = f.generate(WINDOW_UPDATE.merge({stream: 0, increment: 1000}))
+      @conn << frame
+      @conn.window.should eq 2000
+
+      @conn << frame.slice!(0,1)
+      @conn << frame
+      @conn.window.should eq 3000
+    end
+
+    it "should decompress header blocks regardless of stream state"
+    it "should require that split header blocks is a contiguous sequence"
+    it "should decode non-contiguous header blocks"
+
   end
 
   context "connection management" do

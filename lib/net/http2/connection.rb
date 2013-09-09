@@ -24,9 +24,11 @@ module Net
         @window = DEFAULT_FLOW_WINDOW
         @window_limit = DEFAULT_FLOW_WINDOW
 
+        @recv_buffer = Buffer.new
         @send_buffer = []
         @state = :new
         @error = nil
+
       end
 
       def new_stream
@@ -37,9 +39,9 @@ module Net
       end
 
       def receive(data)
-        data = StringIO.new(data)
+        @recv_buffer << data
 
-        while frame = @framer.parse(data) do
+        while frame = @framer.parse(@recv_buffer) do
           # SETTINGS frames always apply to a connection, never a single stream.
           # The stream identifier for a settings frame MUST be zero.  If an
           # endpoint receives a SETTINGS frame whose stream identifier field is
@@ -48,7 +50,23 @@ module Net
           if (frame[:stream] == 0 || frame[:type] == :settings)
             connection_management(frame)
           else
+
+
+            # Header blocks MUST be transmitted as a contiguous sequence of
+            # frames, with no interleaved frames of any other type, or from any
+            # other stream.  The last frame in a sequence of HEADERS/CONTINUATION
+            # frames MUST have the END_HEADERS flag set.  The last frame in a
+            # sequence of PUSH_PROMISE/CONTINUATION frames MUST have the
+            # END_PUSH_PROMISE/END_HEADERS flag set (respectively).
+            #
+            # ... The receiving endpoint reassembles the header block by
+            # concatenating the individual fragments, then decompresses
+            # the block to reconstruct the header set.
+
             case frame[:type]
+            # when :headers
+
+
             when :push_promise
               # HEADERS, PUSH_PROMISE and CONTINUATION frames carry data that
               # can modify the compression context maintained by a receiver.

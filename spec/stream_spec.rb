@@ -459,4 +459,6 @@ describe Net::HTTP2::Stream do
       @stream.data(data + "x")
     end
   end
+
+  it "headers frame should set priority"
 end

@@ -70,9 +70,17 @@ module Net
       def commonHeader(frame)
         header = []
 
-        raise FramingException.new("Invalid frame type (#{frame[:type]})")                 if !FRAME_TYPES[frame[:type]]
-        raise FramingException.new("Frame size is too large: #{frame[:length]}")           if frame[:length] > MAX_PAYLOAD_SIZE
-        raise FramingException.new("Stream ID (#{frame[:stream]}) is too large")           if frame[:stream] > MAX_STREAM_ID
+        if !FRAME_TYPES[frame[:type]]
+          raise FramingException.new("Invalid frame type (#{frame[:type]})")
+        end
+
+        if frame[:length] > MAX_PAYLOAD_SIZE
+          raise FramingException.new("Frame size is too large: #{frame[:length]}")
+        end
+
+        if frame[:stream] > MAX_STREAM_ID
+          raise FramingException.new("Stream ID (#{frame[:stream]}) is too large")
+        end
 
         if frame[:type] == :window_update && frame[:increment] > MAX_WINDOWINC
           raise FramingException.new("Window increment (#{frame[:increment]}) is too large")
@@ -93,7 +101,7 @@ module Net
 
       def readCommonHeader(buf)
         frame = {}
-        frame[:length], type, flags, stream = buf.read(8).unpack(HEADERPACK)
+        frame[:length], type, flags, stream = buf.slice(0,8).unpack(HEADERPACK)
 
         frame[:type], _ = FRAME_TYPES.select { |t,pos| type == pos }.first
         frame[:flags] = FRAME_FLAGS[frame[:type]].reduce([]) do |acc, (name, pos)|
@@ -192,51 +200,50 @@ module Net
       end
 
       def parse(buf)
-        return nil if buf.size - buf.pos < 8
+        return nil if buf.size < 8
         frame = readCommonHeader(buf)
+        return nil if buf.size < 8 + frame[:length]
 
-        if buf.size - buf.pos < frame[:length]
-          buf.seek(-8, IO::SEEK_CUR)
-          return nil
-        end
+        buf.read(8)
+        payload = buf.read(frame[:length])
 
         case frame[:type]
         when :data
-          frame[:payload] = buf.read(frame[:length])
+          frame[:payload] = payload.read(frame[:length])
         when :headers
           if frame[:flags].include? :priority
-            frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
+            frame[:priority] = payload.read(4).unpack(UINT32).first & RBIT
           end
-          frame[:payload] = buf.read(frame[:length])
+          frame[:payload] = payload.read(frame[:length])
         when :priority
-          frame[:priority] = buf.read(4).unpack(UINT32).first & RBIT
+          frame[:priority] = payload.read(4).unpack(UINT32).first & RBIT
         when :rst_stream
-          frame[:error] = unpack_error buf.read(4).unpack(UINT32).first
+          frame[:error] = unpack_error payload.read(4).unpack(UINT32).first
 
         when :settings
           frame[:payload] = {}
           (frame[:length] / 8).times do
-            id  = buf.read(4).unpack(UINT32).first & RBYTE
-            val = buf.read(4).unpack(UINT32).first
+            id  = payload.read(4).unpack(UINT32).first & RBYTE
+            val = payload.read(4).unpack(UINT32).first
 
             name, _ = DEFINED_SETTINGS.select { |name, v| v == id }.first
             frame[:payload][name || id] = val
           end
         when :push_promise
-          frame[:promise_stream] = buf.read(4).unpack(UINT32).first & RBIT
-          frame[:payload] = buf.read(frame[:length])
+          frame[:promise_stream] = payload.read(4).unpack(UINT32).first & RBIT
+          frame[:payload] = payload.read(frame[:length])
         when :ping
-          frame[:payload] = buf.read(frame[:length])
+          frame[:payload] = payload.read(frame[:length])
         when :goaway
-          frame[:last_stream] = buf.read(4).unpack(UINT32).first & RBIT
-          frame[:error] = unpack_error buf.read(4).unpack(UINT32).first
+          frame[:last_stream] = payload.read(4).unpack(UINT32).first & RBIT
+          frame[:error] = unpack_error payload.read(4).unpack(UINT32).first
 
           size = frame[:length] - 8
-          frame[:payload] = buf.read(size) if size > 0
+          frame[:payload] = payload.read(size) if size > 0
         when :window_update
-          frame[:increment] = buf.read(4).unpack(UINT32).first & RBIT
+          frame[:increment] = payload.read(4).unpack(UINT32).first & RBIT
         when :continuation
-          frame[:payload] = buf.read(frame[:length])
+          frame[:payload] = payload.read(frame[:length])
         end
 
         frame

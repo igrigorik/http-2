@@ -21,7 +21,7 @@ describe Net::HTTP2::Framer do
     end
 
     it "should parse common 8 byte header" do
-      f.readCommonHeader(StringIO.new(bytes)).should eq frame
+      f.readCommonHeader(Buffer.new(bytes)).should eq frame
     end
 
     it "should raise exception on invalid frame type" do
@@ -66,7 +66,7 @@ describe Net::HTTP2::Framer do
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x0,0x3,0x1,*'text'.bytes].pack("SCCLC*")
 
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -82,7 +82,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0xc,0x1,0x7,0x1,*'header-block'.bytes].pack("SCCLC*")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
 
     it "should carry an optional stream priority" do
@@ -97,7 +97,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x10,0x1,0xc,0x1,0xf,*'header-block'.bytes].pack("SCCLLC*")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -112,7 +112,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x2,0x0,0x1,0xf].pack("SCCLL")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -127,7 +127,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x3,0x0,0x1,0x5].pack("SCCLL")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -147,7 +147,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x8,0x4,0x0,0x0,0x4,0xa].pack("SCCLLL")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
 
     it "should encode custom settings" do
@@ -158,7 +158,7 @@ describe Net::HTTP2::Framer do
         55 => 30
       }
 
-      f.parse(StringIO.new(f.generate(frame))).should eq frame
+      f.parse(Buffer.new(f.generate(frame))).should eq frame
 
     end
 
@@ -190,7 +190,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0xb,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("SCCLLC*")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -208,7 +208,7 @@ describe Net::HTTP2::Framer do
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
       bytes.should eq [0x8,0x6,0x1,0x1,*'12345678'.bytes].pack("SCCLC*")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
 
     it "should raise exception on invalid payload" do
@@ -234,7 +234,7 @@ describe Net::HTTP2::Framer do
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
       bytes.should eq [0xd,0x7,0x0,0x1,0x2,0x0,*'debug'.bytes].pack("SCCLLLC*")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
 
     it "should treat debug payload as optional" do
@@ -243,7 +243,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x8,0x7,0x0,0x1,0x2,0x0].pack("SCCLLL")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -257,7 +257,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x9,0x0,0x0,0xa].pack("SCCLL")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -273,7 +273,7 @@ describe Net::HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0xc,0xa,0x3,0x1,*'header-block'.bytes].pack("SCCLC*")
-      f.parse(StringIO.new(bytes)).should eq frame
+      f.parse(Buffer.new(bytes)).should eq frame
     end
   end
 
@@ -293,7 +293,7 @@ describe Net::HTTP2::Framer do
 
     frames.each do |(frame, size)|
       bytes = f.generate(frame)
-      StringIO.new(bytes).read(2).unpack("S").first.should eq size
+      Buffer.new(bytes).slice(0,2).unpack("S").first.should eq size
     end
   end
 
@@ -303,7 +303,7 @@ describe Net::HTTP2::Framer do
       {type: :data, stream: 1, flags: [:end_stream], payload: "abc"}
     ]
 
-    buf = StringIO.new(f.generate(frames[0]) + f.generate(frames[1]))
+    buf = Buffer.new(f.generate(frames[0]) + f.generate(frames[1]))
 
     f.parse(buf).should eq frames[0]
     f.parse(buf).should eq frames[1]
@@ -313,13 +313,13 @@ describe Net::HTTP2::Framer do
     frame = {type: :headers, stream: 1, payload: "headers"}
     bytes = f.generate(frame)
 
-    buf = StringIO.new(bytes[0...-1])
+    buf = Buffer.new(bytes[0...-1])
     f.parse(buf).should be_nil
-    buf.pos.should eq 0
+    buf.should eq bytes[0...-1]
 
-    buf = StringIO.new(bytes)
+    buf = Buffer.new(bytes)
     f.parse(buf).should eq frame
-    buf.eof.should be_true
+    buf.should be_empty
   end
 
 end

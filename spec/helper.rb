@@ -76,8 +76,7 @@ WINDOW_UPDATE = {
 
 CONTINUATION = {
   type: :continuation,
-  stream: 1,
-  flags: [:end_stream, :end_headers],
+  flags: [:end_headers],
   payload: 'header-block'
 }
 
