@@ -68,7 +68,6 @@ PONG = {
 }
 
 GOAWAY = {
-  stream: 1,
   type: :goaway,
   last_stream: 2,
   error: :no_error,

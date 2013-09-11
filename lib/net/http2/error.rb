@@ -3,3 +3,4 @@ class FlowControlError < ProtocolError; end
 class StreamError < ProtocolError; end
 
 class StreamLimitExceeded < Exception; end
+class ConnectionClosed < Exception; end

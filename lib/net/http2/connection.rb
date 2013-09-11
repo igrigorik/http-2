@@ -33,6 +33,7 @@ module Net
 
       def new_stream
         raise StreamLimitExceeded.new if @active_stream_count == @stream_limit
+        raise ConnectionClosed.new if @state == :closed
 
         @stream_id += 2
         activate_stream(@stream_id)
@@ -41,6 +42,18 @@ module Net
       def ping(data, &blk)
         process({type: :ping, stream: 0, payload: data})
         once(:pong, &blk) if blk
+      end
+
+      # Endpoints MAY append opaque data to the payload of any GOAWAY frame.
+      # Additional debug data is intended for diagnostic purposes only and
+      # carries no semantic value.  Debug data MUST NOT be persistently
+      # stored, since it could contain sensitive information.
+      def goaway(error = :no_error, payload = nil)
+        process({
+          type: :goaway, last_stream: (@streams.max.first rescue 0),
+          error: error, payload: payload
+        })
+        @state = :closed
       end
 
       def receive(data)
@@ -66,13 +79,9 @@ module Net
           # endpoint receives a SETTINGS frame whose stream identifier field is
           # anything other than 0x0, the endpoint MUST respond with a connection
           # error (Section 5.4.1) of type PROTOCOL_ERROR.
-          if frame[:stream] == 0 || frame[:type] == :settings
+          if connection_frame?(frame)
             connection_management(frame)
           else
-            # The receiving endpoint reassembles the header block by
-            # concatenating the individual fragments, then decompresses
-            # the block to reconstruct the header set.
-
             case frame[:type]
             when :headers
               # The last frame in a sequence of HEADERS/CONTINUATION
@@ -81,6 +90,14 @@ module Net
                 @continuation << frame
                 return
               end
+
+              # After sending a GOAWAY frame, the sender can discard frames
+              # for new streams.  However, any frames that alter connection
+              # state cannot be completely ignored.  For instance, HEADERS,
+              # PUSH_PROMISE and CONTINUATION frames MUST be minimally
+              # processed to ensure a consistent compression state
+              decode_headers
+              return if @state == :closed
 
               stream = @streams[frame[:stream]]
               if stream.nil?
@@ -97,6 +114,9 @@ module Net
                 @continuation << frame
                 return
               end
+
+              decode_headers
+              return if @state == :closed
 
               # PUSH_PROMISE frames MUST be associated with an existing, peer-
               # initiated stream... A receiver MUST treat the receipt of a
@@ -150,6 +170,14 @@ module Net
         end
       end
 
+      def connection_frame?(frame)
+        frame[:stream] == 0 ||
+        frame[:type] == :settings ||
+        frame[:type] == :window_update ||
+        frame[:type] == :ping ||
+        frame[:type] == :goaway
+      end
+
       def connection_management(frame)
         case @state
         # SETTINGS frames MUST be sent at the start of a connection.
@@ -174,6 +202,13 @@ module Net
                 flags: [:pong], payload: frame[:payload]
               })
             end
+          when :goaway
+            # Receivers of a GOAWAY frame MUST NOT open additional streams on
+            # the connection, although a new connection can be established
+            # for new streams.
+            @state = :closed
+            emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
+
           else
             connection_error
           end
@@ -218,6 +253,13 @@ module Net
             end
           end
         end
+      end
+
+      # The receiving endpoint reassembles the header block by concatenating
+      # the individual fragments, then decompresses the block to reconstruct
+      # the header set.
+      def decode_headers
+
       end
 
       def flow_control_allowed?

@@ -252,15 +252,6 @@ describe Net::HTTP2::Connection do
       @conn.ping("somedata")
     end
 
-    it "should fire callback on PONG" do
-      @conn << f.generate(SETTINGS)
-
-      pong = nil
-      @conn.ping("12345678") {|d| pong = d }
-      @conn << f.generate(PONG)
-      pong.should eq "12345678"
-    end
-
     it "should respond to PING frames" do
       @conn << f.generate(SETTINGS)
       @conn.stub(:process)
@@ -273,6 +264,67 @@ describe Net::HTTP2::Connection do
       @conn << f.generate(PING)
     end
 
-    it "should close connection on GOAWAY"
+    it "should fire callback on PONG" do
+      @conn << f.generate(SETTINGS)
+
+      pong = nil
+      @conn.ping("12345678") {|d| pong = d }
+      @conn << f.generate(PONG)
+      pong.should eq "12345678"
+    end
+
+    it "should generate GOAWAY frame with last processed stream ID" do
+      @conn << f.generate(SETTINGS)
+      @conn << f.generate(HEADERS.merge({stream: 17}))
+
+      @conn.stub(:process)
+      @conn.should_receive(:process) do |frame|
+        frame[:type].should eq :goaway
+        frame[:last_stream].should eq 17
+        frame[:error].should eq :internal_error
+        frame[:payload].should eq "payload"
+      end
+
+      @conn.goaway(:internal_error, "payload")
+    end
+
+    it "should raise error when opening new stream after sending GOAWAY" do
+      @conn.goaway
+      expect { @conn.new_stream }.to raise_error(ConnectionClosed)
+    end
+
+    it "should raise error when opening new stream after receiving GOAWAY" do
+      @conn << f.generate(SETTINGS)
+      @conn << f.generate(GOAWAY)
+      expect { @conn.new_stream }.to raise_error(ConnectionClosed)
+    end
+
+    it "should fire callback on receipt of GOAWAY" do
+      last_stream, payload, error = nil
+      @conn << f.generate(SETTINGS)
+      @conn.on(:goaway) {|s,e,p| last_stream = s; error = e; payload = p}
+      @conn << f.generate(GOAWAY.merge({last_stream: 17, payload: "test"}))
+
+      last_stream.should eq 17
+      error.should eq :no_error
+      payload.should eq "test"
+    end
+
+    it "should process connection management frames after GOAWAY" do
+      @conn << f.generate(SETTINGS)
+      @conn << f.generate(HEADERS)
+      @conn << f.generate(GOAWAY)
+      @conn << f.generate(HEADERS.merge({stream: 7}))
+      @conn << f.generate(PUSH_PROMISE)
+
+      @conn.active_stream_count.should eq 1
+    end
+
+
+   # Endpoints SHOULD always send a GOAWAY frame before closing a
+   # connection so that the remote can know whether a stream has been
+   # partially processed or not.
+
+
   end
 end
