@@ -226,8 +226,54 @@ describe Net::HTTP2::Connection do
       @conn.window.should eq 3000
     end
 
-    it "should decompress header blocks regardless of stream state"
-    it "should decode non-contiguous header blocks"
+    it "should decompress header blocks regardless of stream state" do
+      req_headers = [
+        [":path", "/my-example/index.html"],
+        ["user-agent", "my-user-agent"],
+        ["x-my-header", "first"]
+      ]
+
+      cc = Compressor.new(:request)
+      headers = HEADERS.dup
+      headers[:payload] = cc.encode(req_headers)
+
+      @conn << f.generate(SETTINGS)
+      @conn.on(:stream) do |stream|
+        stream.stub(:process)
+        stream.should_receive(:process) do |frame|
+          frame[:payload].should eq req_headers
+        end
+      end
+
+      @conn << f.generate(headers)
+    end
+
+    it "should decode non-contiguous header blocks" do
+      req_headers = [
+        ["user-agent", "my-user-agent"],
+        ["x-my-header", "first"]
+      ]
+
+      cc = Compressor.new(:request)
+      h1, h2 = HEADERS.dup, CONTINUATION.dup
+      h1[:payload] = cc.encode([req_headers.first])
+      h1[:stream] = 5
+      h1[:flags] = []
+
+      h2[:payload] = cc.encode([req_headers.last])
+      h2[:stream] = 5
+
+      @conn << f.generate(SETTINGS)
+      @conn.on(:stream) do |stream|
+        stream.stub(:process)
+        stream.should_receive(:process) do |frame|
+          frame[:payload].should eq req_headers
+        end
+      end
+
+      @conn << f.generate(h1)
+      @conn << f.generate(h2)
+    end
 
     it "should require that split header blocks are a contiguous sequence" do
       headers, continutation = HEADERS.dup, CONTINUATION.dup
@@ -273,6 +319,17 @@ describe Net::HTTP2::Connection do
       pong.should eq "12345678"
     end
 
+    it "should fire callback on receipt of GOAWAY" do
+      last_stream, payload, error = nil
+      @conn << f.generate(SETTINGS)
+      @conn.on(:goaway) {|s,e,p| last_stream = s; error = e; payload = p}
+      @conn << f.generate(GOAWAY.merge({last_stream: 17, payload: "test"}))
+
+      last_stream.should eq 17
+      error.should eq :no_error
+      payload.should eq "test"
+    end
+
     it "should generate GOAWAY frame with last processed stream ID" do
       @conn << f.generate(SETTINGS)
       @conn << f.generate(HEADERS.merge({stream: 17}))
@@ -299,17 +356,6 @@ describe Net::HTTP2::Connection do
       expect { @conn.new_stream }.to raise_error(ConnectionClosed)
     end
 
-    it "should fire callback on receipt of GOAWAY" do
-      last_stream, payload, error = nil
-      @conn << f.generate(SETTINGS)
-      @conn.on(:goaway) {|s,e,p| last_stream = s; error = e; payload = p}
-      @conn << f.generate(GOAWAY.merge({last_stream: 17, payload: "test"}))
-
-      last_stream.should eq 17
-      error.should eq :no_error
-      payload.should eq "test"
-    end
-
     it "should process connection management frames after GOAWAY" do
       @conn << f.generate(SETTINGS)
       @conn << f.generate(HEADERS)
@@ -320,11 +366,9 @@ describe Net::HTTP2::Connection do
       @conn.active_stream_count.should eq 1
     end
 
-
    # Endpoints SHOULD always send a GOAWAY frame before closing a
    # connection so that the remote can know whether a stream has been
    # partially processed or not.
-
 
   end
 end

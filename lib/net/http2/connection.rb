@@ -15,7 +15,16 @@ module Net
       def initialize(type = :client)
         @type = type
 
-        @stream_id = (@type == :client) ? 1 : 2
+        if @type == :client
+          @stream_id    = 1
+          @compressor   = Compressor.new(:request)
+          @decompressor = Decompressor.new(:request)
+        else
+          @stream_id    = 2
+          @compressor   = Compressor.new(:response)
+          @decompressor = Decompressor.new(:response)
+        end
+
         @stream_limit = Float::INFINITY
         @active_stream_count = 0
         @streams = {}
@@ -68,9 +77,23 @@ module Net
               connection_error
             end
 
-            if !frame[:flags].include? :end_headers
-              @continuation << frame
-              return
+            @continuation << frame
+            return if !frame[:flags].include? :end_headers
+
+            headers = @continuation.collect do |chunk|
+              decode_headers(chunk)
+              chunk[:payload]
+            end.flatten(1)
+
+            frame = @continuation.shift
+            @continuation.clear
+
+            frame.delete(:length)
+            frame[:payload] = headers
+            frame[:flags] << if frame[:type] == :push_promise
+              :end_push_promise
+            else
+              :end_headers
             end
           end
 
@@ -96,7 +119,7 @@ module Net
               # state cannot be completely ignored.  For instance, HEADERS,
               # PUSH_PROMISE and CONTINUATION frames MUST be minimally
               # processed to ensure a consistent compression state
-              decode_headers
+              decode_headers(frame)
               return if @state == :closed
 
               stream = @streams[frame[:stream]]
@@ -115,7 +138,7 @@ module Net
                 return
               end
 
-              decode_headers
+              decode_headers(frame)
               return if @state == :closed
 
               # PUSH_PROMISE frames MUST be associated with an existing, peer-
@@ -173,7 +196,6 @@ module Net
       def connection_frame?(frame)
         frame[:stream] == 0 ||
         frame[:type] == :settings ||
-        frame[:type] == :window_update ||
         frame[:type] == :ping ||
         frame[:type] == :goaway
       end
@@ -258,8 +280,10 @@ module Net
       # The receiving endpoint reassembles the header block by concatenating
       # the individual fragments, then decompresses the block to reconstruct
       # the header set.
-      def decode_headers
-
+      def decode_headers(frame)
+        if frame[:payload].is_a? String
+          frame[:payload] = @decompressor.decode(StringIO.new(frame[:payload]))
+        end
       end
 
       def flow_control_allowed?
