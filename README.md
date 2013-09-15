@@ -1,17 +1,25 @@
-## Net::HTTP2
+# HTTP-2
 
-Pure ruby implementation of HTTP 2.0 protocol: parsing, frame generation, header compression, and so on. Current implementation is based on:
+Pure-Ruby, transport-agnostic implementation of [HTTP 2.0 protocol](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html): 
 
-* [draft-ietf-httpbis-http2-05](http://tools.ietf.org/html/draft-ietf-httpbis-http2-05)
+* [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parser and encoder
+* [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
+* Connection and stream [flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control)
+* [Header compression](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_HEADER_COMPRESSION)
+
+Current implementation is based on: 
+
+* [draft-ietf-httpbis-http2-06](http://tools.ietf.org/html/draft-ietf-httpbis-http2-06)
 * [draft-ietf-httpbis-header-compression-01](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression)
 
-Since the underlying specifications are still evolving, treat this implementation as a work in progress as well!
+Since the underlying specifications are still evolving, treat this implementation as a work in progress also!
 
-To get started, check out the specs directory. The library is designed for integration with client/server implementations Interested in contributing? There is plenty to do!
+## Getting started
 
-* Session and Stream interfaces
-* Client/server implementations
-* Better API documentation
+This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use (e.g. ZeroMQ, etc). Your transport is responsible for feeding data to the parser, which performs all of the necessary HTTP 2.0 decoding, state management, and the rest, and vice versa, the parser will emit bytes (which are encoded HTTP 2.0 frames), which you how to route to the destination. 
+
+```ruby
+```
 
 
 ### License
