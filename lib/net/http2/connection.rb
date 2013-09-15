@@ -6,7 +6,7 @@ module Net
     CONNECTION_HEADER   = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
     class Connection
-      include FrameSplitter
+      include FlowBuffer
       include Emitter
 
       attr_reader :type, :window, :state, :error
@@ -63,6 +63,10 @@ module Net
           error: error, payload: payload
         })
         @state = :closed
+      end
+
+      def settings(payload)
+        process({type: :settings, stream: 0, payload: payload})
       end
 
       def receive(data)
@@ -187,10 +191,18 @@ module Net
 
       def process(frame)
         if frame[:type] != :data
-          # send immediately
+          encode(frame)
         else
-          send_data(frame)
+          send_data(frame, true)
         end
+      end
+
+      def encode(frame)
+        if frame[:type] == :headers
+          encode_headers(frame)
+        end
+
+        emit(:frame, @framer.generate(frame))
       end
 
       def connection_frame?(frame)
@@ -202,8 +214,8 @@ module Net
 
       def connection_management(frame)
         case @state
-        # SETTINGS frames MUST be sent at the start of a connection.
         when :new
+          # SETTINGS frames MUST be sent at the start of a connection.
           connection_settings(frame)
           @state = :connected
 
@@ -214,7 +226,7 @@ module Net
           when :window_update
             flow_control_allowed?
             @window += frame[:increment]
-            send_data
+            send_data(nil, true)
           when :ping
             if frame[:flags].include? :pong
               emit(:pong, frame[:payload])
@@ -283,6 +295,12 @@ module Net
       def decode_headers(frame)
         if frame[:payload].is_a? String
           frame[:payload] = @decompressor.decode(StringIO.new(frame[:payload]))
+        end
+      end
+
+      def encode_headers(frame)
+        if !frame[:payload].is_a? String
+          frame[:payload] = @compressor.encode(frame[:payload].to_a)
         end
       end
 

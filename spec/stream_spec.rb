@@ -98,8 +98,8 @@ describe Net::HTTP2::Stream do
     context "open" do
       before(:each) { @stream.process HEADERS }
 
-      it "should allow frames of any type to be sent" do
-        FRAME_TYPES.each do |type|
+      it "should allow any valid frames types to be sent" do
+        (FRAME_TYPES - [PING, GOAWAY, SETTINGS]).each do |type|
           expect { @stream.dup.send type }.to_not raise_error
         end
       end
@@ -364,7 +364,7 @@ describe Net::HTTP2::Stream do
       @stream.send HEADERS # go to open
       @stream.window.should eq DEFAULT_FLOW_WINDOW
 
-      (FRAME_TYPES - [DATA]).each do |frame|
+      (FRAME_TYPES - [DATA,PING,GOAWAY,SETTINGS]).each do |frame|
         s = @stream.dup
         s.send frame
         s.window.should eq DEFAULT_FLOW_WINDOW

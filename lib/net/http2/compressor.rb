@@ -311,7 +311,11 @@ module Net
               buffer << integer(h[:index], 0)
             end
 
-            buffer << string(h[:value])
+            if h[:value].is_a? Integer
+              buffer << integer(h[:value], 0)
+            else
+              buffer << string(h[:value])
+            end
           end
 
           # set header representation pattern on first byte

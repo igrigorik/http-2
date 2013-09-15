@@ -2,8 +2,8 @@ module Net
   module HTTP2
 
     class Stream
+      include FlowBuffer
       include Emitter
-      include FrameSplitter
 
       attr_reader :state, :priority, :window, :id, :closed
 

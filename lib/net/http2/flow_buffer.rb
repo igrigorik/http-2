@@ -3,14 +3,14 @@ module Net
 
     MAX_FRAME_SIZE = 2**14-1
 
-    module FrameSplitter
+    module FlowBuffer
       def buffered_amount
         @send_buffer.map {|f| f[:length] }.reduce(:+) || 0
       end
 
       private
 
-      def send_data(frame = nil)
+      def send_data(frame = nil, encode = false)
         @send_buffer.push frame if !frame.nil?
 
         while @window > 0 && !@send_buffer.empty? do
@@ -37,6 +37,7 @@ module Net
             sent = frame_size
           end
 
+          frame = encode(frame) if encode
           emit(:frame, frame)
           @window -= sent
         end

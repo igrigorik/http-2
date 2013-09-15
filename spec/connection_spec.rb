@@ -285,19 +285,35 @@ describe Net::HTTP2::Connection do
         expect { @conn << f.generate(frame) }.to raise_error(ProtocolError)
       end
     end
+
+    it "should emit encoded frames via on(:frame)" do
+      bytes = nil
+      @conn.on(:frame) {|d| bytes = d }
+      @conn.settings({
+        settings_max_concurrent_streams: 10,
+        settings_flow_control_options: 1
+      })
+
+      bytes.should eq f.generate(SETTINGS)
+    end
+
+    it "should compress stream headers" do
+      bytes = nil
+      @conn.on(:frame) {|b| bytes = b}
+      stream = @conn.new_stream
+      stream.headers({
+        ':method' => 'get',
+        ':scheme' => 'http',
+        ':host'   => 'www.example.org',
+        ':path'   => '/resource'
+      })
+
+      bytes.should_not match('get')
+      bytes.should match('www.example.org')
+    end
   end
 
   context "connection management" do
-    it "should generate PING frames" do
-      @conn.stub(:process)
-      @conn.should_receive(:process) do |frame|
-        frame[:type].should eq :ping
-        frame[:payload].should eq "somedata"
-      end
-
-      @conn.ping("somedata")
-    end
-
     it "should respond to PING frames" do
       @conn << f.generate(SETTINGS)
       @conn.stub(:process)
@@ -330,21 +346,6 @@ describe Net::HTTP2::Connection do
       payload.should eq "test"
     end
 
-    it "should generate GOAWAY frame with last processed stream ID" do
-      @conn << f.generate(SETTINGS)
-      @conn << f.generate(HEADERS.merge({stream: 17}))
-
-      @conn.stub(:process)
-      @conn.should_receive(:process) do |frame|
-        frame[:type].should eq :goaway
-        frame[:last_stream].should eq 17
-        frame[:error].should eq :internal_error
-        frame[:payload].should eq "payload"
-      end
-
-      @conn.goaway(:internal_error, "payload")
-    end
-
     it "should raise error when opening new stream after sending GOAWAY" do
       @conn.goaway
       expect { @conn.new_stream }.to raise_error(ConnectionClosed)
@@ -369,6 +370,62 @@ describe Net::HTTP2::Connection do
    # Endpoints SHOULD always send a GOAWAY frame before closing a
    # connection so that the remote can know whether a stream has been
    # partially processed or not.
+  end
+
+  context "API" do
+
+    it ".settings should emit SETTINGS frames" do
+      settings = {
+        settings_max_concurrent_streams: 10,
+        settings_flow_control_options: 1
+      }
+
+      @conn.stub(:process)
+      @conn.should_receive(:process) do |frame|
+        frame[:type].should eq :settings
+        frame[:payload].should eq settings
+        frame[:stream].should eq 0
+      end
+
+      @conn.settings settings
+    end
+
+    it ".ping should generate PING frames" do
+      @conn.stub(:process)
+      @conn.should_receive(:process) do |frame|
+        frame[:type].should eq :ping
+        frame[:payload].should eq "somedata"
+      end
+
+      @conn.ping("somedata")
+    end
+
+    it ".goaway should generate GOAWAY frame with last processed stream ID" do
+      @conn << f.generate(SETTINGS)
+      @conn << f.generate(HEADERS.merge({stream: 17}))
+
+      @conn.stub(:process)
+      @conn.should_receive(:process) do |frame|
+        frame[:type].should eq :goaway
+        frame[:last_stream].should eq 17
+        frame[:error].should eq :internal_error
+        frame[:payload].should eq "payload"
+      end
+
+      @conn.goaway(:internal_error, "payload")
+    end
+
+
+      # @server = Connection.new(:server)
+      # @server << f.generate(SETTINGS)
+
+      # stream = nil
+      # @conn.on(:stream) do |s|
+        # stream.on(:headers)
+      # end
+
+
 
   end
+
 end
