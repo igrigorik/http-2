@@ -179,6 +179,7 @@ module HTTP2
             emit(:promise, stream)
             stream.process(frame)
           else
+            # TODO: guard against missing streams
             @streams[frame[:stream]].process frame
           end
         end
@@ -189,10 +190,10 @@ module HTTP2
     private
 
     def process(frame)
-      if frame[:type] != :data
-        encode(frame)
-      else
+      if frame[:type] == :data
         send_data(frame, true)
+      else
+        emit(:frame, encode(frame))
       end
     end
 
@@ -201,7 +202,7 @@ module HTTP2
         encode_headers(frame)
       end
 
-      emit(:frame, @framer.generate(frame))
+      @framer.generate(frame)
     end
 
     def connection_frame?(frame)
@@ -299,7 +300,7 @@ module HTTP2
 
     def encode_headers(frame)
       if !frame[:payload].is_a? String
-        frame[:payload] = @compressor.encode(frame[:payload].to_a)
+        frame[:payload] = @compressor.encode(frame[:payload])
       end
     end
 

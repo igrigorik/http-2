@@ -415,12 +415,5 @@ describe HTTP2::Connection do
       @conn.goaway(:internal_error, "payload")
     end
 
-    # @server = Connection.new(:server)
-    # @server << f.generate(SETTINGS)
-    # stream = nil
-    # @conn.on(:stream) do |s|
-      # stream.on(:headers)
-    # end
-
   end
 end

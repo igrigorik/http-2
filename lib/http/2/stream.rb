@@ -22,8 +22,17 @@ module HTTP2
       transition(frame, false)
 
       case frame[:type]
+      when :data
+        emit(:data, frame[:payload])
+      when :headers
+        if frame[:payload].is_a? Array
+          emit(:headers, Hash[*frame[:payload].flatten])
+        else
+          emit(:headers, frame[:payload])
+        end
       when :priority
         @priority = frame[:priority]
+        emit(:priority, @priority)
       when :window_update
         @window += frame[:increment]
         send_data
@@ -50,7 +59,7 @@ module HTTP2
       flags << :end_headers if end_headers
       flags << :end_stream  if end_stream
 
-      send({type: :headers, flags: flags, payload: head})
+      send({type: :headers, flags: flags, payload: head.to_a})
     end
 
     def priority=(p)

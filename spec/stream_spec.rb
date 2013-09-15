@@ -409,7 +409,7 @@ describe HTTP2::Stream do
     end
   end
 
-  context "API" do
+  context "client API" do
     it ".priority should emit PRIORITY frame" do
       @stream.should_receive(:send) do |frame|
         frame[:type].should eq :priority
@@ -430,7 +430,7 @@ describe HTTP2::Stream do
 
       @stream.should_receive(:send) do |frame|
         frame[:type].should eq :headers
-        frame[:payload].should eq payload
+        frame[:payload].should eq payload.to_a
         frame[:flags].should eq [:end_headers]
       end
 
@@ -457,6 +457,54 @@ describe HTTP2::Stream do
       @stream.stub(:send)
       @stream.should_receive(:send).exactly(3).times
       @stream.data(data + "x")
+    end
+  end
+
+  context "server API" do
+    before(:each) do
+      @srv = Connection.new(:server)
+      @frm = Framer.new
+    end
+
+    it "should emit received headers via on(:headers)" do
+      headers, recv = {"header" => "value"}, nil
+      @conn.on(:frame) {|bytes| @srv << bytes }
+      @srv.on(:stream) do |stream|
+        stream.on(:headers) {|h| recv = h}
+      end
+
+      stream = @conn.new_stream
+      stream.headers(headers)
+
+      recv.should eq headers
+    end
+
+    it "should emit received payload via on(:data)" do
+      payload, recv = "some-payload", nil
+      @conn.on(:frame) {|bytes| @srv << bytes }
+      @srv.on(:stream) do |stream|
+        stream.on(:data) do |recv|
+          recv.should eq payload
+        end
+      end
+
+      stream = @conn.new_stream
+      stream.headers({"key" => "value"})
+      stream.data(payload)
+    end
+
+    it "should emit received priority via on(:priority)" do
+      new_priority, recv = 15, 0
+      @conn.on(:frame) {|bytes| @srv << bytes }
+      @srv.on(:stream) do |stream|
+        stream.on(:priority) do |pri|
+          pri.should eq new_priority
+        end
+      end
+
+      stream = @conn.new_stream
+      stream.headers({"key" => "value"})
+      stream.priority = new_priority
     end
   end
 end

@@ -286,7 +286,7 @@ module HTTP2
       # 2. The string value represented as a list of UTF-8 character
       #
       def string(str)
-        integer(str.bytesize, 0) + str.force_encoding('binary')
+        integer(str.bytesize, 0) + str.dup.force_encoding('binary')
       end
 
       # Header representation
@@ -370,7 +370,7 @@ module HTTP2
       end
 
       def string(buf)
-        buf.read(integer(buf, 0)).force_encoding('binary')
+        buf.read(integer(buf, 0)).force_encoding('utf-8')
       end
 
       def header(buf)
