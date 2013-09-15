@@ -16,9 +16,36 @@ Since the underlying specifications are still evolving, treat this implementatio
 
 ## Getting started
 
-This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use (e.g. ZeroMQ, etc). Your transport is responsible for feeding data to the parser, which performs all of the necessary HTTP 2.0 decoding, state management, and the rest, and vice versa, the parser will emit bytes (which are encoded HTTP 2.0 frames), which you how to route to the destination. 
+This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use (e.g. ZeroMQ, etc). Your transport is responsible for feeding data to the parser, which performs all of the necessary HTTP 2.0 decoding, state management and the rest, and vice versa, the parser will emit bytes (which are encoded HTTP 2.0 frames), which you how to route to the destination. 
 
 ```ruby
+sock = TCPSocket.new '132.12.12.13', 80
+conn = HTTP2::Connection.new(:client)
+
+conn.on(:stream) do |stream|
+  # ... process inbound stream
+  stream.on(:headers) { |h| ... }
+  stream.on(:data) { |d| ... }
+  
+  # ... send response
+  stream.headers({
+      ":status" => 200,
+      "content-length" => 132,
+      "content-type" => "application/json"
+  })
+  
+  stream.data(first_chunk, end_stream: false)
+  stream.data(last_chunk)
+end
+
+conn.on(:frame) do |bytes|
+  # send encoded HTTP 2.0 frames
+  sock.write bytes
+end
+
+while line = sock.gets
+  conn << line
+end
 ```
 
 
