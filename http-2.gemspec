@@ -1,16 +1,16 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'net/http2/version'
+require 'http/2/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "net-http2"
-  spec.version       = Net::HTTP2::VERSION
+  spec.name          = "http-2"
+  spec.version       = HTTP2::VERSION
   spec.authors       = ["Ilya Grigorik"]
   spec.email         = ["ilya@igvita.com"]
   spec.description   = "Pure-ruby HTTP 2.0 protocol implementation"
   spec.summary       = spec.description
-  spec.homepage      = "https://github.com/igrigorik/net-http2"
+  spec.homepage      = "https://github.com/igrigorik/http-2"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)

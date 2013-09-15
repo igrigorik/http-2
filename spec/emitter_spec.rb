@@ -1,6 +1,6 @@
 require "helper"
 
-describe Net::HTTP2::Emitter do
+describe HTTP2::Emitter do
   class Worker
     include Emitter
   end

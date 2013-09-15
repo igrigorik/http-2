@@ -1,6 +1,6 @@
 require "helper"
 
-describe Net::HTTP2::Stream do
+describe HTTP2::Stream do
   before(:each) do
     @conn = Connection.new
     @stream = @conn.new_stream
@@ -452,7 +452,7 @@ describe Net::HTTP2::Stream do
     end
 
     it ".data should split large DATA frames" do
-      data = "x" * Net::HTTP2::MAX_FRAME_SIZE * 2
+      data = "x" * HTTP2::MAX_FRAME_SIZE * 2
 
       @stream.stub(:send)
       @stream.should_receive(:send).exactly(3).times

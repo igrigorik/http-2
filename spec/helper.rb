@@ -1,7 +1,7 @@
-require 'net/http2'
+require 'http/2'
 
-include Net::HTTP2
-include Net::HTTP2::Header
+include HTTP2
+include HTTP2::Header
 
 
 DATA = {
