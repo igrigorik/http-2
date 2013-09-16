@@ -1,6 +1,6 @@
 # HTTP-2
 
-Pure-Ruby, transport-agnostic implementation of [HTTP 2.0 protocol](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html):
+Pure-Ruby, transport-agnostic implementation of [HTTP 2.0 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) (see [HPBN chapter](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html) for overview):
 
 * [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parser and encoder
 * [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
@@ -19,7 +19,7 @@ Since the underlying specifications are still evolving, treat this implementatio
 
 This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use - e.g. ZeroMQ, [avian carriers](http://www.ietf.org/rfc/rfc1149.txt), etc.
 
-Your transport is responsible for feeding data to the parser, which performs all of the necessary HTTP 2.0 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0 frames) that you can then route to the destination. A quick example client:
+Your transport is responsible for feeding data to the parser, which performs all of the necessary HTTP 2.0 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0 frames) that you can then route to the destination. A quick example is in order:
 
 ```ruby
 sock = TCPSocket.new '132.12.12.13', 80
