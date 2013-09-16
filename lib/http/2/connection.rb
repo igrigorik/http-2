@@ -179,8 +179,11 @@ module HTTP2
             emit(:promise, stream)
             stream.process(frame)
           else
-            # TODO: guard against missing streams
-            @streams[frame[:stream]].process frame
+            if stream = @streams[frame[:stream]]
+              stream.process frame
+            else
+              connection_error
+            end
           end
         end
       end

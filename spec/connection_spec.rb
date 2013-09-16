@@ -367,6 +367,15 @@ describe HTTP2::Connection do
       @conn.active_stream_count.should eq 1
     end
 
+    it "should raise error on frame for invalid stream ID" do
+      @conn << f.generate(SETTINGS)
+
+      expect {
+        @conn << f.generate(DATA.dup.merge({:stream => 31}))
+      }.to raise_error(ProtocolError)
+    end
+
+    it "should send GOAWAY frame before closing connection"
    # Endpoints SHOULD always send a GOAWAY frame before closing a
    # connection so that the remote can know whether a stream has been
    # partially processed or not.
