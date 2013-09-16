@@ -458,6 +458,9 @@ describe HTTP2::Stream do
       @stream.should_receive(:send).exactly(3).times
       @stream.data(data + "x")
     end
+
+    it "should provide stream cancel API"
+    it "should provice stream refuse API"
   end
 
   context "server API" do

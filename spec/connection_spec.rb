@@ -449,5 +449,6 @@ describe HTTP2::Connection do
       @conn.goaway(:internal_error, "payload")
     end
 
+    it "should provide a push promise API..."
   end
 end
