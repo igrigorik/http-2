@@ -4,3 +4,4 @@ class StreamError < ProtocolError; end
 
 class StreamLimitExceeded < Exception; end
 class ConnectionClosed < Exception; end
+class CompressionError < Exception; end

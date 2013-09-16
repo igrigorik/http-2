@@ -286,6 +286,23 @@ describe HTTP2::Connection do
       end
     end
 
+    it "should raise connection error on encode exception" do
+      @conn << f.generate(SETTINGS)
+      stream = @conn.new_stream
+
+      expect {
+        stream.headers({"name" => Float::INFINITY})
+      }.to raise_error(CompressionError)
+    end
+
+    it "should raise connection error on decode exception" do
+      @conn << f.generate(SETTINGS)
+
+      headers = HEADERS.dup
+      headers[:payload] = [0x44, 0x16].pack("C*")
+      expect { @conn << f.generate(headers) }.to raise_error(CompressionError)
+    end
+
     it "should emit encoded frames via on(:frame)" do
       bytes = nil
       @conn.on(:frame) {|d| bytes = d }
@@ -375,14 +392,22 @@ describe HTTP2::Connection do
       }.to raise_error(ProtocolError)
     end
 
-    it "should send GOAWAY frame before closing connection"
-   # Endpoints SHOULD always send a GOAWAY frame before closing a
-   # connection so that the remote can know whether a stream has been
-   # partially processed or not.
+    it "should send GOAWAY frame on connection error" do
+      stream = @conn.new_stream
+
+      @conn.stub(:encode)
+      @conn.should_receive(:encode) do |frame|
+        frame[:type].should eq :goaway
+        frame[:last_stream].should eq stream.id
+        frame[:error].should eq :protocol_error
+      end
+
+      @conn << f.generate(SETTINGS)
+      expect { @conn << f.generate(DATA) }.to raise_error(ProtocolError)
+    end
   end
 
   context "API" do
-
     it ".settings should emit SETTINGS frames" do
       settings = {
         settings_max_concurrent_streams: 10,

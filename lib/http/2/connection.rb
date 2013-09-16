@@ -182,6 +182,8 @@ module HTTP2
             if stream = @streams[frame[:stream]]
               stream.process frame
             else
+              # An endpoint that receives an unexpected stream identifier
+              # MUST respond with a connection error of type PROTOCOL_ERROR.
               connection_error
             end
           end
@@ -195,8 +197,17 @@ module HTTP2
     def process(frame)
       if frame[:type] == :data
         send_data(frame, true)
+
       else
-        emit(:frame, encode(frame))
+        # An endpoint can end a connection at any time. In particular, an
+        # endpoint MAY choose to treat a stream error as a connection error.
+        if frame[:type] == :rst_stream
+          if frame[:error] == :protocol_error
+            goaway(frame[:error])
+          end
+        else
+          emit(:frame, encode(frame))
+        end
       end
     end
 
@@ -299,12 +310,18 @@ module HTTP2
       if frame[:payload].is_a? String
         frame[:payload] = @decompressor.decode(StringIO.new(frame[:payload]))
       end
+
+    rescue Exception => e
+      connection_error(:compression_error)
     end
 
     def encode_headers(frame)
       if !frame[:payload].is_a? String
         frame[:payload] = @compressor.encode(frame[:payload])
       end
+
+    rescue Exception => e
+      connection_error(:compression_error)
     end
 
     def flow_control_allowed?
@@ -327,9 +344,7 @@ module HTTP2
     end
 
     def connection_error(error = :protocol_error)
-      if @state != :closed
-        process({type: :rst_stream, stream: 0, error: error})
-      end
+      goaway(error) if @state != :closed
 
       @state, @error = :closed, error
       klass = error.to_s.split('_').map(&:capitalize).join
