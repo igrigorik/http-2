@@ -37,21 +37,23 @@ module HTTP2
         @window += frame[:increment]
         send_data
       end
+
+      close_transition(frame)
     end
 
     def send(frame)
       transition(frame, true)
       frame[:stream] = @id
 
-      case frame[:type]
-      when :data
+      @priority = frame[:priority] if frame[:type] == :priority
+
+      if frame[:type] == :data
         send_data(frame)
-        return
-      when :priority
-        @priority = frame[:priority]
+      else
+        emit(:frame, frame)
       end
 
-      emit(:frame, frame)
+      close_transition(frame)
     end
 
     def headers(head, end_headers: true, end_stream: false)
@@ -312,11 +314,17 @@ module HTTP2
         emit(:active)
       when :local_closed, :remote_closed, :local_rst, :remote_rst
         @closed = state
-        @state  = :closed
-        emit(:close, frame[:error])
+        @state  = :closing
       end
 
       @state
+    end
+
+    def close_transition(frame)
+      if @state == :closing
+        @state = :closed
+        emit(:close, frame[:error])
+      end
     end
 
     def end_stream?(frame)

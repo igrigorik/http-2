@@ -186,6 +186,23 @@ describe HTTP2::Stream do
         closer.should be_true
       end
 
+      it "should emit :close after frame is processed" do
+        order, stream = [], @conn.new_stream
+
+        stream.on(:active) { order << :active }
+        stream.on(:data)   { order << :data }
+        stream.on(:close)  { order << :close }
+
+        req = HEADERS.dup
+        req[:flags] = [:end_stream, :end_headers]
+
+        stream.send req
+        stream.process HEADERS
+        stream.process DATA
+
+        order.should eq [:active, :data, :close]
+      end
+
       it "should emit reason with :close event" do
         reason = nil
         @stream.on(:close) {|r| reason = r }
@@ -255,6 +272,7 @@ describe HTTP2::Stream do
           s, f = @stream.dup, frame.dup
           f[:flags] = [:end_stream]
 
+          s.on(:close) { s.state.should eq :closed }
           s.send f
           s.state.should eq :closed
         end

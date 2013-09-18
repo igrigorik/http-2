@@ -16,12 +16,12 @@ module HTTP2
 
       if @type == :client
         @stream_id    = 1
-        @compressor   = Compressor.new(:request)
-        @decompressor = Decompressor.new(:request)
+        @compressor   = Header::Compressor.new(:request)
+        @decompressor = Header::Decompressor.new(:request)
       else
         @stream_id    = 2
-        @compressor   = Compressor.new(:response)
-        @decompressor = Decompressor.new(:response)
+        @compressor   = Header::Compressor.new(:response)
+        @decompressor = Header::Decompressor.new(:response)
       end
 
       @stream_limit = Float::INFINITY
