@@ -23,12 +23,12 @@ module HTTP2
 
       case frame[:type]
       when :data
-        emit(:data, frame[:payload])
+        emit(:data, frame[:payload]) unless frame[:ignore]
       when :headers
         if frame[:payload].is_a? Array
-          emit(:headers, Hash[*frame[:payload].flatten])
+          emit(:headers, Hash[*frame[:payload].flatten]) unless frame[:ignore]
         else
-          emit(:headers, frame[:payload])
+          emit(:headers, frame[:payload]) unless frame[:ignore]
         end
       when :priority
         @priority = frame[:priority]

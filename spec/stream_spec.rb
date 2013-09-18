@@ -344,7 +344,11 @@ describe HTTP2::Stream do
         it "should ignore received frames" do
           (FRAME_TYPES - [PUSH_PROMISE]).each do |frame|
             expect {
+              cb = []
+              @stream.on(:data) { cb << :data }
+              @stream.on(:headers) { cb << :headers}
               @stream.dup.process frame
+              cb.should be_empty
             }.to_not raise_error
           end
         end
