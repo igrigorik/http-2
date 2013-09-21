@@ -1,25 +1,26 @@
 # HTTP-2
 
-Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) (see [HPBN chapter](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html) for overview):
+Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) (see [HPBN chapter for overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), with support for:
 
 * [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parsing and encoding
 * [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
 * Connection and stream [flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control)
 * [Header compression](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_HEADER_COMPRESSION)
-* And many other HTTP 2.0 goodies...
+* And other HTTP 2.0 goodies...
 
 Current implementation is based on:
 
 * [draft-ietf-httpbis-http2-06](http://tools.ietf.org/html/draft-ietf-httpbis-http2-06)
 * [draft-ietf-httpbis-header-compression-01](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression)
 
-Since the underlying specifications are still evolving, treat this implementation as _a work in progress_ also! The API is likely to change, there are plenty of opportunities for refactoring, etc. If you're interested in contributing, check the issue tracker, play with the API, provide feedback!
+Since the underlying specifications are still evolving, treat this implementation as a work in progress as well: the API is likely to change, there are plenty of opportunities for refactoring, etc.
+
 
 ## Getting started
 
 This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use - e.g. ZeroMQ, [avian carriers](http://www.ietf.org/rfc/rfc1149.txt), etc.
 
-Your code is responsible for feeding data to the parser, which performs all of the necessary HTTP 2.0 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0 frames) that you can then route to the destination. Roughly, this works as follows:
+Your code is responsible for feeding data into the parser, which performs all of the necessary HTTP 2.0 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0 frames) that you can then route to the destination. Roughly, this works as follows:
 
 ```ruby
 socket = YourTransport.new
@@ -32,11 +33,12 @@ while bytes = socket.read
 end
 ```
 
-Checkout provided [client](https://github.com/igrigorik/http-2/blob/master/example/client.rb) and [server]((https://github.com/igrigorik/http-2/blob/master/example/server.rb) implementations for basic, but working examples.
+Checkout provided [client](https://github.com/igrigorik/http-2/blob/master/example/client.rb) and [server]((https://github.com/igrigorik/http-2/blob/master/example/server.rb) implementations for basic examples.
+
 
 ### Connection lifecycle management
 
-When the connection object is instantiated you must specify its role (`:client` or `:server`) to initialize appropriate header compression/decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate API's to allocate new streams and manage the lifecycle. For example:
+When the connection object is instantiated you must specify its role (`:client` or `:server`) to initialize appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
 
 ```ruby
 # - Server ---------------
@@ -55,7 +57,6 @@ client.on(:reserved) { |stream| ... } # process push promise
 stream = client.new_stream # allocate new stream
 stream.headers({':method' => 'post', ...}, end_stream: false)
 stream.data(payload, end_stream: true)
-# ...
 ```
 
 Events emitted by the connection object:
@@ -67,38 +68,38 @@ Events emitted by the connection object:
 
 ### Stream lifecycle management
 
-A single HTTP 2.0 connection can [multiplex multiple streams](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#REQUEST_RESPONSE_MULTIPLEXING) in parallel: multiple requests and responses can be in flight simultaneously, and the data can interleaved and prioritized. Further, the specification provides a well-defined lifecycle for each stream (see below).
+A single HTTP 2.0 connection can [multiplex multiple streams](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#REQUEST_RESPONSE_MULTIPLEXING) in parallel: multiple requests and responses can be in flight simultaneously and stream data can be interleaved and prioritized. Further, the specification provides a well-defined lifecycle for each stream (see below).
 
-The good news is, all of the stream management, and state transitions, and error checking is handled by the library. All you have to do is subscribe to appropriate events (marked with ":" prefix in diagram below) and provide your application logic to handle the requests and responses.
+The good news is, all of the stream management, and state transitions, and error checking is handled by the library. All you have to do is subscribe to appropriate events (marked with ":" prefix in diagram below) and provide your application logic to handle request and response processing.
 
 ```
                          +--------+
-                   PP    |        |    PP
+               Promise   |        |   Promise
                 ,--------|  idle  |--------.
                /         |        |         \
               v          +--------+          v
        +----------+          |           +----------+
-       |          |          | H         |          |
+       |          |          | Headers   |          |
    ,---|:reserved |          |           |:reserved |---.
    |   | (local)  |          v           | (remote) |   |
    |   +----------+      +--------+      +----------+   |
-   |      |          ES  |        |  ES          |      |
-   |      | H    ,-------| :open  |-------.      | H    |
+   |      | :active      |        |      :active |      |
+   |      |      ,-------|:active |-------.      |      |
    |      |     /        |        |        \     |      |
    |      v    v         +--------+         v    v      |
    |   +-----------+          |          +-_---------+  |
    |   |:half_close|          |          |:half_close|  |
-   |   |  (remote) |          R          |  (local)  |  |
-   |   +----------+          |           +-----------+  |
-   |        |                v                 |        |
-   |        |  ES / R    +--------+  ES / R    |        |
+   |   |  (remote) |          |          |  (local)  |  |
+   |   +-----------+          |          +-----------+  |
+   |        |                 v                |        |
+   |        |            +--------+            |        |
    |        `----------->|        |<-----------'        |
-   |  R                  | :close |                  R  |
+   |  Reset              | :close |              Reset  |
    `-------------------->|        |<--------------------'
                          +--------+
 ```
 
-For sake of an example, let's take a look at a simple server implementation:
+For sake of example, let's take a look at a simple server implementation:
 
 ```ruby
 conn = HTTP2::Connection.new(:server)
@@ -131,13 +132,36 @@ end
 
 Events emitted by the stream object:
 
-* **:reserved** - fires at most once when server opens a push promise.
-* **:active** - fires exactly once when the stream become active and is counted towards the open stream limit.
-* **:headers** - fires once for each received header block (multi-frame blocks are reassembled before emitting this event).
-* **:data** - fires once for every DATA frame (no buffering).
-* **:half_close** - fires exactly once when the opposing peer closes its end of connection (e.g. client indicating that request is finished, or server indicating that response is finished).
-* **:close** - fires exactly once when both peers close the stream, or if the stream is reset.
-* **:priority** - fires once for each received priority update (server only).
+<table>
+  <tr>
+    <td>:reserved</td>
+    <td>fires at most once when server opens a push promise</td>
+  </tr>
+  <tr>
+    <td>:active</td>
+    <td>fires exactly once when the stream become active and is counted towards the open stream limit</td>
+  </tr>
+  <tr>
+    <td>:headers</td>
+    <td>fires once for each received header block (multi-frame blocks are reassembled before emitting this event)</td>
+  </tr>
+  <tr>
+    <td>:data</td>
+    <td>fires once for every DATA frame (no buffering)</td>
+  </tr>
+  <tr>
+    <td>:half_close</td>
+    <td>fires exactly once when the opposing peer closes its end of connection (e.g. client indicating that request is finished, or server indicating that response is finished)</td>
+  </tr>
+  <tr>
+    <td>:close</td>
+    <td>fires exactly once when both peers close the stream, or if the stream is reset</td>
+  </tr>
+  <tr>
+    <td>:priority</td>
+    <td>fires once for each received priority update (server only)</td>
+  </tr>
+</table>
 
 
 ### Prioritization
@@ -161,9 +185,9 @@ On the opposite side, the server can optimize its stream processing order or res
 
 Multiplexing multiple streams over the same TCP connection introduces contention for shared bandwidth resources. Stream priorities can help determine the relative order of delivery, but priorities alone are insufficient to control how the resource allocation is performed between multiple streams. To address this, HTTP 2.0 provides a simple mechanism for [stream and connection flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control).
 
-Connection and stream flow control is handled by the library: all streams are initialized with the default window size (64KB), and send/receive window updates are automatically processed - i.e. window is decremented on outgoing data transfers, and incremented on receipt of WINDOW_UPDATE frames. Similarly, if the window is exceeded, then data frames are automatically buffered until window is updated.
+Connection and stream flow control is handled by the library: all streams are initialized with the default window size (64KB), and send/receive window updates are automatically processed - i.e. window is decremented on outgoing data transfers, and incremented on receipt of window frames. Similarly, if the window is exceeded, then data frames are automatically buffered until window is updated.
 
-The only thing left is for your application to specify the logic as to when to emit WINDOW_UPDATE updates:
+The only thing left is for your application to specify the logic as to when to emit window updates:
 
 ```ruby
 conn.buffered_amount     # check amount of buffered data
@@ -183,6 +207,12 @@ conn.settings({
   settings_flow_control_options: 1      # disable flow control
 })
 ```
+
+### Server push
+
+TODO ...
+
+
 
 ### License
 
