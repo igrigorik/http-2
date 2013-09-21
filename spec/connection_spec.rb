@@ -228,12 +228,11 @@ describe HTTP2::Connection do
 
     it "should decompress header blocks regardless of stream state" do
       req_headers = [
-        [":path", "/my-example/index.html"],
-        ["user-agent", "my-user-agent"],
+        ["content-length", "20"],
         ["x-my-header", "first"]
       ]
 
-      cc = Compressor.new(:request)
+      cc = Compressor.new(:response)
       headers = HEADERS.dup
       headers[:payload] = cc.encode(req_headers)
 
@@ -250,11 +249,11 @@ describe HTTP2::Connection do
 
     it "should decode non-contiguous header blocks" do
       req_headers = [
-        ["user-agent", "my-user-agent"],
+        ["content-length", "15"],
         ["x-my-header", "first"]
       ]
 
-      cc = Compressor.new(:request)
+      cc = Compressor.new(:response)
       h1, h2 = HEADERS.dup, CONTINUATION.dup
       h1[:payload] = cc.encode([req_headers.first])
       h1[:stream] = 5
@@ -315,8 +314,13 @@ describe HTTP2::Connection do
     end
 
     it "should compress stream headers" do
-      bytes = nil
-      @conn.on(:frame) {|b| bytes = b}
+      @conn.on(:frame) do |bytes|
+        bytes.force_encoding('binary')
+        bytes.should_not match('get')
+        bytes.should_not match('http')
+        bytes.should match('www.example.org')
+      end
+
       stream = @conn.new_stream
       stream.headers({
         ':method' => 'get',
@@ -324,9 +328,6 @@ describe HTTP2::Connection do
         ':host'   => 'www.example.org',
         ':path'   => '/resource'
       })
-
-      bytes.should_not match('get')
-      bytes.should match('www.example.org')
     end
   end
 

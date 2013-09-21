@@ -360,5 +360,19 @@ describe HTTP2::Header do
       E1_HEADERS.should match_array dc.decode(StringIO.new(cc.encode(E1_HEADERS)))
       E2_HEADERS.should match_array dc.decode(StringIO.new(cc.encode(E2_HEADERS)))
     end
+
+    it "should encode-decode request set of headers" do
+      cc = Compressor.new(:request)
+      dc = Decompressor.new(:request)
+
+      req = [
+        [":method", "get"],
+        [":host", "localhost"],
+        [":path", "/resource"],
+        ["accept", "*/*"]
+      ]
+
+      dc.decode(StringIO.new(cc.encode(req))).should eq req
+    end
   end
 end

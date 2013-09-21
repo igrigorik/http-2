@@ -14,13 +14,13 @@ module HTTP2
     def initialize(type = :client)
       @type = type
 
-      if @type == :client
-        @stream_id    = 1
-        @compressor   = Header::Compressor.new(:request)
-        @decompressor = Header::Decompressor.new(:request)
-      else
+      if @type == :server
         @stream_id    = 2
         @compressor   = Header::Compressor.new(:response)
+        @decompressor = Header::Decompressor.new(:request)
+      else
+        @stream_id    = 1
+        @compressor   = Header::Compressor.new(:request)
         @decompressor = Header::Decompressor.new(:response)
       end
 

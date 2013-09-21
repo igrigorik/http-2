@@ -203,7 +203,7 @@ module HTTP2
         # check if we have an exact match in header table
         if idx = @table.index(header)
           if !active? idx
-            return { name: idx, value: idx, type: :noindex }
+            return { name: idx, type: :indexed }
           end
         end
 
@@ -212,6 +212,7 @@ module HTTP2
           # default to incremental indexing
           cmd = { name: idx, value: header.last, type: :incremental}
 
+          # TODO: implement literal without indexing strategy
           # TODO: implement substitution strategy (if it makes sense)
           # if default? idx
           #   cmd[:type] = :incremental
@@ -386,6 +387,7 @@ module HTTP2
         header[:name] = integer(buf, type[:prefix])
         if header[:type] != :indexed
           header[:name] -= 1
+
           if header[:name] == -1
             header[:name] = string(buf)
           end
