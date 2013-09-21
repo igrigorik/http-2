@@ -38,7 +38,7 @@ module HTTP2
         send_data
       end
 
-      close_transition(frame)
+      complete_transition(frame)
     end
 
     def send(frame)
@@ -53,7 +53,7 @@ module HTTP2
         emit(:frame, frame)
       end
 
-      close_transition(frame)
+      complete_transition(frame)
     end
 
     def headers(head, end_headers: true, end_stream: false)
@@ -135,16 +135,22 @@ module HTTP2
           when :push_promise
             @state = :reserved_local
           when :headers
-            event(:open) # transition through open to half closed
-            @state = :half_closed_local if end_stream?(frame)
+            if end_stream?(frame)
+              event(:half_closed_local)
+            else
+              event(:open)
+            end
           else StreamError.new; end # local error, don't send RST_STREAM
         else
           case frame[:type]
           when :push_promise
             @state = :reserved_remote
           when :headers
-            event(:open) # transition through open to half closed
-            @state = :half_closed_remote if end_stream?(frame)
+            if end_stream?(frame)
+              event(:half_closed_remote)
+            else
+              event(:open)
+            end
           else stream_error; end
         end
 
@@ -211,13 +217,13 @@ module HTTP2
         if sending
           case frame[:type]
           when :data, :headers, :continuation
-            @state = :half_closed_local if end_stream?(frame)
+            event(:half_closed_local) if end_stream?(frame)
           when :rst_stream then event(:local_rst, frame)
           end
         else
           case frame[:type]
           when :data, :headers, :continuation
-            @state = :half_closed_remote if end_stream?(frame)
+            event(:half_closed_remote) if end_stream?(frame)
           when :rst_stream then event(:remote_rst, frame)
           end
         end
@@ -307,23 +313,33 @@ module HTTP2
       end
     end
 
-    def event(state, frame = nil)
-      case state
-      when :open, :half_closed_local, :half_closed_remote
-        @state = state
+    def event(newstate, frame = nil)
+      case newstate
+      when :open
+        @state = newstate
         emit(:active)
+
+      when :half_closed_local, :half_closed_remote
+        @closed = newstate
+        emit(:active) unless @state == :open
+        @state = :half_closing
+
       when :local_closed, :remote_closed, :local_rst, :remote_rst
-        @closed = state
+        @closed = newstate
         @state  = :closing
       end
 
       @state
     end
 
-    def close_transition(frame)
-      if @state == :closing
+    def complete_transition(frame)
+      case @state
+      when :closing
         @state = :closed
         emit(:close, frame[:error])
+      when :half_closing
+        @state = @closed
+        emit(:half_close)
       end
     end
 

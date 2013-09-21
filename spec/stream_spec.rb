@@ -172,6 +172,21 @@ describe HTTP2::Stream do
         openr.should be_true
       end
 
+      it "should not emit :active on transition from open" do
+        order, stream = [], @conn.new_stream
+
+        stream.on(:active) { order << :active }
+        stream.on(:half_close) { order << :half_close }
+        stream.on(:close)  { order << :close }
+
+        req = HEADERS.dup
+        req[:flags] = [:end_headers]
+
+        stream.send req
+        stream.send DATA
+        order.should eq [:active, :half_close]
+      end
+
       it "should emit :close on close transition" do
         closep, closer = false, false
         sp, sr = @stream.dup, @stream.dup
@@ -191,6 +206,7 @@ describe HTTP2::Stream do
 
         stream.on(:active) { order << :active }
         stream.on(:data)   { order << :data }
+        stream.on(:half_close) { order << :half_close }
         stream.on(:close)  { order << :close }
 
         req = HEADERS.dup
@@ -200,10 +216,10 @@ describe HTTP2::Stream do
         stream.process HEADERS
         stream.process DATA
 
-        order.should eq [:active, :data, :close]
+        order.should eq [:active, :half_close, :data, :close]
       end
 
-      it "should emit reason with :close event" do
+      it "should emit :close with reason" do
         reason = nil
         @stream.on(:close) {|r| reason = r }
         @stream.process RST_STREAM
@@ -246,7 +262,20 @@ describe HTTP2::Stream do
         @stream.state.should eq :half_closed_local
       end
 
-      it "should emit :close event on close transition" do
+      it "should emit :half_close event on transition" do
+        order = []
+        stream = @conn.new_stream
+        stream.on(:active) { order << :active }
+        stream.on(:half_close) { order << :half_close }
+
+        req = HEADERS.dup
+        req[:flags] = [:end_stream, :end_headers]
+
+        stream.send req
+        order.should eq [:active, :half_close]
+      end
+
+      it "should emit :close event on transition to closed" do
         closed = false
         @stream.on(:close) { closed = true }
         @stream.process RST_STREAM
@@ -291,6 +320,19 @@ describe HTTP2::Stream do
       it "should ignore received WINDOW_UPDATE frames" do
         expect { @stream.process WINDOW_UPDATE }.to_not raise_error
         @stream.state.should eq :half_closed_remote
+      end
+
+      it "should emit :half_close event on transition" do
+        order = []
+        stream = @conn.new_stream
+        stream.on(:active) { order << :active }
+        stream.on(:half_close) { order << :half_close }
+
+        req = HEADERS.dup
+        req[:flags] = [:end_stream, :end_headers]
+
+        stream.process req
+        order.should eq [:active, :half_close]
       end
 
       it "should emit :close event on close transition" do
