@@ -61,9 +61,20 @@ stream.data(payload, end_stream: true)
 
 Events emitted by the connection object:
 
-* **:reserved** - client role only, fires once for each new push promise.
-* **:stream** - server role only, fires once for each new client stream.
-* **:frame** - fires once for every encoded HTTP 2.0 frame that needs to be sent to the peer.
+<table>
+  <tr>
+    <td><b>:reserved</b></td>
+    <td>client role only, fires once for each new push promise</td>
+  </tr>
+  <tr>
+    <td><b>:stream</b></td>
+    <td>server role only, fires once for each new client stream</td>
+  </tr>
+  <tr>
+    <td><b>:frame</b></td>
+    <td>fires once for every encoded HTTP 2.0 frame that needs to be sent to the peer</td>
+  </tr>
+</table>
 
 
 ### Stream lifecycle management
@@ -134,31 +145,31 @@ Events emitted by the stream object:
 
 <table>
   <tr>
-    <td>:reserved</td>
+    <td><b>:reserved</b></td>
     <td>fires at most once when server opens a push promise</td>
   </tr>
   <tr>
-    <td>:active</td>
+    <td><b>:active</b></td>
     <td>fires exactly once when the stream become active and is counted towards the open stream limit</td>
   </tr>
   <tr>
-    <td>:headers</td>
+    <td><b>:headers</b></td>
     <td>fires once for each received header block (multi-frame blocks are reassembled before emitting this event)</td>
   </tr>
   <tr>
-    <td>:data</td>
+    <td><b>:data</b></td>
     <td>fires once for every DATA frame (no buffering)</td>
   </tr>
   <tr>
-    <td>:half_close</td>
+    <td><b>:half_close</b></td>
     <td>fires exactly once when the opposing peer closes its end of connection (e.g. client indicating that request is finished, or server indicating that response is finished)</td>
   </tr>
   <tr>
-    <td>:close</td>
+    <td><b>:close</b></td>
     <td>fires exactly once when both peers close the stream, or if the stream is reset</td>
   </tr>
   <tr>
-    <td>:priority</td>
+    <td><b>:priority</b></td>
     <td>fires once for each received priority update (server only)</td>
   </tr>
 </table>
