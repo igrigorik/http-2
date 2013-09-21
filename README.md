@@ -1,6 +1,6 @@
 # HTTP-2
 
-Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) (see [HPBN chapter for overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), with support for:
+Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) with support for:
 
 * [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parsing and encoding
 * [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
@@ -8,7 +8,7 @@ Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol
 * [Header compression](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_HEADER_COMPRESSION)
 * And other HTTP 2.0 goodies...
 
-Current implementation is based on:
+Current implementation (see [HPBN chapter for HTTP 2.0 overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), is based on:
 
 * [draft-ietf-httpbis-http2-06](http://tools.ietf.org/html/draft-ietf-httpbis-http2-06)
 * [draft-ietf-httpbis-header-compression-01](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression)
@@ -221,9 +221,55 @@ conn.settings({
 
 ### Server push
 
-TODO ...
+An HTTP 2.0 server can [send multiple replies](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH) to a single client request. To do so, first it emits a "push promise" frame which contains the headers of the promised resource, followed by the response to the original request, as well as promised resource payloads (which may be interleaved). A simple example is in order:
 
+```ruby
+conn = HTTP2::Connection.new(:server)
 
+conn.on(:stream) do |stream|
+  stream.on(:headers) { |head| ... } 
+  stream.on(:data) { |chunk| ... }   k
+
+  # fires when client terminates its request (i.e. request finished)
+  stream.on(:half_close) do
+
+    # promise streams inherit (implicitly) request headers of parent stream
+    promise = stream.promise({
+     ":status" => 200,
+     ":path"   => "/other_resource",
+     "content-type" => "text/plain"
+    })
+
+    # send response
+    stream.headers({
+      ":status" => 200,
+      "content-type" => "text/plain"
+    })
+
+    # split response between multiple DATA frames
+    stream.data(response_chunk, end_stream: false)
+    promise.data(payload)
+    stream.data(last_chunk)
+  end
+end
+```
+
+When a new push promise stream is sent by the server, the client is notifed via the `:reserved` event:
+
+```ruby
+conn = HTTP2::Connection.new(:client)
+conn.on(:reserved) do |stream|
+  # process push stream
+end
+```
+
+The client can cancel any given push stream (via `.close`), or disable server push entirely by sending the appropriate settings frame (note that below setting only impacts server > client direction): 
+
+```ruby
+client.settings({
+  settings_max_concurrent_streams: 0 # set number of server initiated streams to 0 (aka, disable push)
+})
+```
 
 ### License
 
