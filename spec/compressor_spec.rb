@@ -136,7 +136,13 @@ describe HTTP2::Header do
         @cc.update_sets
         @cc.workset.should be_empty
 
-        # TODO test after adding some data
+        @cc.process({name: 0, type: :indexed})
+        @cc.update_sets
+        @cc.workset.should eq [[0, [":scheme", "http"]]]
+
+        @cc.process({name: 0, type: :indexed})
+        @cc.update_sets
+        @cc.workset.should be_empty
       end
 
       context "processing" do

@@ -2,6 +2,8 @@ module HTTP2
   module Header
     class HeaderException < Exception; end
 
+    # TODO: replace StringIO with Buffer...
+
     class CompressionContext
       REQ_DEFAULTS = [
         [':scheme'            ,'http' ],
