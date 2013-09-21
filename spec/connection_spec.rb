@@ -451,5 +451,7 @@ describe HTTP2::Connection do
     end
 
     it "should provide a push promise API..."
+    it "should emit :reserved, :head, :active"
+    it "should raise error on client push"
   end
 end
