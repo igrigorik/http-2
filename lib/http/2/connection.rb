@@ -91,13 +91,14 @@ module HTTP2
 
     # Allocates new stream for current connection.
     #
-    # @return [Stream]
-    def new_stream
+    # @param priority [Integer]
+    # @param window [Integer]
+    def new_stream(priority: DEFAULT_PRIORITY, window: @window)
       raise Error::StreamLimitExceeded.new if @active_stream_count == @stream_limit
       raise Error::ConnectionClosed.new if @state == :closed
 
       @stream_id += 2
-      activate_stream(@stream_id)
+      activate_stream(@stream_id, priority, window)
     end
 
     # Sends PING frame to the peer.
@@ -404,8 +405,9 @@ module HTTP2
       end
     end
 
-    def activate_stream(id, priority = DEFAULT_PRIORITY)
-      stream = Stream.new(id, priority, @window)
+    def activate_stream(id, priority = DEFAULT_PRIORITY,
+                            window = @window)
+      stream = Stream.new(id, priority, window)
 
       # Streams that are in the "open" state, or either of the "half closed"
       # states count toward the maximum number of streams that an endpoint is

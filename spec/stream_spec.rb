@@ -11,6 +11,12 @@ describe HTTP2::Stream do
       @stream.state.should eq :idle
     end
 
+    it "should set stream priority and flow window" do
+      stream = @conn.new_stream(priority: 3, window: 1024)
+      stream.priority.should eq 3
+      stream.window.should eq 1024
+    end
+
     context "reserved (local)" do
       before(:each) { @stream.send PUSH_PROMISE }
 
@@ -480,7 +486,7 @@ describe HTTP2::Stream do
         frame[:priority].should eq 30
       end
 
-      @stream.priority = 30
+      @stream.reprioritize 30
     end
 
     it ".headers should emit HEADERS frames" do
@@ -571,7 +577,7 @@ describe HTTP2::Stream do
 
       stream = @conn.new_stream
       stream.headers({"key" => "value"})
-      stream.priority = new_priority
+      stream.reprioritize(new_priority)
     end
   end
 end

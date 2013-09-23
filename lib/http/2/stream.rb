@@ -136,9 +136,10 @@ module HTTP2
     # Sends a PRIORITY frame with new stream priority value (can only be
     # performed by the initiator of the stream).
     #
-    # @param p [Integer]
-    def priority=(p)
+    # @param p [Integer] new stream priority value
+    def reprioritize(p)
       # TODO: check initiator, change back to regular method?
+
       send({type: :priority, priority: p})
     end
 
