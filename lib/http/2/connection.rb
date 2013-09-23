@@ -97,8 +97,10 @@ module HTTP2
       raise Error::StreamLimitExceeded.new if @active_stream_count == @stream_limit
       raise Error::ConnectionClosed.new if @state == :closed
 
+      stream = activate_stream(@stream_id, priority, window)
       @stream_id += 2
-      activate_stream(@stream_id, priority, window)
+
+      stream
     end
 
     # Sends PING frame to the peer.
