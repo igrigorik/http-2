@@ -166,6 +166,17 @@ module HTTP2
       send({type: :rst_stream, error: error})
     end
 
+    # Sends a RST_STREAM indicating that the stream is no longer needed.
+    def cancel
+      send({type: :rst_stream, error: :cancel})
+    end
+
+    # Sends a RST_STREAM indicating that the stream has been refused prior
+    # to performing any application processing.
+    def refuse
+      send({type: :rst_stream, error: :refused_stream})
+    end
+
     private
 
     # HTTP 2.0 Stream States

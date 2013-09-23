@@ -536,8 +536,23 @@ describe HTTP2::Stream do
       @stream.data(data + "x")
     end
 
-    it "should provide stream cancel API"
-    it "should provice stream refuse API"
+    it ".cancel should reset stream with cancel error code" do
+      @stream.should_receive(:send) do |frame|
+        frame[:type].should eq :rst_stream
+        frame[:error].should eq :cancel
+      end
+
+      @stream.cancel
+    end
+
+    it ".refuse should reset stream with refused stream error code" do
+      @stream.should_receive(:send) do |frame|
+        frame[:type].should eq :rst_stream
+        frame[:error].should eq :refused_stream
+      end
+
+      @stream.refuse
+    end
   end
 
   context "server API" do
