@@ -134,12 +134,11 @@ module HTTP2
     end
 
     # Sends a PRIORITY frame with new stream priority value (can only be
-    # performed by the initiator of the stream).
+    # performed by the client).
     #
     # @param p [Integer] new stream priority value
     def reprioritize(p)
-      # TODO: check initiator, change back to regular method?
-
+      raise StreamError.new("server cannot reprioritize") if @id.even?
       send({type: :priority, priority: p})
     end
 

@@ -480,13 +480,20 @@ describe HTTP2::Stream do
   end
 
   context "client API" do
-    it ".priority should emit PRIORITY frame" do
+    it ".reprioritize should emit PRIORITY frame" do
       @stream.should_receive(:send) do |frame|
         frame[:type].should eq :priority
         frame[:priority].should eq 30
       end
 
       @stream.reprioritize 30
+    end
+
+    it ".reprioritize should raise error if invoked by server" do
+      conn = Connection.new(:server)
+      stream = conn.new_stream
+
+      expect { stream.reprioritize(10) }.to raise_error(StreamError)
     end
 
     it ".headers should emit HEADERS frames" do
