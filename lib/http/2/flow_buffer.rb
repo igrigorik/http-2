@@ -1,8 +1,14 @@
 module HTTP2
 
+  # Maximum size of a DATA payload (16383 bytes, ~16K).
   MAX_FRAME_SIZE = 2**14-1
 
   module FlowBuffer
+
+    # Amount of buffered data. Only DATA payloads are subject to flow stream
+    # and connection flow control.
+    #
+    # @return [Integer]
     def buffered_amount
       @send_buffer.map {|f| f[:length] }.reduce(:+) || 0
     end

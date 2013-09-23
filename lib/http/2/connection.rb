@@ -1,16 +1,66 @@
 module HTTP2
 
+  # Default connection and stream flow control window (64KB).
   DEFAULT_FLOW_WINDOW = 65535
+
+  # Default stream priority (lower values are higher priority).
   DEFAULT_PRIORITY    = 2**30
+
+  # Default connection "fast-fail" preamble string as defined by the spec.
   CONNECTION_HEADER   = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
+  # Connection encapsulates all of the connection, stream, flow-control,
+  # error management, and other processing logic required for a well-behaved
+  # HTTP 2.0 client.
+  #
+  # When the connection object is instantiated you must specify its role
+  # (:client or :server) to initialize appropriate header compression
+  # and decompression algorithms and stream management logic.
+  #
+  # Your code is responsible for feeding data to connection object, which
+  # performs all of the necessary HTTP 2.0 decoding, state management and
+  # the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0
+  # frames) that you can then route to the destination. Roughly, this works
+  # as follows:
+  #
+  # @example
+  #     socket = YourTransport.new
+  #
+  #     conn = HTTP2::Connection.new(:client)
+  #     conn.on(:frame) {|bytes| socket << bytes }
+  #
+  #     while bytes = socket.read
+  #       conn << bytes
+  #     end
+  #
   class Connection
     include FlowBuffer
     include Emitter
 
-    attr_reader :type, :window, :state, :error
-    attr_reader :stream_limit, :active_stream_count
+    # Type of connection (:server, :client).
+    attr_reader :type
 
+    # Connection state (:new, :closed).
+    attr_reader :state
+
+    # Last connection error if connection is aborted.
+    attr_reader :error
+
+    # Size of current connection flow control window (by default, set to
+    # infinity, but is automatically updated on receipt of peer settings).
+    attr_reader :window
+
+    # Maximum number of concurrent streams allowed by the peer (automatically
+    # updated on receipt of peer settings).
+    attr_reader :stream_limit
+
+    # Number of active streams between client and server (reserved streams
+    # are not counted towards the stream limit).
+    attr_reader :active_stream_count
+
+    # Initializes new client or server connection object.
+    #
+    # @param type [Symbol]
     def initialize(type = :client)
       @type = type
 
@@ -39,23 +89,36 @@ module HTTP2
       @error = nil
     end
 
+    # Allocates new stream for current connection.
+    #
+    # @return [Stream]
     def new_stream
-      raise StreamLimitExceeded.new if @active_stream_count == @stream_limit
-      raise ConnectionClosed.new if @state == :closed
+      raise Error::StreamLimitExceeded.new if @active_stream_count == @stream_limit
+      raise Error::ConnectionClosed.new if @state == :closed
 
       @stream_id += 2
       activate_stream(@stream_id)
     end
 
-    def ping(data, &blk)
-      process({type: :ping, stream: 0, payload: data})
+    # Sends PING frame to the peer.
+    #
+    # @param payload [String] optional payload must be 8 bytes long
+    # @param blk [Proc] callback to execute when PONG is received
+    def ping(payload, &blk)
+      process({type: :ping, stream: 0, payload: payload})
       once(:pong, &blk) if blk
     end
 
+    # Sends a GOAWAY frame indicating that the peer should stop creating
+    # new streams for current connection.
+    #
     # Endpoints MAY append opaque data to the payload of any GOAWAY frame.
     # Additional debug data is intended for diagnostic purposes only and
-    # carries no semantic value.  Debug data MUST NOT be persistently
-    # stored, since it could contain sensitive information.
+    # carries no semantic value. Debug data MUST NOT be persistently stored,
+    # since it could contain sensitive information.
+    #
+    # @param error [Symbol]
+    # @param payload [String]
     def goaway(error = :no_error, payload = nil)
       process({
         type: :goaway, last_stream: (@streams.max.first rescue 0),
@@ -64,10 +127,21 @@ module HTTP2
       @state = :closed
     end
 
+    # Sends a connection SETTINGS frame to the peer. Available settings are:
+    # - :settings_max_concurrent_streams
+    # - :settings_flow_control_options (value "1" disables flow control)
+    # - :settings_initial_window_size
+    #
+    # @param payload [Hash]
     def settings(payload)
       process({type: :settings, stream: 0, payload: payload})
     end
 
+    # Decodes incoming bytes into HTTP 2.0 frames and routes them to
+    # appropriate receivers: connection frames are handled directly, and
+    # stream frames are passed to appropriate stream objects.
+    #
+    # @param data [String] Binary encoded string
     def receive(data)
       @recv_buffer << data
 

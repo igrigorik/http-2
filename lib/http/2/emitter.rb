@@ -1,11 +1,24 @@
 module HTTP2
+
+  # Basic event emitter implementation with support for persistent and
+  # one-time event callbacks.
+  #
   module Emitter
+
+    # Subscribe to all future events for specified type.
+    #
+    # @param event [Symbol]
+    # @param block [Proc] callback function
     def add_listener(event, &block)
       raise Exception.new("must provide callback") if !block_given?
       listeners(event.to_sym).push block
     end
     alias :on :add_listener
 
+    # Subscribe to next event (at most once) for specified type.
+    #
+    # @param event [Symbol]
+    # @param block [Proc] callback function
     def once(event, &block)
       add_listener(event) do |*args|
         block.call(*args)
@@ -13,6 +26,10 @@ module HTTP2
       end
     end
 
+    # Emit event with provided arguments.
+    #
+    # @param event [Symbol]
+    # @param args [Array] arguments to be passed to the callbacks.
     def emit(event, *args)
       listeners(event).delete_if do |cb|
         cb.call(*args) == :delete

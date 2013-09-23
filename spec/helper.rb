@@ -2,7 +2,7 @@ require 'http/2'
 
 include HTTP2
 include HTTP2::Header
-
+include HTTP2::Error
 
 DATA = {
   type: :data,

@@ -3,12 +3,16 @@ module HTTP2
 
   class Framer
 
+    # Maximum frame size (65535 bytes)
     MAX_PAYLOAD_SIZE = 2**16-1
-    MAX_STREAM_ID = 0x7fffffff
-    MAX_WINDOWINC = 0x7fffffff
-    RBIT          = 0x7fffffff
-    RBYTE         = 0x0fffffff
 
+    # Maximum stream ID (2^31)
+    MAX_STREAM_ID = 0x7fffffff
+
+    # Maximum window increment value
+    MAX_WINDOWINC = 0x7fffffff
+
+    # HTTP 2.0 frame type mapping as defined by the spec.
     FRAME_TYPES = {
       data:          0x0,
       headers:       0x1,
@@ -22,6 +26,7 @@ module HTTP2
       continuation:  0xa
     }
 
+    # Per frame flags as defined by the spec
     FRAME_FLAGS = {
       data: {
         end_stream:  0, reserved: 1
@@ -42,12 +47,14 @@ module HTTP2
       }
     }
 
+    # Default settings as defined by the spec.
     DEFINED_SETTINGS = {
       settings_max_concurrent_streams: 4,
       settings_initial_window_size:    7,
       settings_flow_control_options:   10
     }
 
+    # Default error types as defined by the spec.
     DEFINED_ERRORS = {
       no_error:           0,
       protocol_error:     1,
@@ -60,12 +67,17 @@ module HTTP2
       compression_error:  9
     }
 
+    # @private
+    RBIT  = 0x7fffffff
+    RBYTE = 0x0fffffff
     HEADERPACK = "SCCL"
     UINT32 = "L"
 
-    # Frame header:
-    # http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
+    # Generates common 8-byte frame header.
+    # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
     #
+    # @param frame [Hash]
+    # @return [String]
     def commonHeader(frame)
       header = []
 
@@ -89,7 +101,10 @@ module HTTP2
       header << FRAME_TYPES[frame[:type]]
       header << frame[:flags].reduce(0) do |acc, f|
         position = FRAME_FLAGS[frame[:type]][f]
-        raise FramingException.new("Invalid frame flag (#{f}) for #{frame[:type]}") if !position
+        if !position
+          raise FramingException.new("Invalid frame flag (#{f}) for #{frame[:type]}")
+        end
+
         acc |= (1 << position)
         acc
       end
@@ -98,6 +113,9 @@ module HTTP2
       header.pack(HEADERPACK) # 16,8,8,32
     end
 
+    # Decodes common 8-byte header.
+    #
+    # @param buf [String]
     def readCommonHeader(buf)
       frame = {}
       frame[:length], type, flags, stream = buf.slice(0,8).unpack(HEADERPACK)
@@ -112,8 +130,10 @@ module HTTP2
       frame
     end
 
-    # http://tools.ietf.org/html/draft-ietf-httpbis-http2
+    # Generates encoded HTTP 2.0 frame.
+    # - http://tools.ietf.org/html/draft-ietf-httpbis-http2
     #
+    # @param frame [Hash]
     def generate(frame)
       bytes  = ''
       length = 0
@@ -202,6 +222,10 @@ module HTTP2
       commonHeader(frame) + bytes
     end
 
+    # Decodes complete HTTP 2.0 frame from provided buffer. If the buffer
+    # does not contain enough data, no further work is performed.
+    #
+    # @param buf [String]
     def parse(buf)
       return nil if buf.size < 8
       frame = readCommonHeader(buf)

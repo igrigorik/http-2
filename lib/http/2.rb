@@ -1,5 +1,3 @@
-require "stringio"
-
 require "http/2/version"
 require "http/2/error"
 require "http/2/emitter"

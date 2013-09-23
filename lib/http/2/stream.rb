@@ -1,11 +1,67 @@
 module HTTP2
 
+  # A single HTTP 2.0 connection can multiplex multiple streams in parallel:
+  # multiple requests and responses can be in flight simultaneously and stream
+  # data can be interleaved and prioritized.
+  #
+  # This class encapsulates all of the state, transition, flow-control, and
+  # error management as defined by the HTTP 2.0 specification. All you have
+  # to do is subscribe to appropriate events (marked with ":" prefix in
+  # diagram below) and provide your application logic to handle request
+  # and response processing.
+  #
+  #                         +--------+
+  #               Promise   |        |   Promise
+  #                ,--------|  idle  |--------.
+  #               /         |        |         \
+  #              v          +--------+          v
+  #       +----------+          |           +----------+
+  #       |          |          | Headers   |          |
+  #   ,---|:reserved |          |           |:reserved |---.
+  #   |   | (local)  |          v           | (remote) |   |
+  #   |   +----------+      +--------+      +----------+   |
+  #   |      | :active      |        |      :active |      |
+  #   |      |      ,-------|:active |-------.      |      |
+  #   |      |     /        |        |        \     |      |
+  #   |      v    v         +--------+         v    v      |
+  #   |   +-----------+          |          +-_---------+  |
+  #   |   |:half_close|          |          |:half_close|  |
+  #   |   |  (remote) |          |          |  (local)  |  |
+  #   |   +-----------+          |          +-----------+  |
+  #   |        |                 v                |        |
+  #   |        |            +--------+            |        |
+  #   |        `----------->|        |<-----------'        |
+  #   |  Reset              | :close |              Reset  |
+  #   `-------------------->|        |<--------------------'
+  #                         +--------+
   class Stream
     include FlowBuffer
     include Emitter
 
-    attr_reader :state, :priority, :window, :id, :closed
+    # Stream state as defined by HTTP 2.0.
+    attr_reader :state
 
+    # Stream priority as set by initiator.
+    attr_reader :priority
+
+    # Size of current stream flow control window.
+    attr_reader :window
+
+    # Stream ID (odd for client initiated streams, even otherwise).
+    attr_reader :id
+
+    # Reason why connection was closed.
+    attr_reader :closed
+
+    # Initializes new stream.
+    #
+    # Note that you should never have to call this directly. To create a new
+    # client initiated stream, use Connection#new_stream. Similarly, Connection
+    # will emit new stream objects, when new stream frames are received.
+    #
+    # @param id [Integer]
+    # @param priority [Integer]
+    # @param window [Integer]
     def initialize(id, priority, window)
       @id = id
       @priority = priority
@@ -18,6 +74,9 @@ module HTTP2
       on(:window) { |v| @window = v }
     end
 
+    # Processes incoming HTTP 2.0 frames. The frames must be decoded upstream.
+    #
+    # @param frame [Hash]
     def process(frame)
       transition(frame, false)
 
@@ -41,6 +100,11 @@ module HTTP2
       complete_transition(frame)
     end
 
+    # Processes outgoing HTTP 2.0 frames. Data frames may be automatically
+    # split and buffered based on maximum frame size and current stream flow
+    # control window size.
+    #
+    # @param frame [Hash]
     def send(frame)
       transition(frame, true)
       frame[:stream] = @id
@@ -56,6 +120,11 @@ module HTTP2
       complete_transition(frame)
     end
 
+    # Sends a HEADERS frame containing HTTP response headers.
+    #
+    # @param head [Hash]
+    # @param end_headers [Boolean] indicates that no more headers will be sent
+    # @param end_stream [Boolean] indicates that no payload will be sent
     def headers(head, end_headers: true, end_stream: false)
       flags = []
       flags << :end_headers if end_headers
@@ -64,22 +133,35 @@ module HTTP2
       send({type: :headers, flags: flags, payload: head.to_a})
     end
 
+    # Sends a PRIORITY frame with new stream priority value (can only be
+    # performed by the initiator of the stream).
+    #
+    # @param p [Integer]
     def priority=(p)
+      # TODO: check initiator, change back to regular method?
       send({type: :priority, priority: p})
     end
 
-    def data(d, end_stream: true)
+    # Sends DATA frame containing response payload.
+    #
+    # @param payload [String]
+    # @param end_stream [Boolean] indicates last response DATA frame
+    def data(payload, end_stream: true)
       flags = []
       flags << :end_stream if end_stream
 
-      while d.bytesize > MAX_FRAME_SIZE do
-        payload = d.slice!(0, MAX_FRAME_SIZE)
-        send({type: :data, payload: payload})
+      while payload.bytesize > MAX_FRAME_SIZE do
+        chunk = payload.slice!(0, MAX_FRAME_SIZE)
+        send({type: :data, payload: chunk})
       end
 
-      send({type: :data, flags: flags, payload: d})
+      send({type: :data, flags: flags, payload: payload})
     end
 
+    # Sends a RST_STREAM frame which closes current stream - this does not
+    # close the underlying connection.
+    #
+    # @param error [:Symbol] optional reason why stream was closed
     def close(error = :stream_closed)
       send({type: :rst_stream, error: error})
     end
@@ -301,7 +383,7 @@ module HTTP2
         if sending
           case frame[:type]
           when :rst_stream then # ignore
-          else raise StreamError.new('stream closed'); end # already closed
+          else raise Error::StreamError.new('stream closed'); end
         else
           case @closed
           when :remote_rst, :remote_closed
@@ -354,7 +436,7 @@ module HTTP2
       @error = error
 
       send({type: :rst_stream, stream: @id, error: error})
-      raise StreamError.new(error.to_s.gsub('_',' '))
+      raise Error::StreamError.new(error.to_s.gsub('_',' '))
     end
 
   end
