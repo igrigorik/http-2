@@ -132,12 +132,12 @@ module HTTP2
       @state = :closed
     end
 
-    # Sends a connection SETTINGS frame to the peer. Available settings are:
-    # - :settings_max_concurrent_streams
-    # - :settings_flow_control_options (value "1" disables flow control)
-    # - :settings_initial_window_size
+    # Sends a connection SETTINGS frame to the peer.
     #
     # @param payload [Hash]
+    # @option payload [Symbol] :settings_max_concurrent_streams
+    # @option payload [Symbol] :settings_flow_control_options
+    # @option payload [Symbol] :settings_initial_window_size
     def settings(payload)
       process({type: :settings, stream: 0, payload: payload})
     end
