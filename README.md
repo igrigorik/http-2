@@ -85,27 +85,27 @@ The good news is, all of the stream management, and state transitions, and error
 
 ```
                          +--------+
-               Promise   |        |   Promise
+                    PP   |        |   PP
                 ,--------|  idle  |--------.
                /         |        |         \
               v          +--------+          v
        +----------+          |           +----------+
-       |          |          | Headers   |          |
+       |          |          | H         |          |
    ,---|:reserved |          |           |:reserved |---.
    |   | (local)  |          v           | (remote) |   |
    |   +----------+      +--------+      +----------+   |
    |      | :active      |        |      :active |      |
    |      |      ,-------|:active |-------.      |      |
-   |      |     /        |        |        \     |      |
+   |      | H   /   ES   |        |   ES   \   H |      |
    |      v    v         +--------+         v    v      |
    |   +-----------+          |          +-_---------+  |
    |   |:half_close|          |          |:half_close|  |
    |   |  (remote) |          |          |  (local)  |  |
    |   +-----------+          |          +-----------+  |
    |        |                 v                |        |
-   |        |            +--------+            |        |
+   |        |    ES/R    +--------+    ES/R    |        |
    |        `----------->|        |<-----------'        |
-   |  Reset              | :close |              Reset  |
+   | R                   | :close |                   R |
    `-------------------->|        |<--------------------'
                          +--------+
 ```
@@ -228,7 +228,7 @@ conn = HTTP2::Connection.new(:server)
 
 conn.on(:stream) do |stream|
   stream.on(:headers) { |head| ... }
-  stream.on(:data) { |chunk| ... }   k
+  stream.on(:data) { |chunk| ... }
 
   # fires when client terminates its request (i.e. request finished)
   stream.on(:half_close) do
