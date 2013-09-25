@@ -1,7 +1,6 @@
 module HTTP2
-  class FramingException < Exception; end
-
   class Framer
+    include Error
 
     # Maximum frame size (65535 bytes)
     MAX_PAYLOAD_SIZE = 2**16-1

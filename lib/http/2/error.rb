@@ -1,5 +1,6 @@
 module HTTP2
   module Error
+    class FramingException < Exception; end
     class HeaderException < Exception; end
 
     class ProtocolError < Exception; end

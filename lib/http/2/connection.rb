@@ -36,6 +36,7 @@ module HTTP2
   class Connection
     include FlowBuffer
     include Emitter
+    include Error
 
     # Type of connection (:server, :client).
     attr_reader :type
@@ -95,8 +96,8 @@ module HTTP2
     # @param window [Integer]
     # @param parent [Stream]
     def new_stream(priority: DEFAULT_PRIORITY, window: @window_limit, parent: nil)
-      raise Error::ConnectionClosed.new if @state == :closed
-      raise Error::StreamLimitExceeded.new if @active_stream_count == @stream_limit
+      raise ConnectionClosed.new if @state == :closed
+      raise StreamLimitExceeded.new if @active_stream_count == @stream_limit
 
       stream = activate_stream(@stream_id, priority, window, parent)
       @stream_id += 2

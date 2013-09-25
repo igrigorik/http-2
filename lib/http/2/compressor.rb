@@ -4,6 +4,8 @@ module HTTP2
   module Header
 
     class CompressionContext
+      include Error
+
       # TODO: replace StringIO with Buffer...
 
       # Default request working set as defined by the spec.
@@ -151,7 +153,7 @@ module HTTP2
               cmd[:index] = @table.size
             when :substitution
               if @table[cmd[:index]].nil?
-                raise Error::HeaderException.new("invalid index")
+                raise HeaderException.new("invalid index")
               end
             when :prepend
               @table = [newval] + @table

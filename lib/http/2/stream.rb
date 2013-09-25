@@ -37,7 +37,7 @@ module HTTP2
   class Stream
     include FlowBuffer
     include Emitter
-
+    include Error
 
     # Stream ID (odd for client initiated streams, even otherwise).
     attr_reader :id
@@ -406,7 +406,7 @@ module HTTP2
         if sending
           case frame[:type]
           when :rst_stream then # ignore
-          else raise Error::StreamError.new('stream closed'); end
+          else raise StreamError.new('stream closed'); end
         else
           case @closed
           when :remote_rst, :remote_closed
@@ -463,7 +463,7 @@ module HTTP2
       @error = error
 
       send({type: :rst_stream, stream: @id, error: error})
-      raise Error::StreamError.new(error.to_s.gsub('_',' '))
+      raise StreamError.new(error.to_s.gsub('_',' '))
     end
 
   end
