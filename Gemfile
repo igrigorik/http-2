@@ -1,4 +1,11 @@
 source 'https://rubygems.org'
 
-# Specify your gem's dependencies in http2-parser.gemspec
+gem 'rake'
+gem 'yard'
+
+group :test do
+  gem 'coveralls', :require => false
+  gem 'rspec'
+end
+
 gemspec

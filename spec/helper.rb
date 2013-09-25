@@ -1,4 +1,8 @@
 require 'http/2'
+require 'json'
+require 'coveralls'
+
+Coveralls.wear!
 
 include HTTP2
 include HTTP2::Header
