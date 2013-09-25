@@ -1,14 +1,45 @@
 module HTTP2
-  module Error
-    class FramingException < Exception; end
-    class HeaderException < Exception; end
 
+  # Stream, connection, and compressor exceptions.
+  module Error
+
+    # Raised by stream or connection handlers, results in GOAWAY frame
+    # which signals termination of the current connection. You *cannot*
+    # recover from this exception, or any exceptions subclassed from it.
     class ProtocolError < Exception; end
+
+    # Raised on any header encoding / decoding exception.
+    #
+    # @see ProtocolError
+    class CompressionError < ProtocolError; end
+
+    # Raised on invalid reference for current compression context: the
+    # client and server contexts are out of sync.
+    #
+    # @see ProtocolError
+    class HeaderException < ProtocolError; end
+
+    # Raised on invalid flow control frame or command.
+    #
+    # @see ProtocolError
     class FlowControlError < ProtocolError; end
+
+    # Raised on invalid stream processing: invalid frame type received or
+    # sent, or invalid command issued.
     class StreamError < ProtocolError; end
 
-    class StreamLimitExceeded < Exception; end
+    #
+    # -- Recoverable errors -------------------------------------------------
+    #
+
+    # Raised if stream has been closed and new frames cannot be sent.
+    class StreamClosed < Exception; end
+
+    # Raised if connection has been closed (or draining) and new stream
+    # cannot be opened.
     class ConnectionClosed < Exception; end
-    class CompressionError < Exception; end
+
+    # Raised if stream limit has been reached and new stream cannot be opened.
+    class StreamLimitExceeded < Exception; end
   end
 end

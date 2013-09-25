@@ -298,7 +298,7 @@ describe HTTP2::Stream do
         (FRAME_TYPES - [RST_STREAM, WINDOW_UPDATE]).each do |frame|
           expect {
             @stream.dup.receive frame
-          }.to raise_error(StreamError, /stream closed/i)
+          }.to raise_error(StreamClosed)
         end
       end
 
@@ -362,7 +362,7 @@ describe HTTP2::Stream do
           (FRAME_TYPES - [RST_STREAM]).each do |frame|
             expect {
               @stream.dup.send frame
-            }.to raise_error(StreamError, /stream closed/i)
+            }.to raise_error(StreamClosed)
           end
         end
 
@@ -370,7 +370,7 @@ describe HTTP2::Stream do
           (FRAME_TYPES - [RST_STREAM]).each do |frame|
             expect {
               @stream.dup.receive frame
-            }.to raise_error(StreamError, /stream closed/i)
+            }.to raise_error(StreamClosed)
           end
         end
 

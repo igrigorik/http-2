@@ -152,7 +152,7 @@ module HTTP2
     #
     # @param p [Integer] new stream priority value
     def reprioritize(p)
-      raise StreamError.new("server cannot reprioritize") if @id.even?
+      stream_error if @id.even?
       send({type: :priority, priority: p})
     end
 
@@ -246,7 +246,8 @@ module HTTP2
             else
               event(:open)
             end
-          else StreamError.new; end # local error, don't send RST_STREAM
+          when :rst_stream then event(:local_rst)
+          else stream_error; end
         else
           case frame[:type]
           when :push_promise then event(:reserved_remote)
@@ -256,7 +257,7 @@ module HTTP2
             else
               event(:open)
             end
-          else stream_error; end
+          else stream_error(:protocol_error); end
         end
 
       # A stream in the "reserved (local)" state is one that has been
@@ -406,7 +407,9 @@ module HTTP2
         if sending
           case frame[:type]
           when :rst_stream then # ignore
-          else raise StreamError.new('stream closed'); end
+          else
+            stream_error(:stream_closed) if !(frame[:type] == :rst_stream)
+          end
         else
           case @closed
           when :remote_rst, :remote_closed
@@ -459,11 +462,12 @@ module HTTP2
       else false; end
     end
 
-    def stream_error(error = :protocol_error)
+    def stream_error(error = :stream_error, msg: nil)
       @error = error
+      close(error) if @state != :closed
 
-      send({type: :rst_stream, stream: @id, error: error})
-      raise StreamError.new(error.to_s.gsub('_',' '))
+      klass = error.to_s.split('_').map(&:capitalize).join
+      raise Kernel.const_get(klass).new(msg)
     end
 
   end

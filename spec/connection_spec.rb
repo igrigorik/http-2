@@ -157,6 +157,7 @@ describe HTTP2::Connection do
 
       stream = @conn.new_stream
 
+      stream.send HEADERS
       stream.send data
       stream.window.should eq (DEFAULT_FLOW_WINDOW - 2048)
       @conn.window.should  eq (DEFAULT_FLOW_WINDOW - 2048)
