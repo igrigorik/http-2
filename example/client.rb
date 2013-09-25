@@ -12,13 +12,13 @@ Addrinfo.tcp("localhost", 8080).connect do |sock|
   log = Logger.new(stream.id)
 
   stream.on(:close) do
-   log.info "stream closed"
-   sock.close
- end
+    log.info "stream closed"
+    sock.close
+  end
 
- stream.on(:half_close) do
-  log.info "closing client-end of the stream"
- end
+  stream.on(:half_close) do
+    log.info "closing client-end of the stream"
+  end
 
   stream.on(:headers) do |h|
     log.info "response headers: #{h}"
@@ -44,3 +44,4 @@ Addrinfo.tcp("localhost", 8080).connect do |sock|
     conn << data
   end
 end
+
