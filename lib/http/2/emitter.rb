@@ -29,10 +29,11 @@ module HTTP2
     # Emit event with provided arguments.
     #
     # @param event [Symbol]
-    # @param args [Array] arguments to be passed to the callbacks.
-    def emit(event, *args)
+    # @param args [Array] arguments to be passed to the callbacks
+    # @param block [Proc] callback function
+    def emit(event, *args, &block)
       listeners(event).delete_if do |cb|
-        cb.call(*args) == :delete
+        cb.call(*args, &block) == :delete
       end
     end
 

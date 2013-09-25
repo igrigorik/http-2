@@ -227,18 +227,22 @@ An HTTP 2.0 server can [send multiple replies](http://chimera.labs.oreilly.com/b
 conn = HTTP2::Connection.new(:server)
 
 conn.on(:stream) do |stream|
-  stream.on(:headers) { |head| ... } 
+  stream.on(:headers) { |head| ... }
   stream.on(:data) { |chunk| ... }   k
 
   # fires when client terminates its request (i.e. request finished)
   stream.on(:half_close) do
-
-    # promise streams inherit (implicitly) request headers of parent stream
-    promise = stream.promise({
+    head = {
      ":status" => 200,
      ":path"   => "/other_resource",
      "content-type" => "text/plain"
-    })
+    }
+
+    # initiate server push stream
+    stream.promise(head) do |push|
+      push.headers({ ... })
+      push.data(...)
+    end
 
     # send response
     stream.headers({
@@ -254,16 +258,16 @@ conn.on(:stream) do |stream|
 end
 ```
 
-When a new push promise stream is sent by the server, the client is notifed via the `:reserved` event:
+When a new push promise stream is sent by the server, the client is notifed via the `:promise` event:
 
 ```ruby
 conn = HTTP2::Connection.new(:client)
-conn.on(:reserved) do |stream|
+conn.on(:promise) do |push|
   # process push stream
 end
 ```
 
-The client can cancel any given push stream (via `.close`), or disable server push entirely by sending the appropriate settings frame (note that below setting only impacts server > client direction): 
+The client can cancel any given push stream (via `.close`), or disable server push entirely by sending the appropriate settings frame (note that below setting only impacts server > client direction):
 
 ```ruby
 client.settings({

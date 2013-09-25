@@ -11,44 +11,48 @@ module HTTP2
   # and response processing.
   #
   #                         +--------+
-  #               Promise   |        |   Promise
+  #                    PP   |        |   PP
   #                ,--------|  idle  |--------.
   #               /         |        |         \
   #              v          +--------+          v
   #       +----------+          |           +----------+
-  #       |          |          | Headers   |          |
+  #       |          |          | H         |          |
   #   ,---|:reserved |          |           |:reserved |---.
   #   |   | (local)  |          v           | (remote) |   |
   #   |   +----------+      +--------+      +----------+   |
   #   |      | :active      |        |      :active |      |
   #   |      |      ,-------|:active |-------.      |      |
-  #   |      |     /        |        |        \     |      |
+  #   |      | H   /   ES   |        |   ES   \   H |      |
   #   |      v    v         +--------+         v    v      |
   #   |   +-----------+          |          +-_---------+  |
   #   |   |:half_close|          |          |:half_close|  |
   #   |   |  (remote) |          |          |  (local)  |  |
   #   |   +-----------+          |          +-----------+  |
   #   |        |                 v                |        |
-  #   |        |            +--------+            |        |
+  #   |        |    ES/R    +--------+    ES/R    |        |
   #   |        `----------->|        |<-----------'        |
-  #   |  Reset              | :close |              Reset  |
+  #   | R                   | :close |                   R |
   #   `-------------------->|        |<--------------------'
   #                         +--------+
   class Stream
     include FlowBuffer
     include Emitter
 
+
+    # Stream ID (odd for client initiated streams, even otherwise).
+    attr_reader :id
+
     # Stream state as defined by HTTP 2.0.
     attr_reader :state
+
+    # Request parent stream of push stream.
+    attr_reader :parent
 
     # Stream priority as set by initiator.
     attr_reader :priority
 
     # Size of current stream flow control window.
     attr_reader :window
-
-    # Stream ID (odd for client initiated streams, even otherwise).
-    attr_reader :id
 
     # Reason why connection was closed.
     attr_reader :closed
@@ -62,10 +66,12 @@ module HTTP2
     # @param id [Integer]
     # @param priority [Integer]
     # @param window [Integer]
-    def initialize(id, priority, window)
+    # @param parent [Stream]
+    def initialize(id, priority, window, parent = nil)
       @id = id
       @priority = priority
       @window = window
+      @parent = parent
       @state  = :idle
       @error  = false
       @closed = false
@@ -77,17 +83,17 @@ module HTTP2
     # Processes incoming HTTP 2.0 frames. The frames must be decoded upstream.
     #
     # @param frame [Hash]
-    def process(frame)
+    def receive(frame)
       transition(frame, false)
 
       case frame[:type]
       when :data
-        emit(:data, frame[:payload]) unless frame[:ignore]
-      when :headers
+        emit(:data, frame[:payload]) if !frame[:ignore]
+      when :headers, :push_promise
         if frame[:payload].is_a? Array
-          emit(:headers, Hash[*frame[:payload].flatten]) unless frame[:ignore]
+          emit(:headers, Hash[*frame[:payload].flatten]) if !frame[:ignore]
         else
-          emit(:headers, frame[:payload]) unless frame[:ignore]
+          emit(:headers, frame[:payload]) if !frame[:ignore]
         end
       when :priority
         @priority = frame[:priority]
@@ -99,6 +105,7 @@ module HTTP2
 
       complete_transition(frame)
     end
+    alias :<< :receive
 
     # Processes outgoing HTTP 2.0 frames. Data frames may be automatically
     # split and buffered based on maximum frame size and current stream flow
@@ -107,7 +114,7 @@ module HTTP2
     # @param frame [Hash]
     def send(frame)
       transition(frame, true)
-      frame[:stream] = @id
+      frame[:stream] ||= @id
 
       @priority = frame[:priority] if frame[:type] == :priority
 
@@ -122,15 +129,22 @@ module HTTP2
 
     # Sends a HEADERS frame containing HTTP response headers.
     #
-    # @param head [Hash]
+    # @param headers [Hash]
     # @param end_headers [Boolean] indicates that no more headers will be sent
     # @param end_stream [Boolean] indicates that no payload will be sent
-    def headers(head, end_headers: true, end_stream: false)
+    def headers(headers, end_headers: true, end_stream: false)
       flags = []
       flags << :end_headers if end_headers
       flags << :end_stream  if end_stream
 
-      send({type: :headers, flags: flags, payload: head.to_a})
+      send({type: :headers, flags: flags, payload: headers.to_a})
+    end
+
+    def promise(headers, end_push_promise: true, &block)
+      raise Exception.new("must provide callback") if !block_given?
+
+      flags = end_push_promise ? [:end_push_promise] : []
+      emit(:promise, self, headers, flags, &block)
     end
 
     # Sends a PRIORITY frame with new stream priority value (can only be
@@ -225,8 +239,7 @@ module HTTP2
       when :idle
         if sending
           case frame[:type]
-          when :push_promise
-            @state = :reserved_local
+          when :push_promise then event(:reserved_local)
           when :headers
             if end_stream?(frame)
               event(:half_closed_local)
@@ -236,8 +249,7 @@ module HTTP2
           else StreamError.new; end # local error, don't send RST_STREAM
         else
           case frame[:type]
-          when :push_promise
-            @state = :reserved_remote
+          when :push_promise then event(:reserved_remote)
           when :headers
             if end_stream?(frame)
               event(:half_closed_remote)
@@ -263,11 +275,11 @@ module HTTP2
         if sending
           @state = case frame[:type]
           when :headers     then event(:half_closed_remote)
-          when :rst_stream  then event(:local_rst, frame)
+          when :rst_stream  then event(:local_rst)
           else stream_error; end
         else
           @state = case frame[:type]
-          when :rst_stream  then event(:remote_rst, frame)
+          when :rst_stream  then event(:remote_rst)
           when :priority    then @state
           else stream_error; end
         end
@@ -285,13 +297,13 @@ module HTTP2
       when :reserved_remote
         if sending
           @state = case frame[:type]
-          when :rst_stream then event(:local_rst, frame)
+          when :rst_stream then event(:local_rst)
           when :priority then @state
           else stream_error; end
         else
           @state = case frame[:type]
           when :headers     then event(:half_closed_local)
-          when :rst_stream  then event(:remote_rst, frame)
+          when :rst_stream  then event(:remote_rst)
           else stream_error; end
         end
 
@@ -311,13 +323,13 @@ module HTTP2
           case frame[:type]
           when :data, :headers, :continuation
             event(:half_closed_local) if end_stream?(frame)
-          when :rst_stream then event(:local_rst, frame)
+          when :rst_stream then event(:local_rst)
           end
         else
           case frame[:type]
           when :data, :headers, :continuation
             event(:half_closed_remote) if end_stream?(frame)
-          when :rst_stream then event(:remote_rst, frame)
+          when :rst_stream then event(:remote_rst)
           end
         end
 
@@ -332,15 +344,15 @@ module HTTP2
       when :half_closed_local
         if sending
           if frame[:type] == :rst_stream
-            event(:local_rst, frame)
+            event(:local_rst)
           else
             stream_error
           end
         else
           case frame[:type]
           when :data, :headers, :continuation
-            event(:remote_closed, frame) if end_stream?(frame)
-          when :rst_stream then event(:remote_rst, frame)
+            event(:remote_closed) if end_stream?(frame)
+          when :rst_stream then event(:remote_rst)
           when :window_update, :priority
             frame[:igore] = true
           end
@@ -360,12 +372,12 @@ module HTTP2
         if sending
           case frame[:type]
           when :data, :headers, :continuation
-            event(:local_closed, frame) if end_stream?(frame)
-          when :rst_stream then event(:local_rst, frame)
+            event(:local_closed) if end_stream?(frame)
+          when :rst_stream then event(:local_rst)
           end
         else
           case frame[:type]
-          when :rst_stream then event(:remote_rst, frame)
+          when :rst_stream then event(:remote_rst)
           when :window_update then frame[:ignore] = true
           else stream_error(:stream_closed); end
         end
@@ -406,11 +418,15 @@ module HTTP2
       end
     end
 
-    def event(newstate, frame = nil)
+    def event(newstate)
       case newstate
       when :open
         @state = newstate
         emit(:active)
+
+      when :reserved_local, :reserved_remote
+        @state = newstate
+        emit(:reserved)
 
       when :half_closed_local, :half_closed_remote
         @closed = newstate

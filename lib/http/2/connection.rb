@@ -93,11 +93,12 @@ module HTTP2
     #
     # @param priority [Integer]
     # @param window [Integer]
-    def new_stream(priority: DEFAULT_PRIORITY, window: @window)
-      raise Error::StreamLimitExceeded.new if @active_stream_count == @stream_limit
+    # @param parent [Stream]
+    def new_stream(priority: DEFAULT_PRIORITY, window: @window_limit, parent: nil)
       raise Error::ConnectionClosed.new if @state == :closed
+      raise Error::StreamLimitExceeded.new if @active_stream_count == @stream_limit
 
-      stream = activate_stream(@stream_id, priority, window)
+      stream = activate_stream(@stream_id, priority, window, parent)
       @stream_id += 2
 
       stream
@@ -204,11 +205,13 @@ module HTTP2
 
             stream = @streams[frame[:stream]]
             if stream.nil?
-              stream = activate_stream(frame[:stream], frame[:priority])
+              stream = activate_stream(frame[:stream],
+                                       frame[:priority] || DEFAULT_PRIORITY,
+                                       @window_limit)
               emit(:stream, stream)
             end
 
-            stream.process(frame)
+            stream << frame
 
           when :push_promise
             # The last frame in a sequence of PUSH_PROMISE/CONTINUATION
@@ -234,8 +237,7 @@ module HTTP2
             parent = @streams[frame[:stream]]
             pid = frame[:promise_stream]
 
-            connection_error if parent.nil?
-            connection_error if @streams.include? pid
+            connection_error(msg: 'missing parent ID') if parent.nil?
 
             if !(parent.state == :open || parent.state == :half_closed_local)
               # An endpoint might receive a PUSH_PROMISE frame after it sends
@@ -252,12 +254,12 @@ module HTTP2
               end
             end
 
-            stream = activate_stream(pid)
+            stream = activate_stream(pid, DEFAULT_PRIORITY, @window_limit, parent)
             emit(:promise, stream)
-            stream.process(frame)
+            stream << frame
           else
             if stream = @streams[frame[:stream]]
-              stream.process frame
+              stream << frame
             else
               # An endpoint that receives an unexpected stream identifier
               # MUST respond with a connection error of type PROTOCOL_ERROR.
@@ -289,7 +291,8 @@ module HTTP2
     end
 
     def encode(frame)
-      if frame[:type] == :headers
+      if frame[:type] == :headers ||
+         frame[:type] == :push_promise
         encode_headers(frame)
       end
 
@@ -407,26 +410,48 @@ module HTTP2
       end
     end
 
-    def activate_stream(id, priority = DEFAULT_PRIORITY,
-                            window = @window)
-      stream = Stream.new(id, priority, window)
+    def activate_stream(id, priority, window, parent = nil)
+      if @streams.key?(id)
+        connection_error(msg: 'Stream ID already exists')
+      end
+
+      stream = Stream.new(id, priority, window, parent)
 
       # Streams that are in the "open" state, or either of the "half closed"
       # states count toward the maximum number of streams that an endpoint is
       # permitted to open.
       stream.once(:active) { @active_stream_count += 1 }
       stream.once(:close)  { @active_stream_count -= 1 }
-      stream.on(:frame)    { |frame| process(frame) }
+      stream.on(:promise, &method(:promise))
+      stream.on(:frame,   &method(:process))
 
       @streams[id] = stream
     end
 
-    def connection_error(error = :protocol_error)
-      goaway(error) if @state != :closed
+    def promise(*args, &callback)
+      if @type == :client
+        raise ProtocolError.new("client cannot initiate promise")
+      end
+
+      parent, headers, flags = *args
+      promise = new_stream(parent: parent)
+      promise.send({
+        type: :push_promise,
+        flags: flags,
+        stream: parent.id,
+        promise_stream: promise.id,
+        payload: headers.to_a
+      })
+
+      callback.call(promise)
+    end
+
+    def connection_error(error = :protocol_error, msg: nil)
+      goaway(error) if @state != :closed && @state != :new
 
       @state, @error = :closed, error
       klass = error.to_s.split('_').map(&:capitalize).join
-      raise Kernel.const_get(klass).new
+      raise Kernel.const_get(klass).new(msg)
     end
 
   end

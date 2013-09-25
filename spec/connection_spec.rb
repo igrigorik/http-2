@@ -45,13 +45,13 @@ describe HTTP2::Connection do
     it "should count open streams against stream limit" do
       s = @conn.new_stream
       @conn.active_stream_count.should eq 0
-      s.process HEADERS
+      s.receive HEADERS
       @conn.active_stream_count.should eq 1
     end
 
     it "should not count reserved streams against stream limit" do
       s1 = @conn.new_stream
-      s1.process PUSH_PROMISE
+      s1.receive PUSH_PROMISE
       @conn.active_stream_count.should eq 0
 
       s2 = @conn.new_stream
@@ -59,12 +59,12 @@ describe HTTP2::Connection do
       @conn.active_stream_count.should eq 0
 
       # transition to half closed
-      s1.process HEADERS
+      s1.receive HEADERS
       s2.send HEADERS
       @conn.active_stream_count.should eq 2
 
       # transition to closed
-      s1.process DATA
+      s1.receive DATA
       s2.send DATA
       @conn.active_stream_count.should eq 0
     end
@@ -239,7 +239,7 @@ describe HTTP2::Connection do
       @conn << f.generate(SETTINGS)
       @conn.on(:stream) do |stream|
         stream.stub(:process)
-        stream.should_receive(:process) do |frame|
+        stream.should_receive(:<<) do |frame|
           frame[:payload].should eq req_headers
         end
       end
@@ -265,7 +265,7 @@ describe HTTP2::Connection do
       @conn << f.generate(SETTINGS)
       @conn.on(:stream) do |stream|
         stream.stub(:process)
-        stream.should_receive(:process) do |frame|
+        stream.should_receive(:<<) do |frame|
           frame[:payload].should eq req_headers
         end
       end
@@ -449,9 +449,5 @@ describe HTTP2::Connection do
 
       @conn.goaway(:internal_error, "payload")
     end
-
-    it "should provide a push promise API..."
-    it "should emit :reserved, :head, :active"
-    it "should raise error on client push"
   end
 end
