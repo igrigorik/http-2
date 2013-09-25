@@ -10,7 +10,8 @@ Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol
 * [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
 * Connection and stream [flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control)
 * [Header compression](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_HEADER_COMPRESSION) and [server push](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH)
-* Connection and stream management, and other HTTP 2.0 goodies...
+* Connection and stream management
+* And more... see [API docs](http://www.rubydoc.info/github/igrigorik/http-2/frames)
 
 Current implementation (see [HPBN chapter for HTTP 2.0 overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), is based on:
 
@@ -47,7 +48,7 @@ Checkout provided [client](https://github.com/igrigorik/http-2/blob/master/examp
 
 ### Connection lifecycle management
 
-When the connection object is instantiated you must specify its role (`:client` or `:server`) to initialize appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
+When the [Connection object](http://www.rubydoc.info/github/igrigorik/http-2/HTTP2/Connection) is instantiated you must specify its role (`:client` or `:server`) to initialize appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
 
 ```ruby
 # - Server ---------------
@@ -150,7 +151,7 @@ conn.on(:stream) do |stream|
 end
 ```
 
-Events emitted by the stream object:
+Events emitted by the [Stream object](http://www.rubydoc.info/github/igrigorik/http-2/HTTP2/Stream):
 
 <table>
   <tr>
