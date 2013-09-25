@@ -3,6 +3,9 @@ module HTTP2
   # Maximum size of a DATA payload (16383 bytes, ~16K).
   MAX_FRAME_SIZE = 2**14-1
 
+  # Implementation of stream and connection DATA flow control: frames may
+  # be split and / or may be buffered based on current flow control window.
+  #
   module FlowBuffer
 
     # Amount of buffered data. Only DATA payloads are subject to flow stream
@@ -15,6 +18,15 @@ module HTTP2
 
     private
 
+    # Buffers outgoing DATA frames and applies flow control logic to split
+    # and emit DATA frames based on current flow control window. If the
+    # window is large enough, the data is sent immediately. Otherwise, the
+    # data is buffered until the flow control window is updated.
+    #
+    # Buffered DATA frames are emitted in FIFO order.
+    #
+    # @param frame [Hash]
+    # @param encode [Boolean] set to true by co
     def send_data(frame = nil, encode = false)
       @send_buffer.push frame if !frame.nil?
 
