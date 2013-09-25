@@ -5,15 +5,15 @@ Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol
 * [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parsing and encoding
 * [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
 * Connection and stream [flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control)
-* [Header compression](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_HEADER_COMPRESSION)
-* And other HTTP 2.0 goodies...
+* [Header compression](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_HEADER_COMPRESSION) and [server push](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH)
+* Connection and stream management, and other HTTP 2.0 goodies...
 
 Current implementation (see [HPBN chapter for HTTP 2.0 overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), is based on:
 
 * [draft-ietf-httpbis-http2-06](http://tools.ietf.org/html/draft-ietf-httpbis-http2-06)
 * [draft-ietf-httpbis-header-compression-01](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression)
 
-Since the underlying specifications are still evolving, treat this implementation as a work in progress as well: the API is likely to change, there are plenty of opportunities for refactoring, etc.
+_Note: the underlying specifications are still evolving, expect APIs to change and evolve also..._
 
 
 ## Getting started
@@ -52,7 +52,7 @@ server.goaway # send goaway frame to the client
 
 # - Client ---------------
 client = HTTP2::Connection.new(:client)
-client.on(:reserved) { |stream| ... } # process push promise
+client.on(:promise) { |stream| ... } # process push promise
 
 stream = client.new_stream # allocate new stream
 stream.headers({':method' => 'post', ...}, end_stream: false)
@@ -63,7 +63,7 @@ Events emitted by the connection object:
 
 <table>
   <tr>
-    <td><b>:reserved</b></td>
+    <td><b>:promise</b></td>
     <td>client role only, fires once for each new push promise</td>
   </tr>
   <tr>
@@ -146,7 +146,7 @@ Events emitted by the stream object:
 <table>
   <tr>
     <td><b>:reserved</b></td>
-    <td>fires at most once when server opens a push promise</td>
+    <td>fires exactly once when a push stream is initialized</td>
   </tr>
   <tr>
     <td><b>:active</b></td>
