@@ -1,4 +1,7 @@
 module HTTP2
+
+  # Performs encoding, decoding, and validation of binary HTTP 2.0 frames.
+  #
   class Framer
     include Error
 
@@ -8,10 +11,10 @@ module HTTP2
     # Maximum stream ID (2^31)
     MAX_STREAM_ID = 0x7fffffff
 
-    # Maximum window increment value
+    # Maximum window increment value (2^31)
     MAX_WINDOWINC = 0x7fffffff
 
-    # HTTP 2.0 frame type mapping as defined by the spec.
+    # HTTP 2.0 frame type mapping as defined by the spec
     FRAME_TYPES = {
       data:          0x0,
       headers:       0x1,
@@ -46,14 +49,14 @@ module HTTP2
       }
     }
 
-    # Default settings as defined by the spec.
+    # Default settings as defined by the spec
     DEFINED_SETTINGS = {
       settings_max_concurrent_streams: 4,
       settings_initial_window_size:    7,
       settings_flow_control_options:   10
     }
 
-    # Default error types as defined by the spec.
+    # Default error types as defined by the spec
     DEFINED_ERRORS = {
       no_error:           0,
       protocol_error:     1,
@@ -66,11 +69,12 @@ module HTTP2
       compression_error:  9
     }
 
-    # @private
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff
     HEADERPACK = "SCCL"
     UINT32 = "L"
+
+    private_constant :RBIT, :RBYTE, :HEADERPACK, :UINT32
 
     # Generates common 8-byte frame header.
     # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
@@ -81,19 +85,19 @@ module HTTP2
       header = []
 
       if !FRAME_TYPES[frame[:type]]
-        raise FramingException.new("Invalid frame type (#{frame[:type]})")
+        raise CompressionError.new("Invalid frame type (#{frame[:type]})")
       end
 
       if frame[:length] > MAX_PAYLOAD_SIZE
-        raise FramingException.new("Frame size is too large: #{frame[:length]}")
+        raise CompressionError.new("Frame size is too large: #{frame[:length]}")
       end
 
       if frame[:stream] > MAX_STREAM_ID
-        raise FramingException.new("Stream ID (#{frame[:stream]}) is too large")
+        raise CompressionError.new("Stream ID (#{frame[:stream]}) is too large")
       end
 
       if frame[:type] == :window_update && frame[:increment] > MAX_WINDOWINC
-        raise FramingException.new("Window increment (#{frame[:increment]}) is too large")
+        raise CompressionError.new("Window increment (#{frame[:increment]}) is too large")
       end
 
       header << frame[:length]
@@ -101,7 +105,7 @@ module HTTP2
       header << frame[:flags].reduce(0) do |acc, f|
         position = FRAME_FLAGS[frame[:type]][f]
         if !position
-          raise FramingException.new("Invalid frame flag (#{f}) for #{frame[:type]}")
+          raise CompressionError.new("Invalid frame flag (#{f}) for #{frame[:type]}")
         end
 
         acc |= (1 << position)
@@ -168,7 +172,7 @@ module HTTP2
 
       when :settings
         if frame[:stream] != 0
-          raise FramingException.new("Invalid stream ID (#{frame[:stream]})")
+          raise CompressionError.new("Invalid stream ID (#{frame[:stream]})")
         end
 
         frame[:payload].each do |(k,v)|
@@ -176,7 +180,7 @@ module HTTP2
             k = DEFINED_SETTINGS[k]
 
             if k.nil?
-              raise FramingException.new("Unknown settings ID for #{k}")
+              raise CompressionError.new("Unknown settings ID for #{k}")
             end
           end
 
@@ -192,7 +196,7 @@ module HTTP2
 
       when :ping
         if frame[:payload].bytesize != 8
-          raise FramingException.new("Invalid payload size \
+          raise CompressionError.new("Invalid payload size \
                                     (#{frame[:payload].size} != 8 bytes)")
         end
         bytes  += frame[:payload]
@@ -282,7 +286,7 @@ module HTTP2
         e = DEFINED_ERRORS[e]
 
         if e.nil?
-          raise FramingException.new("Unknown error ID for #{e}")
+          raise CompressionError.new("Unknown error ID for #{e}")
         end
       end
 

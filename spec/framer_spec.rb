@@ -28,28 +28,28 @@ describe HTTP2::Framer do
       expect {
         frame[:type] = :bogus
         f.commonHeader(frame)
-      }.to raise_error(FramingException, /invalid.*type/i)
+      }.to raise_error(CompressionError, /invalid.*type/i)
     end
 
     it "should raise exception on invalid stream ID" do
       expect {
         frame[:stream] = Framer::MAX_STREAM_ID + 1
         f.commonHeader(frame)
-      }.to raise_error(FramingException, /stream/i)
+      }.to raise_error(CompressionError, /stream/i)
     end
 
     it "should raise exception on invalid frame flag" do
       expect {
         frame[:flags] = [:bogus]
         f.commonHeader(frame)
-      }.to raise_error(FramingException, /frame flag/)
+      }.to raise_error(CompressionError, /frame flag/)
     end
 
     it "should raise exception on invalid frame size" do
       expect {
         frame[:length] = 2**16
         f.commonHeader(frame)
-      }.to raise_error(FramingException, /too large/)
+      }.to raise_error(CompressionError, /too large/)
     end
   end
 
@@ -166,14 +166,14 @@ describe HTTP2::Framer do
       expect {
         frame[:stream] = 1
         f.generate(frame)
-      }.to raise_error(FramingException, /Invalid stream ID/)
+      }.to raise_error(CompressionError, /Invalid stream ID/)
     end
 
     it "should raise exception on invalid setting" do
       expect {
         frame[:payload] = {random: 23}
         f.generate(frame)
-      }.to raise_error(FramingException, /Unknown settings ID/)
+      }.to raise_error(CompressionError, /Unknown settings ID/)
     end
   end
 
@@ -215,7 +215,7 @@ describe HTTP2::Framer do
       expect {
         frame[:payload] = "1234"
         f.generate(frame)
-      }.to raise_error(FramingException, /Invalid payload size/)
+      }.to raise_error(CompressionError, /Invalid payload size/)
     end
   end
 
