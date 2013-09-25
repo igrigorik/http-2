@@ -18,11 +18,16 @@ _Note: the underlying specifications are still evolving, expect APIs to change a
 
 ## Getting started
 
+```bash
+$> gem install http-2
+```
+
 This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use - e.g. ZeroMQ, [avian carriers](http://www.ietf.org/rfc/rfc1149.txt), etc.
 
 Your code is responsible for feeding data into the parser, which performs all of the necessary HTTP 2.0 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0 frames) that you can then route to the destination. Roughly, this works as follows:
 
 ```ruby
+require 'http/2'
 socket = YourTransport.new
 
 conn = HTTP2::Connection.new(:client)
