@@ -1,8 +1,17 @@
 require "stringio"
 
 module HTTP2
+
+  # Implementation of header compression for HTTP 2.0 (HPACK) format adapted
+  # to efficiently represent HTTP headers in the context of HTTP 2.0.
+  #
+  # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression
   module Header
 
+    # The set of components used to encode or decode a header set form an
+    # encoding context: an encoding context contains a header table and a
+    # reference set - there is one encoding context for each direction.
+    #
     class CompressionContext
       include Error
 
@@ -271,6 +280,13 @@ module HTTP2
       substitution: {prefix: 6, pattern: 0x00}
     }
 
+    # Responsible for encoding header key-value pairs using HPACK algorithm.
+    # Compressor must be initialized with appropriate starting context based
+    # on local role: client or server.
+    #
+    # @example
+    #   client_role = Compressor.new(:request)
+    #   server_role = Compressor.new(:response)
     class Compressor
       def initialize(type)
         @cc = CompressionContext.new(type)
@@ -393,6 +409,13 @@ module HTTP2
       end
     end
 
+    # Responsible for decoding received headers and maintaining compression
+    # context of the opposing peer. Decompressor must be initialized with
+    # appropriate starting context based on local role: client or server.
+    #
+    # @example
+    #   server_role = Decompressor.new(:request)
+    #   client_role = Decompressor.new(:response)
     class Decompressor
       def initialize(type)
         @cc = CompressionContext.new(type)
