@@ -423,7 +423,7 @@ module HTTP2
       end
 
     rescue Exception => e
-      connection_error(:compression_error)
+      connection_error(:compression_error, msg: e.message)
     end
 
     # Encode headers payload and update connection compressor state.
@@ -435,7 +435,7 @@ module HTTP2
       end
 
     rescue Exception => e
-      connection_error(:compression_error)
+      connection_error(:compression_error, msg: e.message)
     end
 
     # Once disabled, no further flow control operations are permitted.
