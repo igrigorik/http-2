@@ -110,7 +110,7 @@ module HTTP2
     # @param payload [String] optional payload must be 8 bytes long
     # @param blk [Proc] callback to execute when PONG is received
     def ping(payload, &blk)
-      process({type: :ping, stream: 0, payload: payload})
+      send({type: :ping, stream: 0, payload: payload})
       once(:pong, &blk) if blk
     end
 
@@ -125,7 +125,7 @@ module HTTP2
     # @param error [Symbol]
     # @param payload [String]
     def goaway(error = :no_error, payload = nil)
-      process({
+      send({
         type: :goaway, last_stream: (@streams.max.first rescue 0),
         error: error, payload: payload
       })
@@ -139,7 +139,7 @@ module HTTP2
     # @option payload [Symbol] :settings_flow_control_options
     # @option payload [Symbol] :settings_initial_window_size
     def settings(payload)
-      process({type: :settings, stream: 0, payload: payload})
+      send({type: :settings, stream: 0, payload: payload})
     end
 
     # Decodes incoming bytes into HTTP 2.0 frames and routes them to
@@ -249,7 +249,7 @@ module HTTP2
               if parent.closed == :local_rst
                 # We can either (a) 'resurrect' the parent, or (b) RST_STREAM
                 # ... sticking with (b), might need to revisit later.
-                process({type: :rst_stream, stream: pid, error: :refused_stream})
+                send({type: :rst_stream, stream: pid, error: :refused_stream})
               else
                 connection_error
               end
@@ -274,7 +274,13 @@ module HTTP2
 
     private
 
-    def process(frame)
+    # Send an outgoing frame. DATA frames are subject to connection flow
+    # control and may be split and / or buffered based on current window size.
+    # All other frames are sent immediately.
+    #
+    # @note all frames are currently delivered in FIFO order.
+    # @param frame [Hash]
+    def send(frame)
       if frame[:type] == :data
         send_data(frame, true)
 
@@ -291,6 +297,10 @@ module HTTP2
       end
     end
 
+    # Applies HTTP 2.0 binary encoding to the frame.
+    #
+    # @param frame [Hash]
+    # @return [String] encoded frame
     def encode(frame)
       if frame[:type] == :headers ||
          frame[:type] == :push_promise
@@ -300,6 +310,11 @@ module HTTP2
       @framer.generate(frame)
     end
 
+    # Check if frame is a connection frame: SETTINGS, PING, GOAWAY, and any
+    # frame addressed to stream ID = 0.
+    #
+    # @param frame [Hash]
+    # @return [Boolean]
     def connection_frame?(frame)
       frame[:stream] == 0 ||
       frame[:type] == :settings ||
@@ -307,6 +322,13 @@ module HTTP2
       frame[:type] == :goaway
     end
 
+    # Process received connection frame (stream ID = 0).
+    # - Handle SETTINGS updates
+    # - Connection flow control (WINDOW_UPDATE)
+    # - Emit PONG auto-reply to PING frames
+    # - Mark connection as closed on GOAWAY
+    #
+    # @param frame [Hash]
     def connection_management(frame)
       case @state
       when :new
@@ -326,7 +348,7 @@ module HTTP2
           if frame[:flags].include? :pong
             emit(:pong, frame[:payload])
           else
-            process({
+            send({
               type: :ping, stream: 0,
               flags: [:pong], payload: frame[:payload]
             })
@@ -346,6 +368,9 @@ module HTTP2
       end
     end
 
+    # Update local connection settings based on parameters set by the peer.
+    #
+    # @param frame [Hash]
     def connection_settings(frame)
       if (frame[:type] != :settings || frame[:stream] != 0)
         connection_error
@@ -384,9 +409,14 @@ module HTTP2
       end
     end
 
-    # The receiving endpoint reassembles the header block by concatenating
+    # Decode headers payload and update connection decompressor state.
+    #
+    # The receiver endpoint reassembles the header block by concatenating
     # the individual fragments, then decompresses the block to reconstruct
-    # the header set.
+    # the header set - aka, header payloads are buffered until END_HEADERS,
+    # or an END_PROMISE flag is seen.
+    #
+    # @param frame [Hash]
     def decode_headers(frame)
       if frame[:payload].is_a? String
         frame[:payload] = @decompressor.decode(StringIO.new(frame[:payload]))
@@ -396,6 +426,9 @@ module HTTP2
       connection_error(:compression_error)
     end
 
+    # Encode headers payload and update connection compressor state.
+    #
+    # @param frame [Hash]
     def encode_headers(frame)
       if !frame[:payload].is_a? String
         frame[:payload] = @compressor.encode(frame[:payload])
@@ -405,12 +438,21 @@ module HTTP2
       connection_error(:compression_error)
     end
 
+    # Once disabled, no further flow control operations are permitted.
+    #
     def flow_control_allowed?
       if @window_limit == Float::INFINITY
         connection_error(:flow_control_error)
       end
     end
 
+    # Activates new incoming or outgoing stream and registers appropriate
+    # connection managemet callbacks.
+    #
+    # @param id [Integer]
+    # @param priority [Integer]
+    # @param window [Integer]
+    # @param parent [Stream]
     def activate_stream(id, priority, window, parent = nil)
       if @streams.key?(id)
         connection_error(msg: 'Stream ID already exists')
@@ -424,11 +466,15 @@ module HTTP2
       stream.once(:active) { @active_stream_count += 1 }
       stream.once(:close)  { @active_stream_count -= 1 }
       stream.on(:promise, &method(:promise))
-      stream.on(:frame,   &method(:process))
+      stream.on(:frame,   &method(:send))
 
       @streams[id] = stream
     end
 
+    # Handle locally initiated server-push event emitted by the stream.
+    #
+    # @param args [Array]
+    # @param callback [Proc]
     def promise(*args, &callback)
       if @type == :client
         raise ProtocolError.new("client cannot initiate promise")
@@ -447,6 +493,17 @@ module HTTP2
       callback.call(promise)
     end
 
+    # Emit GOAWAY error indicating to peer that the connection is being
+    # aborted, and once sent, raise a local exception.
+    #
+    # @param error [Symbol]
+    # @option error [Symbol] :no_error
+    # @option error [Symbol] :internal_error
+    # @option error [Symbol] :flow_control_error
+    # @option error [Symbol] :stream_closed
+    # @option error [Symbol] :frame_too_large
+    # @option error [Symbol] :compression_error
+    # @param msg [String]
     def connection_error(error = :protocol_error, msg: nil)
       goaway(error) if @state != :closed && @state != :new
 

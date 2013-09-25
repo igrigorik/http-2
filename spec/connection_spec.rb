@@ -134,8 +134,8 @@ describe HTTP2::Connection do
         s.send HEADERS
         s.close
 
-        @conn.stub(:process)
-        @conn.should_receive(:process) do |frame|
+        @conn.stub(:send)
+        @conn.should_receive(:send) do |frame|
           frame[:type].should eq :rst_stream
           frame[:stream].should eq 2
         end
@@ -238,7 +238,6 @@ describe HTTP2::Connection do
 
       @conn << f.generate(SETTINGS)
       @conn.on(:stream) do |stream|
-        stream.stub(:process)
         stream.should_receive(:<<) do |frame|
           frame[:payload].should eq req_headers
         end
@@ -264,7 +263,6 @@ describe HTTP2::Connection do
 
       @conn << f.generate(SETTINGS)
       @conn.on(:stream) do |stream|
-        stream.stub(:process)
         stream.should_receive(:<<) do |frame|
           frame[:payload].should eq req_headers
         end
@@ -334,8 +332,7 @@ describe HTTP2::Connection do
   context "connection management" do
     it "should respond to PING frames" do
       @conn << f.generate(SETTINGS)
-      @conn.stub(:process)
-      @conn.should_receive(:process) do |frame|
+      @conn.should_receive(:send) do |frame|
         frame[:type].should eq :ping
         frame[:flags].should eq [:pong]
         frame[:payload].should eq "12345678"
@@ -415,8 +412,7 @@ describe HTTP2::Connection do
         settings_flow_control_options: 1
       }
 
-      @conn.stub(:process)
-      @conn.should_receive(:process) do |frame|
+      @conn.should_receive(:send) do |frame|
         frame[:type].should eq :settings
         frame[:payload].should eq settings
         frame[:stream].should eq 0
@@ -426,8 +422,7 @@ describe HTTP2::Connection do
     end
 
     it ".ping should generate PING frames" do
-      @conn.stub(:process)
-      @conn.should_receive(:process) do |frame|
+      @conn.should_receive(:send) do |frame|
         frame[:type].should eq :ping
         frame[:payload].should eq "somedata"
       end
@@ -439,8 +434,7 @@ describe HTTP2::Connection do
       @conn << f.generate(SETTINGS)
       @conn << f.generate(HEADERS.merge({stream: 17}))
 
-      @conn.stub(:process)
-      @conn.should_receive(:process) do |frame|
+      @conn.should_receive(:send) do |frame|
         frame[:type].should eq :goaway
         frame[:last_stream].should eq 17
         frame[:error].should eq :internal_error
