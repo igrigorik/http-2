@@ -117,19 +117,21 @@ module HTTP2
       end
 
       # Performs differential coding based on provided command type.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-3.1
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03#section-3.2
       #
       # @param cmd [Hash]
       def process(cmd)
         # indexed representation
         if cmd[:type] == :indexed
-          # For an indexed representation, the decoder checks whether the index
-          # is present in the working set. If true, the corresponding entry is
-          # removed from the working set. If several entries correspond to this
-          # encoded index, all these entries are removed from the working set.
-          # If the index is not present in the working set, it is used to
-          # retrieve the corresponding header from the header table, and a new
-          # entry is added to the working set representing this header.
+          # An indexed representation corresponding to an entry not present
+          # in the reference set entails the following actions:
+          # - The header corresponding to the entry is emitted.
+          # - The entry is added to the reference set.
+          #
+          # An indexed representation corresponding to an entry present in
+          # the reference set entails the following actions:
+          #  - The entry is removed from the reference set.
+          #
           cur = @refset.find_index {|(i,v)| i == cmd[:name]}
 
           if cur
@@ -139,11 +141,17 @@ module HTTP2
           end
 
         else
-          # For a literal representation, a new entry is added to the working
-          # set representing this header. If the literal representation specifies
-          # that the header is to be indexed, the header is added accordingly to
-          # the header table, and its index is included in the entry in the working
-          # set. Otherwise, the entry in the working set contains an undefined index.
+          # A literal representation that is not added to the header table
+          # entails the following action:
+          #  - The header is emitted.
+          #
+          # A literal representation that is added to the header table entails
+          # the following actions:
+          #  - The header is emitted.
+          #  - The header is added to the header table, at the location
+          #    defined by the representation.
+          #  - The new entry is added to the reference set.
+          #
           if cmd[:name].is_a? Integer
             k,v = @table[cmd[:name]]
 
@@ -293,16 +301,16 @@ module HTTP2
       end
 
       # Encodes provided value via integer representation.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.2.1
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03#section-4.1.1
       #
-      #   If I < 2^N - 1, encode I on N bits
-      #   Else, encode 2^N - 1 on N bits and do the following steps:
-      #    Set I to (I - (2^N - 1)) and Q to 1
-      #    While Q > 0
-      #      Compute Q and R, quotient and remainder of I divided by 2^7
-      #      If Q is strictly greater than 0, write one 1 bit; otherwise, write one 0 bit
-      #      Encode R on the next 7 bits
-      #      I = Q
+      #  If I < 2^N - 1, encode I on N bits
+      #  Else
+      #      encode 2^N - 1 on N bits
+      #      I = I - (2^N - 1)
+      #      While I >= 128
+      #           Encode (I % 128 + 128) on 8 bits
+      #           I = I / 128
+      #      encode (I) on 8 bits
       #
       # @param i [Integer] value to encode
       # @param n [Integer] number of available bits
@@ -315,16 +323,12 @@ module HTTP2
         bytes.push limit if !n.zero?
 
         i -= limit
-        q = 1
-
-        while (q > 0) do
-          q, r = i.divmod(128)
-          r += 128 if (q > 0)
-          i = q
-
-          bytes.push(r)
+        while (i >= 128) do
+          bytes.push((i % 128) + 128)
+          i = i / 128
         end
 
+        bytes.push i
         bytes.pack('C*')
       end
 
