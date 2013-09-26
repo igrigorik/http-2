@@ -122,10 +122,10 @@ describe HTTP2::Header do
 
       it "should be initialized with pre-defined headers" do
         cc = EncodingContext.new(:request)
-        cc.table.size.should eq 38
+        cc.table.size.should eq 30
 
         cc = EncodingContext.new(:response)
-        cc.table.size.should eq 35
+        cc.table.size.should eq 30
       end
 
       it "should be initialized with empty working set" do
@@ -202,7 +202,7 @@ describe HTTP2::Header do
 
             @cc.refset.first.should eq [idx, ["x-custom", "random"]]
             (@cc.table - original_table).should eq [["x-custom", "random"]]
-            (original_table - @cc.table).should eq [["warning", ""]]
+            (original_table - @cc.table).should eq [["via", ""]]
           end
 
           it "should raise error on invalid substitution index" do
@@ -257,30 +257,30 @@ describe HTTP2::Header do
       it "should match first header set in spec appendix" do
         req_headers = [
           {name: 3, value: "/my-example/index.html"},
-          {name: 12, value: "my-user-agent"},
-          {name: "x-my-header", value: "first"}
+          {name: 11, value: "my-user-agent"},
+          {name: "mynewheader", value: "first"}
         ]
 
         req_headers.each {|h| @cc.process(h.merge({type: :incremental})) }
 
-        @cc.table[38].should eq [":path", "/my-example/index.html"]
-        @cc.table[39].should eq ["user-agent", "my-user-agent"]
-        @cc.table[40].should eq req_headers[2].values
+        @cc.table[30].should eq [":path", "/my-example/index.html"]
+        @cc.table[31].should eq ["user-agent", "my-user-agent"]
+        @cc.table[32].should eq req_headers[2].values
       end
 
       it "should match second header set in spec appendix" do
-        @cc.process({name: 38, type: :indexed})
-        @cc.process({name: 39, type: :indexed})
+        @cc.process({name: 30, type: :indexed})
+        @cc.process({name: 31, type: :indexed})
         @cc.process({
           name: 3, value: "/my-example/resources/script.js",
-          index: 38, type: :substitution
+          index: 30, type: :substitution
         })
-        @cc.process({name: 40, value: "second", type: :incremental})
+        @cc.process({name: 32, value: "second", type: :incremental})
 
-        @cc.table[38].should eq [":path", "/my-example/resources/script.js"]
-        @cc.table[39].should eq ["user-agent", "my-user-agent"]
-        @cc.table[40].should eq ["x-my-header", "first"]
-        @cc.table[41].should eq ["x-my-header", "second"]
+        @cc.table[30].should eq [":path", "/my-example/resources/script.js"]
+        @cc.table[31].should eq ["user-agent", "my-user-agent"]
+        @cc.table[32].should eq ["mynewheader", "first"]
+        @cc.table[33].should eq ["mynewheader", "second"]
       end
     end
   end
@@ -297,12 +297,12 @@ describe HTTP2::Header do
       0x44, # (literal header with incremental indexing, name index = 3)
       0x16, # (header value string length = 22)
       "/my-example/index.html".bytes,
-      0x4D, # (literal header with incremental indexing, name index = 12)
+      0x4C, # (literal header with incremental indexing, name index = 11)
       0x0D, # (header value string length = 13)
       "my-user-agent".bytes,
       0x40, # (literal header with incremental indexing, new name)
       0x0B, # (header name string length = 11)
-      "x-my-header".bytes,
+      "mynewheader".bytes,
       0x05, # (header value string length = 5)
       "first".bytes
     ].flatten
@@ -310,7 +310,7 @@ describe HTTP2::Header do
     E1_HEADERS = [
       [":path", "/my-example/index.html"],
       ["user-agent", "my-user-agent"],
-      ["x-my-header", "first"]
+      ["mynewheader", "first"]
     ]
 
     it "should match first header set in spec appendix" do
@@ -322,14 +322,14 @@ describe HTTP2::Header do
     end
 
     E2_BYTES = [
-      0xa6, # (indexed header, index = 38: removal from reference set)
-      0xa8, # (indexed header, index = 40: removal from reference set)
+      0x9e, # (indexed header, index = 30: removal from reference set)
+      0xa0, # (indexed header, index = 32: removal from reference set)
       0x04, # (literal header, substitution indexing, name index = 3)
-      0x26, # (replaced entry index = 38)
+      0x1e, # (replaced entry index = 30)
       0x1f, # (header value string length = 31)
       "/my-example/resources/script.js".bytes,
       0x5f,
-      0x0a, # (literal header, incremental indexing, name index = 40)
+      0x02, # (literal header, incremental indexing, name index = 32)
       0x06, # (header value string length = 6)
       "second".bytes
     ].flatten
@@ -337,7 +337,7 @@ describe HTTP2::Header do
     E2_HEADERS = [
       [":path", "/my-example/resources/script.js"],
       ["user-agent", "my-user-agent"],
-      ["x-my-header", "second"]
+      ["mynewheader", "second"]
     ]
 
     it "should match second header set in spec appendix" do
@@ -385,4 +385,13 @@ describe HTTP2::Header do
   # Literal header names MUST be translated to lowercase before encoding
   # and transmission.
   it "should downcase header values"
+
+
+   # The addition of a new entry with a size greater than the
+   # SETTINGS_HEADER_TABLE_SIZE limit causes all the entries from the
+   # header table to be dropped and the new entry not to be added to the
+   # header table.  The replacement of an existing entry with a new entry
+   # with a size greater than the SETTINGS_HEADER_TABLE_SIZE has the same
+   # consequences.
+   it "should clear the table"
 end
