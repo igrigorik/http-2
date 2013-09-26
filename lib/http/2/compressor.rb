@@ -12,7 +12,7 @@ module HTTP2
     # encoding context: an encoding context contains a header table and a
     # reference set - there is one encoding context for each direction.
     #
-    class CompressionContext
+    class EncodingContext
       include Error
 
       # TODO: replace StringIO with Buffer...
@@ -289,7 +289,7 @@ module HTTP2
     #   server_role = Compressor.new(:response)
     class Compressor
       def initialize(type)
-        @cc = CompressionContext.new(type)
+        @cc = EncodingContext.new(type)
       end
 
       # Encodes provided value via integer representation.
@@ -418,7 +418,7 @@ module HTTP2
     #   client_role = Decompressor.new(:response)
     class Decompressor
       def initialize(type)
-        @cc = CompressionContext.new(type)
+        @cc = EncodingContext.new(type)
       end
 
       # Decodes integer value from provided buffer.

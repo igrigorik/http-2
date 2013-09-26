@@ -118,13 +118,13 @@ describe HTTP2::Header do
 
   context "differential coding" do
     context "shared compression context" do
-      before(:each) { @cc = CompressionContext.new(:request) }
+      before(:each) { @cc = EncodingContext.new(:request) }
 
       it "should be initialized with pre-defined headers" do
-        cc = CompressionContext.new(:request)
+        cc = EncodingContext.new(:request)
         cc.table.size.should eq 38
 
-        cc = CompressionContext.new(:response)
+        cc = EncodingContext.new(:response)
         cc.table.size.should eq 35
       end
 
@@ -217,7 +217,7 @@ describe HTTP2::Header do
 
         context "size bounds" do
           it "should drop headers from beginning of table" do
-            cc = CompressionContext.new(:request, 2048)
+            cc = EncodingContext.new(:request, 2048)
             original_table = cc.table.dup
             original_size = original_table.join.bytesize +
                             original_table.size * 32
@@ -233,7 +233,7 @@ describe HTTP2::Header do
            end
 
           it "should prepend on dropped substitution index" do
-            cc = CompressionContext.new(:request, 2048)
+            cc = EncodingContext.new(:request, 2048)
             original_table = cc.table.dup
             original_size = original_table.join.bytesize +
                             original_table.size * 32
@@ -252,7 +252,7 @@ describe HTTP2::Header do
     end
 
     context "integration" do
-      before (:all) { @cc = CompressionContext.new(:request) }
+      before (:all) { @cc = EncodingContext.new(:request) }
 
       it "should match first header set in spec appendix" do
         req_headers = [
