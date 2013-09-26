@@ -129,29 +129,29 @@ describe HTTP2::Header do
       end
 
       it "should be initialized with empty working set" do
-        @cc.workset.should be_empty
+        @cc.refset.should be_empty
       end
 
       it "should update working set based on prior state" do
         @cc.update_sets
-        @cc.workset.should be_empty
+        @cc.refset.should be_empty
 
         @cc.process({name: 0, type: :indexed})
         @cc.update_sets
-        @cc.workset.should eq [[0, [":scheme", "http"]]]
+        @cc.refset.should eq [[0, [":scheme", "http"]]]
 
         @cc.process({name: 0, type: :indexed})
         @cc.update_sets
-        @cc.workset.should be_empty
+        @cc.refset.should be_empty
       end
 
       context "processing" do
         it "should toggle index representation headers in working set" do
           @cc.process({name: 0, type: :indexed})
-          @cc.workset.first.should eq [0, [":scheme", "http"]]
+          @cc.refset.first.should eq [0, [":scheme", "http"]]
 
           @cc.process({name: 0, type: :indexed})
-          @cc.workset.should be_empty
+          @cc.refset.should be_empty
         end
 
         context "no indexing" do
@@ -159,7 +159,7 @@ describe HTTP2::Header do
             original_table = @cc.table
 
             @cc.process({name: 3, value: "/path", type: :noindex})
-            @cc.workset.first.should eq [3, [":path", "/path"]]
+            @cc.refset.first.should eq [3, [":path", "/path"]]
             @cc.table.should eq original_table
           end
 
@@ -167,7 +167,7 @@ describe HTTP2::Header do
             original_table = @cc.table
 
             @cc.process({name: 3, type: :noindex})
-            @cc.workset.first.should eq [3, [":path", "/"]]
+            @cc.refset.first.should eq [3, [":path", "/"]]
             @cc.table.should eq original_table
           end
 
@@ -175,7 +175,7 @@ describe HTTP2::Header do
             original_table = @cc.table
 
             @cc.process({name: "x-custom", value: "random", type: :noindex})
-            @cc.workset.first.should eq [nil, ["x-custom", "random"]]
+            @cc.refset.first.should eq [nil, ["x-custom", "random"]]
             @cc.table.should eq original_table
           end
         end
@@ -185,7 +185,7 @@ describe HTTP2::Header do
             original_table = @cc.table.dup
 
             @cc.process({name: "x-custom", value: "random", type: :incremental})
-            @cc.workset.first.should eq [original_table.size, ["x-custom", "random"]]
+            @cc.refset.first.should eq [original_table.size, ["x-custom", "random"]]
             (@cc.table - original_table).should eq [["x-custom", "random"]]
           end
         end
@@ -200,7 +200,7 @@ describe HTTP2::Header do
               index: idx, type: :substitution
             })
 
-            @cc.workset.first.should eq [idx, ["x-custom", "random"]]
+            @cc.refset.first.should eq [idx, ["x-custom", "random"]]
             (@cc.table - original_table).should eq [["x-custom", "random"]]
             (original_table - @cc.table).should eq [["warning", ""]]
           end
@@ -381,4 +381,8 @@ describe HTTP2::Header do
       dc.decode(StringIO.new(cc.encode(req))).should eq req
     end
   end
+
+  # Literal header names MUST be translated to lowercase before encoding
+  # and transmission.
+  it "should downcase header values"
 end

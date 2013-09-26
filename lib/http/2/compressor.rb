@@ -101,8 +101,8 @@ module HTTP2
       # Current table of header key-value pairs.
       attr_reader :table
 
-      # Current working set of header key-value pairs.
-      attr_reader :workset
+      # Current reference set of header key-value pairs.
+      attr_reader :refset
 
       # Initializes compression context with appropriate client/server
       # defaults and maximum size of the header table.
@@ -113,7 +113,7 @@ module HTTP2
         @type = type
         @table = (type == :request) ? REQ_DEFAULTS.dup : RESP_DEFAULTS.dup
         @limit = limit
-        @workset = []
+        @refset = []
       end
 
       # Performs differential coding based on provided command type.
@@ -130,12 +130,12 @@ module HTTP2
           # If the index is not present in the working set, it is used to
           # retrieve the corresponding header from the header table, and a new
           # entry is added to the working set representing this header.
-          cur = @workset.find_index {|(i,v)| i == cmd[:name]}
+          cur = @refset.find_index {|(i,v)| i == cmd[:name]}
 
           if cur
-            @workset.delete_at(cur)
+            @refset.delete_at(cur)
           else
-            @workset.push [cmd[:name], @table[cmd[:name]]]
+            @refset.push [cmd[:name], @table[cmd[:name]]]
           end
 
         else
@@ -171,7 +171,7 @@ module HTTP2
             @table[cmd[:index]] = newval
           end
 
-          @workset.push [cmd[:index], newval]
+          @refset.push [cmd[:index], newval]
         end
       end
 
@@ -184,10 +184,10 @@ module HTTP2
       # @return [Array] current working set
       def update_sets
         # new refset is the the workset sans headers not in header table
-        refset = @workset.reject {|(i,h)| !@table.include? h}
+        workset = @refset.reject {|(i,h)| !@table.include? h}
 
         # new workset is the refset with index of each header in header table
-        @workset = refset.collect {|(i,h)| [@table.find_index(h), h]}
+        @refset = workset.collect {|(i,h)| [@table.find_index(h), h]}
       end
 
       # Emits best available command to encode provided header.
@@ -263,7 +263,7 @@ module HTTP2
       end
 
       def active?(idx)
-        !@workset.find {|i,_| i == idx }.nil?
+        !@refset.find {|i,_| i == idx }.nil?
       end
 
       def default?(idx)
@@ -389,7 +389,7 @@ module HTTP2
         @cc.update_sets
 
         # Remove missing headers from the working set
-        @cc.workset.each do |idx, (wk,wv)|
+        @cc.refset.each do |idx, (wk,wv)|
           if headers.find {|(hk,hv)| hk == wk && hv == wv }.nil?
             commands.push @cc.removecmd idx
           end
@@ -397,7 +397,7 @@ module HTTP2
 
         # Add missing headers to the working set
         headers.each do |(hk,hv)|
-          if @cc.workset.find {|i,(wk,wv)| hk == wk && hv == wv}.nil?
+          if @cc.refset.find {|i,(wk,wv)| hk == wk && hv == wv}.nil?
             commands.push @cc.addcmd [hk, hv]
           end
         end
@@ -485,7 +485,7 @@ module HTTP2
       def decode(buf)
         @cc.update_sets
         @cc.process(header(buf)) while !buf.eof?
-        @cc.workset.map {|i,header| header}
+        @cc.refset.map {|i,header| header}
       end
     end
 
