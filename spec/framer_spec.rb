@@ -136,6 +136,7 @@ describe HTTP2::Framer do
       {
         length: 8,
         type: :settings,
+        flags: [],
         stream: 0,
         payload: {
           settings_max_concurrent_streams: 10
@@ -150,16 +151,15 @@ describe HTTP2::Framer do
       f.parse(Buffer.new(bytes)).should eq frame
     end
 
-    it "should encode custom settings" do
-      frame[:length] = 8*3
+    it "should ignore custom settings" do
+      frame[:length] = 8*2
       frame[:payload] = {
         settings_max_concurrent_streams: 10,
-        settings_initial_window_size:    20,
-        55 => 30
+        settings_initial_window_size:    20
       }
 
-      f.parse(Buffer.new(f.generate(frame))).should eq frame
-
+      buf = Buffer.new(f.generate(frame.merge({55 => 30})))
+      f.parse(buf).should eq frame
     end
 
     it "should raise exception on invalid stream ID" do

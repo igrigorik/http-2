@@ -256,8 +256,9 @@ module HTTP2
           id  = payload.read(4).unpack(UINT32).first & RBYTE
           val = payload.read(4).unpack(UINT32).first
 
+          # Unsupported or unrecognized settings MUST be ignored.
           name, _ = DEFINED_SETTINGS.select { |name, v| v == id }.first
-          frame[:payload][name || id] = val
+          frame[:payload][name] = val if name
         end
       when :push_promise
         frame[:promise_stream] = payload.read(4).unpack(UINT32).first & RBIT
