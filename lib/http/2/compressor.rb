@@ -107,7 +107,10 @@ module HTTP2
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03#section-3.2
       #
       # @param cmd [Hash]
+      # @return [Hash] emitted header
       def process(cmd)
+        emit = nil
+
         # indexed representation
         if cmd[:type] == :indexed
           # An indexed representation corresponding to an entry not present
@@ -119,12 +122,14 @@ module HTTP2
           # the reference set entails the following actions:
           #  - The entry is removed from the reference set.
           #
-          cur = @refset.find_index {|(i,v)| i == cmd[:name]}
+          idx = cmd[:name]
+          cur = @refset.find_index {|(i,v)| i == idx}
 
           if cur
             @refset.delete_at(cur)
           else
-            @refset.push [cmd[:name], @table[cmd[:name]]]
+            emit = @table[idx]
+            @refset.push [idx, @table[idx]]
           end
 
         else
@@ -147,42 +152,29 @@ module HTTP2
             cmd[:name] = k
           end
 
-          newval = [cmd[:name], cmd[:value]]
+          emit = [cmd[:name], cmd[:value]]
 
           if cmd[:type] != :noindex
-            size_check cmd
+            if size_check(cmd)
 
-            case cmd[:type]
-            when :incremental
-              cmd[:index] = @table.size
-            when :substitution
-              if @table[cmd[:index]].nil?
-                raise HeaderException.new("invalid index")
+              case cmd[:type]
+              when :incremental
+                cmd[:index] = @table.size
+              when :substitution
+                if @table[cmd[:index]].nil?
+                  raise HeaderException.new("invalid index")
+                end
+              when :prepend
+                @table = [emit] + @table
               end
-            when :prepend
-              @table = [newval] + @table
+
+              @table[cmd[:index]] = emit
+              @refset.push [cmd[:index], emit]
             end
-
-            @table[cmd[:index]] = newval
           end
-
-          @refset.push [cmd[:index], newval]
         end
-      end
 
-      # First, upon starting the decoding of a new set of headers, the
-      # reference set of headers is interpreted into the working set of
-      # headers: for each header in the reference set, an entry is added to
-      # the working set, containing the header name, its value, and its
-      # current index in the header table.
-      #
-      # @return [Array] current working set
-      def update_sets
-        # new refset is the the workset sans headers not in header table
-        workset = @refset.reject {|(i,h)| !@table.include? h}
-
-        # new workset is the refset with index of each header in header table
-        @refset = workset.collect {|(i,h)| [@table.find_index(h), h]}
+        emit
       end
 
       # Emits best available command to encode provided header.
@@ -225,36 +217,51 @@ module HTTP2
 
       private
 
-      # Before adding a new entry to the header table or changing an existing
-      # one, a check has to be performed to ensure that the change will not
-      # cause the table to grow in size beyond the SETTINGS_MAX_BUFFER_SIZE
-      # limit. If necessary, one or more items from the beginning of the
-      # table are removed until there is enough free space available to make
-      # the modification.  Dropping an entry from the beginning of the table
-      # causes the index positions of the remaining entries in the table to
-      # be decremented by 1.
+      # Before doing such a modification, it has to be ensured that the header
+      # table size will stay lower than or equal to the
+      # SETTINGS_HEADER_TABLE_SIZE limit. To achieve this, repeatedly, the
+      # first entry of the header table is removed, until enough space is
+      # available for the modification.
+      #
+      # A consequence of removing one or more entries at the beginning of the
+      # header table is that the remaining entries are renumbered.  The first
+      # entry of the header table is always associated to the index 0.
       #
       # @param cmd [Hash]
+      # @return [Boolean]
       def size_check(cmd)
         cursize = @table.join.bytesize + @table.size * 32
         cmdsize = cmd[:name].bytesize + cmd[:value].bytesize + 32
+
+        # The addition of a new entry with a size greater than the
+        # SETTINGS_HEADER_TABLE_SIZE limit causes all the entries from the
+        # header table to be dropped and the new entry not to be added to the
+        # header table.  The replacement of an existing entry with a new entry
+        # with a size greater than the SETTINGS_HEADER_TABLE_SIZE has the same
+        # consequences.
+        if cmdsize > @limit
+          @table.clear
+          return false
+        end
 
         cur = 0
         while (cursize + cmdsize) > @limit do
           e = @table.shift
 
-          # When using substitution indexing, it is possible that the existing
-          # item being replaced might be one of the items removed when performing
-          # the necessary size adjustment.  In such cases, the substituted value
-          # being added to the header table is inserted at the beginning of the
-          # header table (at index position #0) and the index positions of the
-          # other remaining entries in the table are incremented by 1.
+          # When the modification of the header table is the replacement of an
+          # existing entry, the replaced entry is the one indicated in the
+          # literal representation before any entry is removed from the header
+          # table. If the entry to be replaced is removed from the header table
+          # when performing the size adjustment, the replacement entry is
+          # inserted at the beginning of the header table.
           if cmd[:type] == :substitution && cur == cmd[:index]
              cmd[:type] = :prepend
            end
 
           cursize -= (e.join.bytesize + 32)
         end
+
+        return true
       end
 
       def active?(idx)
@@ -320,7 +327,7 @@ module HTTP2
       end
 
       # Encodes provided value via string literal representation.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.2.2
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03#section-4.1.3
       #
       # * The string length, defined as the number of bytes needed to store
       #   its UTF-8 representation, is represented as an integer with a zero
@@ -335,7 +342,7 @@ module HTTP2
       end
 
       # Encodes header command with appropriate header representation.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-01#section-4.3
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03#section-4
       #
       # @param h [Hash] header command
       # @param buffer [String]
@@ -377,16 +384,19 @@ module HTTP2
       # @return [String] binary string
       def encode(headers)
         commands = []
-        @cc.update_sets
 
-        # Remove missing headers from the working set
+        # Literal header names MUST be translated to lowercase before
+        # encoding and transmission.
+        headers.map! {|(hk,hv)| [hk.downcase, hv] }
+
+        # Generate remove commands for missing headers
         @cc.refset.each do |idx, (wk,wv)|
           if headers.find {|(hk,hv)| hk == wk && hv == wv }.nil?
             commands.push @cc.removecmd idx
           end
         end
 
-        # Add missing headers to the working set
+        # Generate add commands for new headers
         headers.each do |(hk,hv)|
           if @cc.refset.find {|i,(wk,wv)| hk == wk && hv == wv}.nil?
             commands.push @cc.addcmd [hk, hv]
@@ -472,11 +482,26 @@ module HTTP2
 
       # Decodes and processes header commands within provided buffer.
       #
+      # Once all the representations contained in a header block have been
+      # processed, the headers that are in common with the previous header
+      # set are emitted, during the reference set emission.
+      #
+      # For the reference set emission, each header contained in the
+      # reference set that has not been emitted during the processing of the
+      # header block is emitted.
+      #
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03#section-3.2.2
+      #
       # @param buf [String]
+      # @return [Array] set of HTTP headers
       def decode(buf)
-        @cc.update_sets
-        @cc.process(header(buf)) while !buf.eof?
-        @cc.refset.map {|i,header| header}
+        set = []
+        set << @cc.process(header(buf)) while !buf.eof?
+        @cc.refset.each do |i,header|
+          set << header if !set.include? header
+        end
+
+        set.compact
       end
     end
 

@@ -133,15 +133,12 @@ describe HTTP2::Header do
       end
 
       it "should update working set based on prior state" do
-        @cc.update_sets
         @cc.refset.should be_empty
 
         @cc.process({name: 0, type: :indexed})
-        @cc.update_sets
         @cc.refset.should eq [[0, [":scheme", "http"]]]
 
         @cc.process({name: 0, type: :indexed})
-        @cc.update_sets
         @cc.refset.should be_empty
       end
 
@@ -158,24 +155,26 @@ describe HTTP2::Header do
           it "should process indexed header with literal value" do
             original_table = @cc.table
 
-            @cc.process({name: 3, value: "/path", type: :noindex})
-            @cc.refset.first.should eq [3, [":path", "/path"]]
+            emit = @cc.process({name: 3, value: "/path", type: :noindex})
+            emit.should eq [":path", "/path"]
+            @cc.refset.should be_empty
             @cc.table.should eq original_table
           end
 
           it "should process indexed header with default value" do
             original_table = @cc.table
 
-            @cc.process({name: 3, type: :noindex})
-            @cc.refset.first.should eq [3, [":path", "/"]]
+            emit = @cc.process({name: 3, type: :noindex})
+            emit.should eq [":path", "/"]
             @cc.table.should eq original_table
           end
 
           it "should process literal header with literal value" do
             original_table = @cc.table
 
-            @cc.process({name: "x-custom", value: "random", type: :noindex})
-            @cc.refset.first.should eq [nil, ["x-custom", "random"]]
+            emit = @cc.process({name: "x-custom", value: "random", type: :noindex})
+            emit.should eq ["x-custom", "random"]
+            @cc.refset.should be_empty
             @cc.table.should eq original_table
           end
         end
@@ -247,6 +246,21 @@ describe HTTP2::Header do
             cc.table[0][0].should eq "x-custom"
             cc.table[1][0].should eq ":scheme"
           end
+        end
+
+        it "should clear table if entry exceeds table size" do
+          cc = EncodingContext.new(:request, 2048)
+
+          h = { name: "x-custom", value: "a", index: 0, type: :incremental }
+          e = { name: "large", value: "a" * 2048, index: 0}
+
+          cc.process(h)
+          cc.process(e.merge({type: :substitution}))
+          cc.table.should be_empty
+
+          cc.process(h)
+          cc.process(e.merge({type: :incremental}))
+          cc.table.should be_empty
         end
       end
     end
@@ -380,18 +394,14 @@ describe HTTP2::Header do
 
       dc.decode(StringIO.new(cc.encode(req))).should eq req
     end
+
+    it "should downcase all request header names" do
+      cc = Compressor.new(:request)
+      dc = Decompressor.new(:request)
+
+      req = [["Accept", "IMAGE/PNG"]]
+      recv = dc.decode(StringIO.new(cc.encode(req)))
+      recv.should eq [["accept", "IMAGE/PNG"]]
+    end
   end
-
-  # Literal header names MUST be translated to lowercase before encoding
-  # and transmission.
-  it "should downcase header values"
-
-
-   # The addition of a new entry with a size greater than the
-   # SETTINGS_HEADER_TABLE_SIZE limit causes all the entries from the
-   # header table to be dropped and the new entry not to be added to the
-   # header table.  The replacement of an existing entry with a new entry
-   # with a size greater than the SETTINGS_HEADER_TABLE_SIZE has the same
-   # consequences.
-   it "should clear the table"
 end
