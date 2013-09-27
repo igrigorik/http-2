@@ -3,6 +3,11 @@ module HTTP2
   # Stream, connection, and compressor exceptions.
   module Error
 
+    # Raised if connection header is missing or invalid indicating that
+    # this is an invalid HTTP 2.0 request - no frames are emitted and the
+    # connection must be aborted.
+    class HandshakeError < Exception; end
+
     # Raised by stream or connection handlers, results in GOAWAY frame
     # which signals termination of the current connection. You *cannot*
     # recover from this exception, or any exceptions subclassed from it.

@@ -2,17 +2,17 @@ require "helper"
 
 describe HTTP2::Connection do
   before(:each) do
-    @conn = Connection.new
+    @conn = new_connection
   end
 
   let(:f) { Framer.new }
 
   context "initialization and settings" do
     it "should return odd ids for client requests" do
-      @conn = Connection.new(:client)
+      @conn = new_connection(:client)
       @conn.new_stream.id.should_not be_even
 
-      @conn = Connection.new(:server)
+      @conn = new_connection(:server)
       @conn.new_stream.id.should be_even
     end
 
@@ -331,6 +331,16 @@ describe HTTP2::Connection do
   end
 
   context "connection management" do
+    it "should raise error on invalid connection header" do
+      conn = Connection.new(:server)
+      expect { conn.dup << f.generate(SETTINGS) }.to raise_error(HandshakeError)
+
+      expect {
+        conn << CONNECTION_HEADER
+        conn << f.generate(SETTINGS)
+      }.to_not raise_error
+    end
+
     it "should respond to PING frames" do
       @conn << f.generate(SETTINGS)
       @conn.should_receive(:send) do |frame|

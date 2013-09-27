@@ -150,6 +150,25 @@ module HTTP2
     def receive(data)
       @recv_buffer << data
 
+      # Upon establishment of a TCP connection and determination that
+      # HTTP/2.0 will be used by both peers, each endpoint MUST send a
+      # connection header as a final confirmation and to establish the
+      # initial settings for the HTTP/2.0 connection.
+      if @state == :new
+        if @recv_buffer.size < 24
+          if !CONNECTION_HEADER.start_with? @recv_buffer
+            raise HandshakeError.new
+          else
+            return
+          end
+
+        elsif @recv_buffer.read(24) != CONNECTION_HEADER
+          raise HandshakeError.new
+        else
+          @state = :connection_header
+        end
+      end
+
       while frame = @framer.parse(@recv_buffer) do
         # Header blocks MUST be transmitted as a contiguous sequence of frames
         # with no interleaved frames of any other type, or from any other stream.
@@ -331,7 +350,7 @@ module HTTP2
     # @param frame [Hash]
     def connection_management(frame)
       case @state
-      when :new
+      when :connection_header
         # SETTINGS frames MUST be sent at the start of a connection.
         connection_settings(frame)
         @state = :connected

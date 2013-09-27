@@ -2,7 +2,7 @@ require "helper"
 
 describe HTTP2::Stream do
   before(:each) do
-    @conn = Connection.new
+    @conn = new_connection
     @stream = @conn.new_stream
   end
 
@@ -490,7 +490,7 @@ describe HTTP2::Stream do
     end
 
     it ".reprioritize should raise error if invoked by server" do
-      conn = Connection.new(:server)
+      conn = new_connection(:server)
       stream = conn.new_stream
 
       expect { stream.reprioritize(10) }.to raise_error(StreamError)
@@ -557,7 +557,7 @@ describe HTTP2::Stream do
 
   context "server API" do
     before(:each) do
-      @srv = Connection.new(:server)
+      @srv = new_connection(:server)
       @frm = Framer.new
 
       @conn.on(:frame) {|bytes| @srv << bytes }
