@@ -1,8 +1,9 @@
 require 'autotest/growl'
 
 Autotest.add_hook(:initialize) {|at|
-  at.add_exception %r{^\.git}
+  at.add_exception %r{^\.git|\.yardoc}
   at.add_exception %r{^./tmp}
+  at.add_exception %r{coverage}
 
   at.clear_mappings
 
