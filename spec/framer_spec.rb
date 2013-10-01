@@ -14,7 +14,7 @@ describe HTTP2::Framer do
       }
     }
 
-    let(:bytes) { [0x04, 0x01, 0x7, 0x0000000F].pack("SCCL") }
+    let(:bytes) { [0x04, 0x01, 0x7, 0x0000000F].pack("nCCN") }
 
     it "should generate common 8 byte header" do
       f.commonHeader(frame).should eq bytes
@@ -64,7 +64,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x4,0x0,0x3,0x1,*'text'.bytes].pack("SCCLC*")
+      bytes.should eq [0x4,0x0,0x3,0x1,*'text'.bytes].pack("nCCNC*")
 
       f.parse(Buffer.new(bytes)).should eq frame
     end
@@ -81,7 +81,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0xc,0x1,0x7,0x1,*'header-block'.bytes].pack("SCCLC*")
+      bytes.should eq [0xc,0x1,0x7,0x1,*'header-block'.bytes].pack("nCCNC*")
       f.parse(Buffer.new(bytes)).should eq frame
     end
 
@@ -96,7 +96,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x10,0x1,0xc,0x1,0xf,*'header-block'.bytes].pack("SCCLLC*")
+      bytes.should eq [0x10,0x1,0xc,0x1,0xf,*'header-block'.bytes].pack("nCCNNC*")
       f.parse(Buffer.new(bytes)).should eq frame
     end
   end
@@ -111,7 +111,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x4,0x2,0x0,0x1,0xf].pack("SCCLL")
+      bytes.should eq [0x4,0x2,0x0,0x1,0xf].pack("nCCNN")
       f.parse(Buffer.new(bytes)).should eq frame
     end
   end
@@ -126,7 +126,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x4,0x3,0x0,0x1,0x5].pack("SCCLL")
+      bytes.should eq [0x4,0x3,0x0,0x1,0x5].pack("nCCNN")
       f.parse(Buffer.new(bytes)).should eq frame
     end
   end
@@ -147,7 +147,7 @@ describe HTTP2::Framer do
     it "should generate and parse bytes" do
 
       bytes = f.generate(frame)
-      bytes.should eq [0x8,0x4,0x0,0x0,0x4,0xa].pack("SCCLLL")
+      bytes.should eq [0x8,0x4,0x0,0x0,0x4,0xa].pack("nCCNNN")
       f.parse(Buffer.new(bytes)).should eq frame
     end
 
@@ -189,7 +189,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0xb,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("SCCLLC*")
+      bytes.should eq [0xb,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("nCCNNC*")
       f.parse(Buffer.new(bytes)).should eq frame
     end
   end
@@ -207,7 +207,7 @@ describe HTTP2::Framer do
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
-      bytes.should eq [0x8,0x6,0x1,0x1,*'12345678'.bytes].pack("SCCLC*")
+      bytes.should eq [0x8,0x6,0x1,0x1,*'12345678'.bytes].pack("nCCNC*")
       f.parse(Buffer.new(bytes)).should eq frame
     end
 
@@ -233,7 +233,7 @@ describe HTTP2::Framer do
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
-      bytes.should eq [0xd,0x7,0x0,0x1,0x2,0x0,*'debug'.bytes].pack("SCCLLLC*")
+      bytes.should eq [0xd,0x7,0x0,0x1,0x2,0x0,*'debug'.bytes].pack("nCCNNNC*")
       f.parse(Buffer.new(bytes)).should eq frame
     end
 
@@ -242,7 +242,7 @@ describe HTTP2::Framer do
       frame[:length] = 0x8
 
       bytes = f.generate(frame)
-      bytes.should eq [0x8,0x7,0x0,0x1,0x2,0x0].pack("SCCLLL")
+      bytes.should eq [0x8,0x7,0x0,0x1,0x2,0x0].pack("nCCNNN")
       f.parse(Buffer.new(bytes)).should eq frame
     end
   end
@@ -256,7 +256,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0x4,0x9,0x0,0x0,0xa].pack("SCCLL")
+      bytes.should eq [0x4,0x9,0x0,0x0,0xa].pack("nCCNN")
       f.parse(Buffer.new(bytes)).should eq frame
     end
   end
@@ -272,7 +272,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0xc,0xa,0x3,0x1,*'header-block'.bytes].pack("SCCLC*")
+      bytes.should eq [0xc,0xa,0x3,0x1,*'header-block'.bytes].pack("nCCNC*")
       f.parse(Buffer.new(bytes)).should eq frame
     end
   end
@@ -293,7 +293,7 @@ describe HTTP2::Framer do
 
     frames.each do |(frame, size)|
       bytes = f.generate(frame)
-      Buffer.new(bytes).slice(0,2).unpack("S").first.should eq size
+      Buffer.new(bytes).slice(0,2).unpack("n").first.should eq size
     end
   end
 
