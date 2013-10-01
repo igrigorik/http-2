@@ -193,10 +193,10 @@ Each HTTP 2.0 [stream has a priority value](http://chimera.labs.oreilly.com/book
 client = HTTP2::Connection.new(:client)
 
 default_priority_stream = client.new_stream
-custom_priority_stream = client.new_stream(42) # priority: 42
+custom_priority_stream = client.new_stream(priority: 42)
 
 # sometime later: change priority value
-custom_priority_stream.priority = 32000 # emits PRIORITY frame
+custom_priority_stream.reprioritize(32000) # emits PRIORITY frame
 ```
 
 On the opposite side, the server can optimize its stream processing order or resource allocation by accessing the stream priority value (`stream.priority`).
