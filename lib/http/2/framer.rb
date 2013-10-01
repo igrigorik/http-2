@@ -71,7 +71,7 @@ module HTTP2
 
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff
-    HEADERPACK = "SCCL"
+    HEADERPACK = "nCCN"
     UINT32 = "L"
 
     private_constant :RBIT, :RBYTE, :HEADERPACK, :UINT32
