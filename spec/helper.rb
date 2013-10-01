@@ -101,8 +101,8 @@ def new_connection(type = :client)
 end
 
 def set_stream_id(bytes, id)
-  head = bytes.slice!(0,8).unpack("SCCL")
+  head = bytes.slice!(0,8).unpack('nCCN')
   head[3] = id
 
-  head.pack("SCCL") + bytes
+  head.pack('nCCN') + bytes
 end
