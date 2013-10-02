@@ -7,6 +7,7 @@ Addrinfo.tcp("localhost", 8080).connect do |sock|
     sock.print bytes
     sock.flush
   end
+  sock.print HTTP2::CONNECTION_HEADER
 
   stream = conn.new_stream
   log = Logger.new(stream.id)
@@ -30,6 +31,7 @@ Addrinfo.tcp("localhost", 8080).connect do |sock|
 
   puts "Sending POST request"
   stream.headers({
+    ":scheme" => "http",
     ":method" => "post",
     ":host" => "localhost",
     ":path" => "/resource",

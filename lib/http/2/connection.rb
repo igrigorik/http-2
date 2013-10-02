@@ -69,10 +69,12 @@ module HTTP2
         @stream_id    = 2
         @compressor   = Header::Compressor.new(:response)
         @decompressor = Header::Decompressor.new(:request)
+        @state = :new
       else
         @stream_id    = 1
         @compressor   = Header::Compressor.new(:request)
         @decompressor = Header::Decompressor.new(:response)
+        @state = :connection_header
       end
 
       @stream_limit = Float::INFINITY
@@ -86,7 +88,6 @@ module HTTP2
       @recv_buffer = Buffer.new
       @send_buffer = []
       @continuation = []
-      @state = :new
       @error = nil
     end
 
