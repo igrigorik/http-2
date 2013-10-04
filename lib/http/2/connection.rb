@@ -11,35 +11,14 @@ module HTTP2
 
   # Connection encapsulates all of the connection, stream, flow-control,
   # error management, and other processing logic required for a well-behaved
-  # HTTP 2.0 client.
+  # HTTP 2.0 endpoint.
   #
-  # When the connection object is instantiated you must specify its role
-  # (:client or :server) to initialize appropriate header compression
-  # and decompression algorithms and stream management logic.
-  #
-  # Your code is responsible for feeding data to connection object, which
-  # performs all of the necessary HTTP 2.0 decoding, state management and
-  # the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0
-  # frames) that you can then route to the destination. Roughly, this works
-  # as follows:
-  #
-  # @example
-  #     socket = YourTransport.new
-  #
-  #     conn = HTTP2::Connection.new(:client)
-  #     conn.on(:frame) {|bytes| socket << bytes }
-  #
-  #     while bytes = socket.read
-  #       conn << bytes
-  #     end
-  #
+  # Note that this class should not be used directly. Instead, you want to
+  # use either Client or Server class to drive the HTTP 2.0 exchange.
   class Connection
     include FlowBuffer
     include Emitter
     include Error
-
-    # Type of connection (:server, :client).
-    attr_reader :type
 
     # Connection state (:new, :closed).
     attr_reader :state
@@ -59,24 +38,9 @@ module HTTP2
     # are not counted towards the stream limit).
     attr_reader :active_stream_count
 
-    # Initializes new client or server connection object.
+    # Initializes new connection object.
     #
-    # @param type [Symbol]
-    def initialize(type = :client)
-      @type = type
-
-      if @type == :server
-        @stream_id    = 2
-        @state        = :new
-        @compressor   = Header::Compressor.new(:response)
-        @decompressor = Header::Decompressor.new(:request)
-      else
-        @stream_id    = 1
-        @state        = :connection_header
-        @compressor   = Header::Compressor.new(:request)
-        @decompressor = Header::Decompressor.new(:response)
-      end
-
+    def initialize
       @stream_limit = Float::INFINITY
       @active_stream_count = 0
       @streams = {}
@@ -304,11 +268,6 @@ module HTTP2
     # @note all frames are currently delivered in FIFO order.
     # @param frame [Hash]
     def send(frame)
-      if @type == :client && @state == :connection_header
-        emit(:frame, CONNECTION_HEADER)
-        @state = :connected
-      end
-
       if frame[:type] == :data
         send_data(frame, true)
 
@@ -493,32 +452,11 @@ module HTTP2
       # permitted to open.
       stream.once(:active) { @active_stream_count += 1 }
       stream.once(:close)  { @active_stream_count -= 1 }
-      stream.on(:promise, &method(:promise))
+      # p [self.class]
+      stream.on(:promise, &method(:promise)) if self.is_a? Server
       stream.on(:frame,   &method(:send))
 
       @streams[id] = stream
-    end
-
-    # Handle locally initiated server-push event emitted by the stream.
-    #
-    # @param args [Array]
-    # @param callback [Proc]
-    def promise(*args, &callback)
-      if @type == :client
-        raise ProtocolError.new("client cannot initiate promise")
-      end
-
-      parent, headers, flags = *args
-      promise = new_stream(parent: parent)
-      promise.send({
-        type: :push_promise,
-        flags: flags,
-        stream: parent.id,
-        promise_stream: promise.id,
-        payload: headers.to_a
-      })
-
-      callback.call(promise)
     end
 
     # Emit GOAWAY error indicating to peer that the connection is being

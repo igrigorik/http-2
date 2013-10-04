@@ -2,20 +2,12 @@ require "helper"
 
 describe HTTP2::Connection do
   before(:each) do
-    @conn = new_connection
+    @conn = Client.new
   end
 
   let(:f) { Framer.new }
 
   context "initialization and settings" do
-    it "should return odd ids for client requests" do
-      @conn = new_connection(:client)
-      @conn.new_stream.id.should_not be_even
-
-      @conn = new_connection(:server)
-      @conn.new_stream.id.should be_even
-    end
-
     it "should raise error if first frame is not SETTINGS" do
       (FRAME_TYPES - [SETTINGS]).each do |frame|
         frame = set_stream_id(f.generate(frame), 0x0)
@@ -29,15 +21,6 @@ describe HTTP2::Connection do
     it "should raise error if SETTINGS stream != 0" do
       frame = set_stream_id(f.generate(SETTINGS), 0x1)
       expect { @conn << frame }.to raise_error(ProtocolError)
-    end
-
-    it "should emit connection header on new client connection" do
-      frames = []
-      conn = Connection.new(:client)
-      conn.on(:frame) { |bytes| frames << bytes }
-      conn.ping("12345678")
-
-      frames.first.should eq CONNECTION_HEADER
     end
   end
 
@@ -101,56 +84,6 @@ describe HTTP2::Connection do
       @conn << f.generate(headers)
 
       stream.priority.should eq 20
-    end
-
-    context "push" do
-      it "should raise error on PUSH_PROMISE against stream 0" do
-        expect {
-          @conn << set_stream_id(f.generate(PUSH_PROMISE), 0)
-        }.to raise_error(ProtocolError)
-      end
-
-      it "should raise error on PUSH_PROMISE against bogus stream" do
-        expect {
-          @conn << set_stream_id(f.generate(PUSH_PROMISE), 31415)
-        }.to raise_error(ProtocolError)
-      end
-
-      it "should raise error on PUSH_PROMISE against non-idle stream" do
-        expect {
-          s = @conn.new_stream
-          s.send HEADERS
-
-          @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
-          @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
-       }.to raise_error(ProtocolError)
-      end
-
-      it "should emit stream object for received PUSH_PROMISE" do
-        s = @conn.new_stream
-        s.send HEADERS
-
-        promise = nil
-        @conn.on(:promise) {|s| promise = s }
-        @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
-
-        promise.id.should eq 2
-        promise.state.should eq :reserved_remote
-      end
-
-      it "should auto RST_STREAM promises against locally-RST stream" do
-        s = @conn.new_stream
-        s.send HEADERS
-        s.close
-
-        @conn.stub(:send)
-        @conn.should_receive(:send) do |frame|
-          frame[:type].should eq :rst_stream
-          frame[:stream].should eq 2
-        end
-
-        @conn << set_stream_id(f.generate(PUSH_PROMISE), s.id)
-      end
     end
   end
 
@@ -342,12 +275,12 @@ describe HTTP2::Connection do
 
   context "connection management" do
     it "should raise error on invalid connection header" do
-      conn = Connection.new(:server)
-      expect { conn.dup << f.generate(SETTINGS) }.to raise_error(HandshakeError)
+      srv = Server.new
+      expect { srv.dup << f.generate(SETTINGS) }.to raise_error(HandshakeError)
 
       expect {
-        conn << CONNECTION_HEADER
-        conn << f.generate(SETTINGS)
+        srv << CONNECTION_HEADER
+        srv << f.generate(SETTINGS)
       }.to_not raise_error
     end
 

@@ -94,11 +94,6 @@ FRAME_TYPES = [
   PING, GOAWAY, WINDOW_UPDATE, CONTINUATION
 ]
 
-def new_connection(type = :client)
-  conn = Connection.new(type)
-  conn
-end
-
 def set_stream_id(bytes, id)
   head = bytes.slice!(0,8).unpack('nCCN')
   head[3] = id

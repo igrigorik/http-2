@@ -4,7 +4,7 @@ puts "Starting server on port 8080"
 Socket.tcp_server_loop(8080) do |sock|
   puts "New TCP connection!"
 
-  conn = HTTP2::Connection.new(:server)
+  conn = HTTP2::Server.new
   conn.on(:frame) do |bytes|
     puts "Writing bytes: #{bytes.inspect}"
     sock.write bytes

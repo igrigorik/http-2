@@ -1,7 +1,7 @@
 require_relative 'helper'
 
 Addrinfo.tcp("localhost", 8080).connect do |sock|
-  conn = HTTP2::Connection.new(:client)
+  conn = HTTP2::Client.new
   conn.on(:frame) do |bytes|
     puts "Sending bytes: #{bytes.inspect}"
     sock.print bytes

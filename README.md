@@ -1,4 +1,4 @@
-# HTTP-2 
+# HTTP-2
 
 [![Gem Version](https://badge.fury.io/rb/http-2.png)](http://rubygems.org/gems/http-2)
 [![Build Status](https://travis-ci.org/igrigorik/http-2.png?branch=master)](https://travis-ci.org/igrigorik/http-2)
@@ -35,7 +35,7 @@ Your code is responsible for feeding data into the parser, which performs all of
 require 'http/2'
 socket = YourTransport.new
 
-conn = HTTP2::Connection.new(:client)
+conn = HTTP2::Client.new
 conn.on(:frame) {|bytes| socket << bytes }
 
 while bytes = socket.read
@@ -48,11 +48,11 @@ Checkout provided [client](https://github.com/igrigorik/http-2/blob/master/examp
 
 ### Connection lifecycle management
 
-When the [Connection object](http://www.rubydoc.info/github/igrigorik/http-2/HTTP2/Connection) is instantiated you must specify its role (`:client` or `:server`) to initialize appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
+Depending on the role of the endpoint you must initialize either a [Client](http://www.rubydoc.info/github/igrigorik/http-2/HTTP2/Client) or a [Server](http://www.rubydoc.info/github/igrigorik/http-2/HTTP2/Server) object. Doing so picks the appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
 
 ```ruby
 # - Server ---------------
-server = HTTP2::Connection.new(:server)
+server = HTTP2::Server.new
 
 server.on(:stream) { |stream| ... } # process inbound stream
 server.on(:frame)  { |bytes| ... }  # encoded HTTP 2.0 frames
@@ -61,7 +61,7 @@ server.ping { ... } # run liveness check, process pong response
 server.goaway # send goaway frame to the client
 
 # - Client ---------------
-client = HTTP2::Connection.new(:client)
+client = HTTP2::Client.new
 client.on(:promise) { |stream| ... } # process push promise
 
 stream = client.new_stream # allocate new stream
@@ -123,7 +123,7 @@ The good news is, all of the stream management, and state transitions, and error
 For sake of example, let's take a look at a simple server implementation:
 
 ```ruby
-conn = HTTP2::Connection.new(:server)
+conn = HTTP2::Server.new
 
 # emits new streams opened by the client
 conn.on(:stream) do |stream|
@@ -190,7 +190,7 @@ Events emitted by the [Stream object](http://www.rubydoc.info/github/igrigorik/h
 Each HTTP 2.0 [stream has a priority value](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION) that can be sent when the new stream is initialized, and optionally reprioritized later:
 
 ```ruby
-client = HTTP2::Connection.new(:client)
+client = HTTP2::Client.new
 
 default_priority_stream = client.new_stream
 custom_priority_stream = client.new_stream(priority: 42)
@@ -234,7 +234,7 @@ conn.settings({
 An HTTP 2.0 server can [send multiple replies](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH) to a single client request. To do so, first it emits a "push promise" frame which contains the headers of the promised resource, followed by the response to the original request, as well as promised resource payloads (which may be interleaved). A simple example is in order:
 
 ```ruby
-conn = HTTP2::Connection.new(:server)
+conn = HTTP2::Server.new
 
 conn.on(:stream) do |stream|
   stream.on(:headers) { |head| ... }
@@ -268,10 +268,10 @@ conn.on(:stream) do |stream|
 end
 ```
 
-When a new push promise stream is sent by the server, the client is notifed via the `:promise` event:
+When a new push promise stream is sent by the server, the client is notified via the `:promise` event:
 
 ```ruby
-conn = HTTP2::Connection.new(:client)
+conn = HTTP2::Client.new
 conn.on(:promise) do |push|
   # process push stream
 end

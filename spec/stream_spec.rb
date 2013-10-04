@@ -2,8 +2,8 @@ require "helper"
 
 describe HTTP2::Stream do
   before(:each) do
-    @conn = new_connection
-    @stream = @conn.new_stream
+    @client = Client.new
+    @stream = @client.new_stream
   end
 
   context "stream states" do
@@ -12,7 +12,7 @@ describe HTTP2::Stream do
     end
 
     it "should set stream priority and flow window" do
-      stream = @conn.new_stream(priority: 3, window: 1024)
+      stream = @client.new_stream(priority: 3, window: 1024)
       stream.priority.should eq 3
       stream.window.should eq 1024
     end
@@ -137,7 +137,7 @@ describe HTTP2::Stream do
       end
 
       it "should transition to half closed if remote opened with END_STREAM" do
-        s = @conn.new_stream
+        s = @client.new_stream
         hclose = HEADERS.dup
         hclose[:flags] = [:end_stream]
 
@@ -146,7 +146,7 @@ describe HTTP2::Stream do
       end
 
       it "should transition to half closed if local opened with END_STREAM" do
-        s = @conn.new_stream
+        s = @client.new_stream
         hclose = HEADERS.dup
         hclose[:flags] = [:end_stream]
 
@@ -166,8 +166,8 @@ describe HTTP2::Stream do
 
       it "should emit :active on open transition" do
         openp, openr = false, false
-        sp = @conn.new_stream
-        sr = @conn.new_stream
+        sp = @client.new_stream
+        sr = @client.new_stream
         sp.on(:active) { openp = true }
         sr.on(:active) { openr = true }
 
@@ -179,7 +179,7 @@ describe HTTP2::Stream do
       end
 
       it "should not emit :active on transition from open" do
-        order, stream = [], @conn.new_stream
+        order, stream = [], @client.new_stream
 
         stream.on(:active) { order << :active }
         stream.on(:half_close) { order << :half_close }
@@ -208,7 +208,7 @@ describe HTTP2::Stream do
       end
 
       it "should emit :close after frame is processed" do
-        order, stream = [], @conn.new_stream
+        order, stream = [], @client.new_stream
 
         stream.on(:active) { order << :active }
         stream.on(:data)   { order << :data }
@@ -270,7 +270,7 @@ describe HTTP2::Stream do
 
       it "should emit :half_close event on transition" do
         order = []
-        stream = @conn.new_stream
+        stream = @client.new_stream
         stream.on(:active) { order << :active }
         stream.on(:half_close) { order << :half_close }
 
@@ -330,7 +330,7 @@ describe HTTP2::Stream do
 
       it "should emit :half_close event on transition" do
         order = []
-        stream = @conn.new_stream
+        stream = @client.new_stream
         stream.on(:active) { order << :active }
         stream.on(:half_close) { order << :half_close }
 
@@ -460,9 +460,9 @@ describe HTTP2::Stream do
       settings[:stream] = 0
 
       framer = Framer.new
-      @conn << framer.generate(settings)
+      @client << framer.generate(settings)
 
-      s1 = @conn.new_stream
+      s1 = @client.new_stream
       s1.send HEADERS
       s1.send data.merge({payload: "x" * 900, flags: []})
       s1.window.should eq 100
@@ -471,7 +471,7 @@ describe HTTP2::Stream do
       s1.window.should eq 0
       s1.buffered_amount.should eq 100
 
-      @conn << framer.generate(WINDOW_UPDATE.merge({
+      @client << framer.generate(WINDOW_UPDATE.merge({
         stream: s1.id, increment: 1000
       }))
       s1.buffered_amount.should eq 0
@@ -490,8 +490,8 @@ describe HTTP2::Stream do
     end
 
     it ".reprioritize should raise error if invoked by server" do
-      conn = new_connection(:server)
-      stream = conn.new_stream
+      srv = Server.new
+      stream = srv.new_stream
 
       expect { stream.reprioritize(10) }.to raise_error(StreamError)
     end
@@ -557,11 +557,11 @@ describe HTTP2::Stream do
 
   context "server API" do
     before(:each) do
-      @srv = new_connection(:server)
+      @srv = Server.new
       @frm = Framer.new
 
-      @conn.on(:frame) {|bytes| @srv << bytes }
-      @client_stream = @conn.new_stream
+      @client.on(:frame) {|bytes| @srv << bytes }
+      @client_stream = @client.new_stream
     end
 
     it "should emit received headers via on(:headers)" do
@@ -600,19 +600,13 @@ describe HTTP2::Stream do
 
     context "push" do
       before(:each) do
-        @srv.on(:frame)  {|bytes| @conn << bytes }
+        @srv.on(:frame)  {|bytes| @client << bytes }
         @srv.on(:stream) do |stream|
           @server_stream = stream
         end
 
         # @srv << @frm.generate(SETTINGS)
         @client_stream.headers({"key" => "value"})
-      end
-
-      it ".promise should raise error on client push" do
-        expect do
-          @client_stream.promise({}) {}
-        end.to raise_error(ProtocolError)
       end
 
       it ".promise should emit server initiated stream" do
@@ -651,7 +645,7 @@ describe HTTP2::Stream do
 
         it "client: headers > active > headers > .. > data > close" do
           order, headers = [], {}
-          @conn.on(:promise) do |push|
+          @client.on(:promise) do |push|
             order << :reserved
 
             push.on(:active)    { order << :active }
