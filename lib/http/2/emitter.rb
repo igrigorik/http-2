@@ -20,8 +20,8 @@ module HTTP2
     # @param event [Symbol]
     # @param block [Proc] callback function
     def once(event, &block)
-      add_listener(event) do |*args|
-        block.call(*args)
+      add_listener(event) do |*args, &callback|
+        block.call(*args, &callback)
         :delete
       end
     end
