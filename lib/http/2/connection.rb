@@ -67,14 +67,14 @@ module HTTP2
 
       if @type == :server
         @stream_id    = 2
+        @state        = :new
         @compressor   = Header::Compressor.new(:response)
         @decompressor = Header::Decompressor.new(:request)
-        @state = :new
       else
         @stream_id    = 1
+        @state        = :connection_header
         @compressor   = Header::Compressor.new(:request)
         @decompressor = Header::Decompressor.new(:response)
-        @state = :connection_header
       end
 
       @stream_limit = Float::INFINITY
@@ -155,6 +155,9 @@ module HTTP2
       # HTTP/2.0 will be used by both peers, each endpoint MUST send a
       # connection header as a final confirmation and to establish the
       # initial settings for the HTTP/2.0 connection.
+      #
+      # Client connection header is 24 byte connection header followed by
+      # SETTINGS frame. Server connection header is SETTINGS frame only.
       if @state == :new
         if @recv_buffer.size < 24
           if !CONNECTION_HEADER.start_with? @recv_buffer
@@ -301,6 +304,11 @@ module HTTP2
     # @note all frames are currently delivered in FIFO order.
     # @param frame [Hash]
     def send(frame)
+      if @type == :client && @state == :connection_header
+        emit(:frame, CONNECTION_HEADER)
+        @state = :connected
+      end
+
       if frame[:type] == :data
         send_data(frame, true)
 

@@ -96,7 +96,6 @@ FRAME_TYPES = [
 
 def new_connection(type = :client)
   conn = Connection.new(type)
-  conn << CONNECTION_HEADER if type == :server
   conn
 end
 

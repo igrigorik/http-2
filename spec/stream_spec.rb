@@ -605,7 +605,7 @@ describe HTTP2::Stream do
           @server_stream = stream
         end
 
-        @srv << @frm.generate(SETTINGS)
+        # @srv << @frm.generate(SETTINGS)
         @client_stream.headers({"key" => "value"})
       end
 

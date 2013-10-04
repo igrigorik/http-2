@@ -7,7 +7,6 @@ Addrinfo.tcp("localhost", 8080).connect do |sock|
     sock.print bytes
     sock.flush
   end
-  sock.print HTTP2::CONNECTION_HEADER
 
   stream = conn.new_stream
   log = Logger.new(stream.id)
@@ -46,4 +45,3 @@ Addrinfo.tcp("localhost", 8080).connect do |sock|
     conn << data
   end
 end
-

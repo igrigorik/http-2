@@ -30,6 +30,15 @@ describe HTTP2::Connection do
       frame = set_stream_id(f.generate(SETTINGS), 0x1)
       expect { @conn << frame }.to raise_error(ProtocolError)
     end
+
+    it "should emit connection header on new client connection" do
+      frames = []
+      conn = Connection.new(:client)
+      conn.on(:frame) { |bytes| frames << bytes }
+      conn.ping("12345678")
+
+      frames.first.should eq CONNECTION_HEADER
+    end
   end
 
   context "stream management" do
@@ -313,6 +322,7 @@ describe HTTP2::Connection do
     end
 
     it "should compress stream headers" do
+      @conn.ping("12345678")
       @conn.on(:frame) do |bytes|
         bytes.force_encoding('binary')
         bytes.should_not match('get')
