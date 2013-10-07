@@ -60,11 +60,11 @@ module HTTP2
     # @param priority [Integer]
     # @param window [Integer]
     # @param parent [Stream]
-    def new_stream(priority: DEFAULT_PRIORITY, window: @window_limit, parent: nil)
+    def new_stream(priority: DEFAULT_PRIORITY, parent: nil)
       raise ConnectionClosed.new if @state == :closed
       raise StreamLimitExceeded.new if @active_stream_count == @stream_limit
 
-      stream = activate_stream(@stream_id, priority, window, parent)
+      stream = activate_stream(@stream_id, priority, parent)
       @stream_id += 2
 
       stream
@@ -194,8 +194,7 @@ module HTTP2
             stream = @streams[frame[:stream]]
             if stream.nil?
               stream = activate_stream(frame[:stream],
-                                       frame[:priority] || DEFAULT_PRIORITY,
-                                       @window_limit)
+                                       frame[:priority] || DEFAULT_PRIORITY)
               emit(:stream, stream)
             end
 
@@ -242,7 +241,7 @@ module HTTP2
               end
             end
 
-            stream = activate_stream(pid, DEFAULT_PRIORITY, @window_limit, parent)
+            stream = activate_stream(pid, DEFAULT_PRIORITY, parent)
             emit(:promise, stream)
             stream << frame
           else
@@ -440,19 +439,18 @@ module HTTP2
     # @param priority [Integer]
     # @param window [Integer]
     # @param parent [Stream]
-    def activate_stream(id, priority, window, parent = nil)
+    def activate_stream(id, priority, parent = nil)
       if @streams.key?(id)
         connection_error(msg: 'Stream ID already exists')
       end
 
-      stream = Stream.new(id, priority, window, parent)
+      stream = Stream.new(id, priority, @window_limit, parent)
 
       # Streams that are in the "open" state, or either of the "half closed"
       # states count toward the maximum number of streams that an endpoint is
       # permitted to open.
       stream.once(:active) { @active_stream_count += 1 }
       stream.once(:close)  { @active_stream_count -= 1 }
-      # p [self.class]
       stream.on(:promise, &method(:promise)) if self.is_a? Server
       stream.on(:frame,   &method(:send))
 

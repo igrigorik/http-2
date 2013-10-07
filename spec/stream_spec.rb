@@ -11,10 +11,9 @@ describe HTTP2::Stream do
       @stream.state.should eq :idle
     end
 
-    it "should set stream priority and flow window" do
-      stream = @client.new_stream(priority: 3, window: 1024)
+    it "should set custom stream priority" do
+      stream = @client.new_stream(priority: 3)
       stream.priority.should eq 3
-      stream.window.should eq 1024
     end
 
     context "reserved (local)" do
