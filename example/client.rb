@@ -1,6 +1,18 @@
 require_relative 'helper'
 
-Addrinfo.tcp("localhost", 8080).connect do |sock|
+options = {}
+OptionParser.new do |opts|
+  opts.banner = "Usage: client.rb [options]"
+
+  opts.on("-d", "--data [String]", "HTTP payload") do |v|
+    options[:payload] = v
+  end
+end.parse!
+
+
+uri = URI.parse(ARGV[0] || 'http://localhost:8080/')
+
+Addrinfo.tcp(uri.host, uri.port).connect do |sock|
   conn = HTTP2::Client.new
   conn.on(:frame) do |bytes|
     puts "Sending bytes: #{bytes.inspect}"
@@ -28,20 +40,32 @@ Addrinfo.tcp("localhost", 8080).connect do |sock|
     log.info "response data chunk: <<#{d}>>"
   end
 
-  puts "Sending POST request"
-  stream.headers({
-    ":scheme" => "http",
-    ":method" => "post",
-    ":host" => "localhost",
-    ":path" => "/resource",
+  head = {
+    ":scheme" => uri.scheme,
+    ":method" => (options[:payload].nil? ? "get" : "post"),
+    ":host" => [uri.host, uri.port].join,
+    ":path" => uri.path,
     "accept" => "*/*"
-  })
+  }
 
-  stream.data("woot!")
+  puts "Sending HTTP 2.0 request"
+  if head[":method"] == "get"
+    stream.headers(head, end_stream: true)
+  else
+    stream.headers(head, end_stream: false)
+    stream.data(options[:payload])
+  end
+
 
   while !sock.closed? && !sock.eof?
     data = sock.readpartial(1024)
     puts "Received bytes: #{data.inspect}"
-    conn << data
+
+    begin
+      conn << data
+    rescue Exception => e
+      puts "Exception: #{e}, #{e.message} - closing socket."
+      sock.close
+    end
   end
 end
