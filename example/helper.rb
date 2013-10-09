@@ -2,6 +2,7 @@ $: << 'lib' << '../lib'
 
 require 'optparse'
 require 'socket'
+require 'openssl'
 require 'http/2'
 require 'uri'
 
