@@ -31,6 +31,14 @@ describe HTTP2::Emitter do
     args.should eq 123
   end
 
+  it "should pass emitted callbacks to listeners" do
+    @w.on(:a)   { |&block| block.call }
+    @w.once(:a) { |&block| block.call }
+    @w.emit(:a) { @cnt += 1 }
+
+    @cnt.should eq 2
+  end
+
   it "should allow events with no callbacks" do
     expect { @w.emit(:missing) }.to_not raise_error
   end
