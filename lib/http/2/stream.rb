@@ -467,7 +467,7 @@ module HTTP2
       close(error) if @state != :closed
 
       klass = error.to_s.split('_').map(&:capitalize).join
-      raise Kernel.const_get(klass).new(msg)
+      raise Error.const_get(klass).new(msg)
     end
 
   end
