@@ -20,12 +20,13 @@ module HTTP2
   class Client < Connection
 
     # Initialize new HTTP 2.0 client object.
-    def initialize
+    def initialize(*args)
       @stream_id    = 1
       @state        = :connection_header
       @compressor   = Header::Compressor.new(:request)
       @decompressor = Header::Decompressor.new(:response)
-      super()
+
+      super
     end
 
     # Send an outgoing frame. Connection and stream flow control is managed
@@ -38,6 +39,8 @@ module HTTP2
       if @state == :connection_header
         emit(:frame, CONNECTION_HEADER)
         @state = :connected
+
+        settings(stream_limit: @stream_limit, window_limit: @window_limit)
       end
 
       super(frame)

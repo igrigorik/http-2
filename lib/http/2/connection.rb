@@ -40,14 +40,14 @@ module HTTP2
 
     # Initializes new connection object.
     #
-    def initialize
-      @stream_limit = Float::INFINITY
+    def initialize(streams: 100, window: DEFAULT_FLOW_WINDOW)
+      @stream_limit = streams
       @active_stream_count = 0
       @streams = {}
 
       @framer = Framer.new
-      @window = DEFAULT_FLOW_WINDOW
-      @window_limit = DEFAULT_FLOW_WINDOW
+      @window = window
+      @window_limit = window
 
       @recv_buffer = Buffer.new
       @send_buffer = []
@@ -97,13 +97,19 @@ module HTTP2
       @state = :closed
     end
 
-    # Sends a connection SETTINGS frame to the peer.
+    # Sends a connection SETTINGS frame to the peer. Setting window size
+    # to Float::INFINITY disables flow control.
     #
-    # @param payload [Hash]
-    # @option payload [Symbol] :settings_max_concurrent_streams
-    # @option payload [Symbol] :settings_flow_control_options
-    # @option payload [Symbol] :settings_initial_window_size
-    def settings(payload)
+    # @param stream_limit [Integer] maximum number of concurrent streams
+    # @param window_limit [Float] maximum flow window size
+    def settings(stream_limit: @stream_limit, window_limit: @window_limit)
+      payload = { settings_max_concurrent_streams: stream_limit }
+      if window_limit.to_f.infinite?
+        payload[:settings_flow_control_options] = 1
+      else
+        payload[:settings_initial_window_size] = window_limit
+      end
+
       send({type: :settings, stream: 0, payload: payload})
     end
 
@@ -134,6 +140,7 @@ module HTTP2
           raise HandshakeError.new
         else
           @state = :connection_header
+          settings(stream_limit: @stream_limit, window_limit: @window_limit)
         end
       end
 

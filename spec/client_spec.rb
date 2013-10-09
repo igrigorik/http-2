@@ -12,12 +12,25 @@ describe HTTP2::Client do
       @client.new_stream.id.should_not be_even
     end
 
-    it "should emit connection header on new client connection" do
+    it "should emit connection header and SETTINGS on new client connection" do
       frames = []
       @client.on(:frame) { |bytes| frames << bytes }
       @client.ping("12345678")
 
-      frames.first.should eq CONNECTION_HEADER
+      frames[0].should eq CONNECTION_HEADER
+      f.parse(frames[1])[:type].should eq :settings
+    end
+
+    it "should initialize client with custom connection settings" do
+      frames = []
+
+      @client = Client.new(streams: 200)
+      @client.on(:frame) { |bytes| frames << bytes }
+      @client.ping("12345678")
+
+      frame = f.parse(frames[1])
+      frame[:type].should eq :settings
+      frame[:payload][:settings_max_concurrent_streams].should eq 200
     end
   end
 

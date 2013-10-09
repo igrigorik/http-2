@@ -25,8 +25,8 @@ describe HTTP2::Connection do
   end
 
   context "stream management" do
-    it "should initialize to default stream limit (infinite)" do
-      @conn.stream_limit.should eq Float::INFINITY
+    it "should initialize to default stream limit (100)" do
+      @conn.stream_limit.should eq 100
     end
 
     it "should change stream limit to received SETTINGS value" do
@@ -246,10 +246,7 @@ describe HTTP2::Connection do
     it "should emit encoded frames via on(:frame)" do
       bytes = nil
       @conn.on(:frame) {|d| bytes = d }
-      @conn.settings({
-        settings_max_concurrent_streams: 10,
-        settings_flow_control_options: 1
-      })
+      @conn.settings(stream_limit: 10, window_limit: Float::INFINITY)
 
       bytes.should eq f.generate(SETTINGS)
     end
@@ -361,18 +358,16 @@ describe HTTP2::Connection do
 
   context "API" do
     it ".settings should emit SETTINGS frames" do
-      settings = {
-        settings_max_concurrent_streams: 10,
-        settings_flow_control_options: 1
-      }
-
       @conn.should_receive(:send) do |frame|
         frame[:type].should eq :settings
-        frame[:payload].should eq settings
+        frame[:payload].should eq({
+          settings_max_concurrent_streams: 10,
+          settings_flow_control_options: 1
+        })
         frame[:stream].should eq 0
       end
 
-      @conn.settings settings
+      @conn.settings(stream_limit: 10, window_limit: Float::INFINITY)
     end
 
     it ".ping should generate PING frames" do
