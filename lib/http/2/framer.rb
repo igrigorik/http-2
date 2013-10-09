@@ -118,7 +118,7 @@ module HTTP2
 
     # Decodes common 8-byte header.
     #
-    # @param buf [String]
+    # @param buf [Buffer]
     def readCommonHeader(buf)
       frame = {}
       frame[:length], type, flags, stream = buf.slice(0,8).unpack(HEADERPACK)
@@ -138,7 +138,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def generate(frame)
-      bytes  = ''
+      bytes  = Buffer.new
       length = 0
 
       frame[:flags]  ||= []
@@ -146,7 +146,7 @@ module HTTP2
 
       case frame[:type]
       when :data
-        bytes  += frame[:payload]
+        bytes  << frame[:payload]
         length += frame[:payload].bytesize
 
       when :headers
@@ -155,19 +155,19 @@ module HTTP2
         end
 
         if frame[:flags].include? :priority
-          bytes  += [frame[:priority] & RBIT].pack(UINT32)
+          bytes  << [frame[:priority] & RBIT].pack(UINT32)
           length += 4
         end
 
-        bytes  += frame[:payload]
+        bytes  << frame[:payload]
         length += frame[:payload].bytesize
 
       when :priority
-        bytes  += [frame[:priority] & RBIT].pack(UINT32)
+        bytes  << [frame[:priority] & RBIT].pack(UINT32)
         length += 4
 
       when :rst_stream
-        bytes  += pack_error frame[:error]
+        bytes  << pack_error(frame[:error])
         length += 4
 
       when :settings
@@ -184,14 +184,14 @@ module HTTP2
             end
           end
 
-          bytes  += [k & RBYTE].pack(UINT32)
-          bytes  += [v].pack(UINT32)
+          bytes  << [k & RBYTE].pack(UINT32)
+          bytes  << [v].pack(UINT32)
           length += 8
         end
 
       when :push_promise
-        bytes  += [frame[:promise_stream] & RBIT].pack(UINT32)
-        bytes  += frame[:payload]
+        bytes  << [frame[:promise_stream] & RBIT].pack(UINT32)
+        bytes  << frame[:payload]
         length += 4 + frame[:payload].bytesize
 
       when :ping
@@ -199,36 +199,36 @@ module HTTP2
           raise CompressionError.new("Invalid payload size \
                                     (#{frame[:payload].size} != 8 bytes)")
         end
-        bytes  += frame[:payload]
+        bytes  << frame[:payload]
         length += 8
 
       when :goaway
-        bytes  += [frame[:last_stream] & RBIT].pack(UINT32)
-        bytes  += pack_error frame[:error]
+        bytes  << [frame[:last_stream] & RBIT].pack(UINT32)
+        bytes  << pack_error(frame[:error])
         length += 8
 
         if frame[:payload]
-          bytes  += frame[:payload]
+          bytes  << frame[:payload]
           length += frame[:payload].bytesize
         end
 
       when :window_update
-        bytes  += [frame[:increment] & RBIT].pack(UINT32)
+        bytes  << [frame[:increment] & RBIT].pack(UINT32)
         length += 4
 
       when :continuation
-        bytes  += frame[:payload]
+        bytes  << frame[:payload]
         length += frame[:payload].bytesize
       end
 
       frame[:length] = length
-      commonHeader(frame) + bytes
+      bytes.prepend(commonHeader(frame))
     end
 
     # Decodes complete HTTP 2.0 frame from provided buffer. If the buffer
     # does not contain enough data, no further work is performed.
     #
-    # @param buf [String]
+    # @param buf [Buffer]
     def parse(buf)
       return nil if buf.size < 8
       frame = readCommonHeader(buf)
@@ -242,37 +242,37 @@ module HTTP2
         frame[:payload] = payload.read(frame[:length])
       when :headers
         if frame[:flags].include? :priority
-          frame[:priority] = payload.read(4).unpack(UINT32).first & RBIT
+          frame[:priority] = payload.read_uint32 & RBIT
         end
         frame[:payload] = payload.read(frame[:length])
       when :priority
-        frame[:priority] = payload.read(4).unpack(UINT32).first & RBIT
+        frame[:priority] = payload.read_uint32 & RBIT
       when :rst_stream
-        frame[:error] = unpack_error payload.read(4).unpack(UINT32).first
+        frame[:error] = unpack_error payload.read_uint32
 
       when :settings
         frame[:payload] = {}
         (frame[:length] / 8).times do
-          id  = payload.read(4).unpack(UINT32).first & RBYTE
-          val = payload.read(4).unpack(UINT32).first
+          id  = payload.read_uint32 & RBYTE
+          val = payload.read_uint32
 
           # Unsupported or unrecognized settings MUST be ignored.
           name, _ = DEFINED_SETTINGS.select { |name, v| v == id }.first
           frame[:payload][name] = val if name
         end
       when :push_promise
-        frame[:promise_stream] = payload.read(4).unpack(UINT32).first & RBIT
+        frame[:promise_stream] = payload.read_uint32 & RBIT
         frame[:payload] = payload.read(frame[:length])
       when :ping
         frame[:payload] = payload.read(frame[:length])
       when :goaway
-        frame[:last_stream] = payload.read(4).unpack(UINT32).first & RBIT
-        frame[:error] = unpack_error payload.read(4).unpack(UINT32).first
+        frame[:last_stream] = payload.read_uint32 & RBIT
+        frame[:error] = unpack_error payload.read_uint32
 
         size = frame[:length] - 8
         frame[:payload] = payload.read(size) if size > 0
       when :window_update
-        frame[:increment] = payload.read(4).unpack(UINT32).first & RBIT
+        frame[:increment] = payload.read_uint32 & RBIT
       when :continuation
         frame[:payload] = payload.read(frame[:length])
       end

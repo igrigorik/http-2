@@ -66,7 +66,7 @@ describe HTTP2::Framer do
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x0,0x3,0x1,*'text'.bytes].pack("nCCNC*")
 
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -82,7 +82,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0xc,0x1,0x7,0x1,*'header-block'.bytes].pack("nCCNC*")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
 
     it "should carry an optional stream priority" do
@@ -97,7 +97,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x10,0x1,0xc,0x1,0xf,*'header-block'.bytes].pack("nCCNNC*")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -112,7 +112,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x2,0x0,0x1,0xf].pack("nCCNN")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -127,7 +127,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x3,0x0,0x1,0x5].pack("nCCNN")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -148,7 +148,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x8,0x4,0x0,0x0,0x4,0xa].pack("nCCNNN")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
 
     it "should ignore custom settings" do
@@ -158,7 +158,7 @@ describe HTTP2::Framer do
         settings_initial_window_size:    20
       }
 
-      buf = Buffer.new(f.generate(frame.merge({55 => 30})))
+      buf = f.generate(frame.merge({55 => 30}))
       f.parse(buf).should eq frame
     end
 
@@ -190,7 +190,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0xb,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("nCCNNC*")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -208,7 +208,7 @@ describe HTTP2::Framer do
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
       bytes.should eq [0x8,0x6,0x1,0x1,*'12345678'.bytes].pack("nCCNC*")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
 
     it "should raise exception on invalid payload" do
@@ -234,7 +234,7 @@ describe HTTP2::Framer do
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
       bytes.should eq [0xd,0x7,0x0,0x1,0x2,0x0,*'debug'.bytes].pack("nCCNNNC*")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
 
     it "should treat debug payload as optional" do
@@ -243,7 +243,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x8,0x7,0x0,0x1,0x2,0x0].pack("nCCNNN")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -257,7 +257,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0x4,0x9,0x0,0x0,0xa].pack("nCCNN")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -273,7 +273,7 @@ describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       bytes.should eq [0xc,0xa,0x3,0x1,*'header-block'.bytes].pack("nCCNC*")
-      f.parse(Buffer.new(bytes)).should eq frame
+      f.parse(bytes).should eq frame
     end
   end
 
@@ -293,7 +293,7 @@ describe HTTP2::Framer do
 
     frames.each do |(frame, size)|
       bytes = f.generate(frame)
-      Buffer.new(bytes).slice(0,2).unpack("n").first.should eq size
+      bytes.slice(0,2).unpack("n").first.should eq size
     end
   end
 
@@ -303,7 +303,7 @@ describe HTTP2::Framer do
       {type: :data, stream: 1, flags: [:end_stream], payload: "abc"}
     ]
 
-    buf = Buffer.new(f.generate(frames[0]) + f.generate(frames[1]))
+    buf = f.generate(frames[0]) << f.generate(frames[1])
 
     f.parse(buf).should eq frames[0]
     f.parse(buf).should eq frames[1]
@@ -313,13 +313,9 @@ describe HTTP2::Framer do
     frame = {type: :headers, stream: 1, payload: "headers"}
     bytes = f.generate(frame)
 
-    buf = Buffer.new(bytes[0...-1])
-    f.parse(buf).should be_nil
-    buf.should eq bytes[0...-1]
-
-    buf = Buffer.new(bytes)
-    f.parse(buf).should eq frame
-    buf.should be_empty
+    f.parse(bytes[0...-1]).should be_nil
+    f.parse(bytes).should eq frame
+    bytes.should be_empty
   end
 
 end

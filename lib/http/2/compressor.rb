@@ -1,5 +1,3 @@
-require "stringio"
-
 module HTTP2
 
   # Implementation of header compression for HTTP 2.0 (HPACK) format adapted
@@ -338,7 +336,7 @@ module HTTP2
       # @param str [String]
       # @return [String] binary string
       def string(str)
-        integer(str.bytesize, 0) + str.dup.force_encoding('binary')
+        integer(str.bytesize, 0) << str.dup.force_encoding('binary')
       end
 
       # Encodes header command with appropriate header representation.
@@ -346,7 +344,7 @@ module HTTP2
       #
       # @param h [Hash] header command
       # @param buffer [String]
-      def header(h, buffer = "")
+      def header(h, buffer = Buffer.new)
         rep = HEADREP[h[:type]]
 
         if h[:type] == :indexed
@@ -381,8 +379,9 @@ module HTTP2
       # Encodes provided list of HTTP headers.
       #
       # @param headers [Hash]
-      # @return [String] binary string
+      # @return [Buffer]
       def encode(headers)
+        buffer = Buffer.new
         commands = []
 
         # Literal header names MUST be translated to lowercase before
@@ -403,10 +402,12 @@ module HTTP2
           end
         end
 
-        commands.map do |cmd|
+        commands.each do |cmd|
           @cc.process cmd.dup
-          header cmd
-        end.join
+          buffer << header(cmd)
+        end
+
+        buffer
       end
     end
 
@@ -431,7 +432,7 @@ module HTTP2
         i = !n.zero? ? (buf.getbyte & limit) : 0
 
         m = 0
-        buf.each_byte do |byte|
+        while byte = buf.getbyte do
           i += ((byte & 127) << m)
           m += 7
 
@@ -451,10 +452,9 @@ module HTTP2
 
       # Decodes header command from provided buffer.
       #
-      # @param buf [String]
+      # @param buf [Buffer]
       def header(buf)
-        peek = buf.getbyte
-        buf.seek(-1, IO::SEEK_CUR)
+        peek = buf.readbyte(0)
 
         header = {}
         header[:type], type = HEADREP.select do |t, desc|
@@ -492,11 +492,11 @@ module HTTP2
       #
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03#section-3.2.2
       #
-      # @param buf [String]
+      # @param buf [Buffer]
       # @return [Array] set of HTTP headers
       def decode(buf)
         set = []
-        set << @cc.process(header(buf)) while !buf.eof?
+        set << @cc.process(header(buf)) while !buf.empty?
         @cc.refset.each do |i,header|
           set << header if !set.include? header
         end

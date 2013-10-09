@@ -237,10 +237,10 @@ describe HTTP2::Connection do
 
     it "should raise connection error on decode exception" do
       @conn << f.generate(SETTINGS)
+      frame = f.generate(HEADERS.dup)
+      frame[1] = 0.chr
 
-      headers = HEADERS.dup
-      headers[:payload] = [0x44, 0x16].pack("C*")
-      expect { @conn << f.generate(headers) }.to raise_error(CompressionError)
+      expect { @conn << frame }.to raise_error(ProtocolError)
     end
 
     it "should emit encoded frames via on(:frame)" do
@@ -397,5 +397,6 @@ describe HTTP2::Connection do
 
       @conn.goaway(:internal_error, "payload")
     end
+
   end
 end

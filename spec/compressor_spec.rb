@@ -10,25 +10,25 @@ describe HTTP2::Header do
       it "should encode 10 using a 5-bit prefix" do
         buf = c.integer(10, 5)
         buf.should eq [10].pack('C')
-        d.integer(StringIO.new(buf), 5).should eq 10
+        d.integer(Buffer.new(buf), 5).should eq 10
       end
 
       it "should encode 10 using a 0-bit prefix" do
         buf = c.integer(10, 0)
         buf.should eq [10].pack('C')
-        d.integer(StringIO.new(buf), 0).should eq 10
+        d.integer(Buffer.new(buf), 0).should eq 10
       end
 
       it "should encode 1337 using a 5-bit prefix" do
         buf = c.integer(1337, 5)
         buf.should eq [31,128+26,10].pack('C*')
-        d.integer(StringIO.new(buf), 5).should eq 1337
+        d.integer(Buffer.new(buf), 5).should eq 1337
       end
 
       it "should encode 1337 using a 0-bit prefix" do
         buf = c.integer(1337,0)
         buf.should eq [128+57,10].pack('C*')
-        d.integer(StringIO.new(buf), 0).should eq 1337
+        d.integer(Buffer.new(buf), 0).should eq 1337
       end
     end
 
@@ -37,7 +37,7 @@ describe HTTP2::Header do
         ascii = "abcdefghij"
         str = c.string(ascii)
 
-        buf = StringIO.new(str+"trailer")
+        buf = Buffer.new(str+"trailer")
         d.string(buf).should eq ascii
       end
 
@@ -45,7 +45,7 @@ describe HTTP2::Header do
         utf8 = "éáűőúöüó€"
         str = c.string(utf8)
 
-        buf = StringIO.new(str+"trailer")
+        buf = Buffer.new(str+"trailer")
         d.string(buf).should eq utf8
       end
 
@@ -53,7 +53,7 @@ describe HTTP2::Header do
         utf8 = "éáűőúöüó€"*100
         str = c.string(utf8)
 
-        buf = StringIO.new(str+"trailer")
+        buf = Buffer.new(str+"trailer")
         d.string(buf).should eq utf8
       end
     end
@@ -62,56 +62,42 @@ describe HTTP2::Header do
   context "header representation" do
     it "should handle indexed representation" do
       h = {name: 10, type: :indexed}
-
-      indexed = StringIO.new(c.header(h))
-      d.header(indexed).should eq h
+      d.header(c.header(h)).should eq h
     end
 
     context "literal w/o indexing representation" do
       it "should handle indexed header" do
         h = {name: 10, value: "my-value", type: :noindex}
-
-        literal = StringIO.new(c.header(h))
-        d.header(literal).should eq h
+        d.header(c.header(h)).should eq h
       end
 
       it "should handle literal header" do
         h = {name: "x-custom", value: "my-value", type: :noindex}
-
-        literal = StringIO.new(c.header(h))
-        d.header(literal).should eq h
+        d.header(c.header(h)).should eq h
       end
     end
 
     context "literal w/ incremental indexing" do
       it "should handle indexed header" do
         h = {name: 10, value: "my-value", type: :incremental}
-
-        literal = StringIO.new(c.header(h))
-        d.header(literal).should eq h
+        d.header(c.header(h)).should eq h
       end
 
       it "should handle literal header" do
         h = {name: "x-custom", value: "my-value", type: :incremental}
-
-        literal = StringIO.new(c.header(h))
-        d.header(literal).should eq h
+        d.header(c.header(h)).should eq h
       end
     end
 
     context "literal w/ substitution indexing" do
       it "should handle indexed header" do
         h = {name: 1, value: "my-value", index: 10, type: :substitution}
-
-        literal = StringIO.new(c.header(h))
-        d.header(literal).should eq h
+        d.header(c.header(h)).should eq h
       end
 
       it "should handle literal header" do
         h = {name: "x-new", value: "my-value", index: 10, type: :substitution}
-
-        literal = StringIO.new(c.header(h))
-        d.header(literal).should eq h
+        d.header(c.header(h)).should eq h
       end
     end
   end
@@ -332,7 +318,7 @@ describe HTTP2::Header do
     end
 
     it "should decode first header set in spec appendix" do
-      @dc.decode(StringIO.new(E1_BYTES.pack("C*"))).should eq E1_HEADERS
+      @dc.decode(Buffer.new(E1_BYTES.pack("C*"))).should eq E1_HEADERS
     end
 
     E2_BYTES = [
@@ -370,15 +356,15 @@ describe HTTP2::Header do
     end
 
     it "should decode second header set in spec appendix" do
-      @dc.decode(StringIO.new(E2_BYTES.pack("C*"))).should match_array E2_HEADERS
+      @dc.decode(Buffer.new(E2_BYTES.pack("C*"))).should match_array E2_HEADERS
     end
 
     it "encode-decode should be invariant" do
       cc = Compressor.new(:request)
       dc = Decompressor.new(:request)
 
-      E1_HEADERS.should match_array dc.decode(StringIO.new(cc.encode(E1_HEADERS)))
-      E2_HEADERS.should match_array dc.decode(StringIO.new(cc.encode(E2_HEADERS)))
+      E1_HEADERS.should match_array dc.decode(cc.encode(E1_HEADERS))
+      E2_HEADERS.should match_array dc.decode(cc.encode(E2_HEADERS))
     end
 
     it "should encode-decode request set of headers" do
@@ -392,7 +378,7 @@ describe HTTP2::Header do
         ["accept", "*/*"]
       ]
 
-      dc.decode(StringIO.new(cc.encode(req))).should eq req
+      dc.decode(cc.encode(req)).should eq req
     end
 
     it "should downcase all request header names" do
@@ -400,7 +386,7 @@ describe HTTP2::Header do
       dc = Decompressor.new(:request)
 
       req = [["Accept", "IMAGE/PNG"]]
-      recv = dc.decode(StringIO.new(cc.encode(req)))
+      recv = dc.decode(cc.encode(req))
       recv.should eq [["accept", "IMAGE/PNG"]]
     end
   end

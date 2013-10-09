@@ -255,6 +255,9 @@ module HTTP2
           end
         end
       end
+
+    rescue
+      connection_error
     end
     alias :<< :receive
 
@@ -286,7 +289,7 @@ module HTTP2
     # Applies HTTP 2.0 binary encoding to the frame.
     #
     # @param frame [Hash]
-    # @return [String] encoded frame
+    # @return [Buffer] encoded frame
     def encode(frame)
       if frame[:type] == :headers ||
          frame[:type] == :push_promise
@@ -405,7 +408,7 @@ module HTTP2
     # @param frame [Hash]
     def decode_headers(frame)
       if frame[:payload].is_a? String
-        frame[:payload] = @decompressor.decode(StringIO.new(frame[:payload]))
+        frame[:payload] = @decompressor.decode(frame[:payload])
       end
 
     rescue Exception => e
