@@ -223,10 +223,8 @@ stream.window_update(2048) # increment stream window by 2048 bytes
 Alternatively, flow control can be disabled by emitting an appropriate settings frame on the connection:
 
 ```ruby
-conn.settings({
-  settings_max_concurrent_streams: 100, # limit number of concurrent streams
-  settings_flow_control_options: 1      # disable flow control
-})
+# limit number of concurrent streams to 100 and disable flow control
+conn.settings(streams: 100, window: Float::INFINITY)
 ```
 
 ### Server push
@@ -280,9 +278,7 @@ end
 The client can cancel any given push stream (via `.close`), or disable server push entirely by sending the appropriate settings frame (note that below setting only impacts server > client direction):
 
 ```ruby
-client.settings({
-  settings_max_concurrent_streams: 0 # set number of server initiated streams to 0 (aka, disable push)
-})
+client.settings(streams: 0) # setting max limit to 0 disables server push
 ```
 
 ### License
