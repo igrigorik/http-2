@@ -3,9 +3,15 @@
 First, a quick test to ensure that we can talk to ourselves:
 
 ```bash
+# Direct connection
 $> ruby server.rb
 $> ruby client.rb http://localhost:8080/                 # GET
 $> ruby client.rb http://localhost:8080/ -d 'some data'  # POST
+
+# TLS + NPN negotiation
+$> ruby server.rb --secure
+$> ruby client.rb https://localhost:8080/                # GET
+$> ...
 ```
 
 ### [nghttp2](https://github.com/tatsuhiro-t/nghttp2) (HTTP/2.0 C Library)
@@ -43,3 +49,5 @@ $> ruby client.rb https://gabor.molnar.es:8080/post -d'some data'
 # NPN + GET request (http-2 > twitter)
 $> ruby client.rb https://twitter.com/
 ```
+
+For a complete list of current implementations, see [http2 wiki](https://github.com/http2/http2-spec/wiki/Implementations).

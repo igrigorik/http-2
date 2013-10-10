@@ -9,7 +9,6 @@ OptionParser.new do |opts|
   end
 end.parse!
 
-draft = 'HTTP-draft-06/2.0'
 
 uri = URI.parse(ARGV[0] || 'http://localhost:8080/')
 tcp = TCPSocket.new(uri.host, uri.port)
@@ -19,21 +18,21 @@ if uri.scheme == 'https'
   ctx = OpenSSL::SSL::SSLContext.new
   ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-  ctx.npn_protocols = [draft]
+  ctx.npn_protocols = [DRAFT]
   ctx.npn_select_cb = lambda do |protocols|
     puts "NPN protocols supported by server: #{protocols}"
-    if protocols.include? draft
-      draft
-    else
-      puts "Server does not support #{draft}"
-      exit
-    end
+    DRAFT if protocols.include? DRAFT
   end
 
   sock = OpenSSL::SSL::SSLSocket.new(tcp, ctx)
   sock.sync_close = true
   sock.hostname = uri.hostname
   sock.connect
+
+  if sock.npn_protocol != DRAFT
+    puts "Failed to negotiate #{DRAFT} via NPN"
+    exit
+  end
 else
   sock = tcp
 end

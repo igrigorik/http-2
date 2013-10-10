@@ -1,7 +1,32 @@
 require_relative 'helper'
 
-puts "Starting server on port 8080"
-Socket.tcp_server_loop(8080) do |sock|
+options = {port: 8080}
+OptionParser.new do |opts|
+  opts.banner = "Usage: server.rb [options]"
+
+  opts.on("-s", "--secure", "HTTPS mode") do |v|
+    options[:secure] = v
+  end
+
+  opts.on("-p", "--port [Integer]", "listen port") do |v|
+    options[:port] = v
+  end
+end.parse!
+
+puts "Starting server on port #{options[:port]}"
+server = TCPServer.new(options[:port])
+
+if options[:secure]
+  ctx = OpenSSL::SSL::SSLContext.new
+  ctx.cert = OpenSSL::X509::Certificate.new(File.open("keys/mycert.pem"))
+  ctx.key = OpenSSL::PKey::RSA.new(File.open("keys/mykey.pem"))
+  ctx.npn_protocols = [DRAFT]
+
+  server = OpenSSL::SSL::SSLServer.new(server, ctx)
+end
+
+loop do
+  sock = server.accept
   puts "New TCP connection!"
 
   conn = HTTP2::Server.new
