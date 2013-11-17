@@ -28,7 +28,7 @@ module HTTP2
       continuation:  0xa
     }
 
-    # Per frame flags as defined by the spec
+    # Bit position of per frame flags as defined by the spec
     FRAME_FLAGS = {
       data: {
         end_stream:  0, reserved: 1
@@ -40,12 +40,13 @@ module HTTP2
       priority:     {},
       rst_stream:   {},
       settings:     {},
-      push_promise: { end_push_promise: 0 },
+      push_promise: { end_push_promise: 2 },
       ping:         { pong: 0 },
       goaway:       {},
       window_update:{},
       continuation: {
-        end_stream: 0, end_headers: 1
+        end_stream: 0, unused: 1,
+        end_headers: 2
       }
     }
 
