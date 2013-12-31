@@ -283,4 +283,4 @@ client.settings(streams: 0) # setting max limit to 0 disables server push
 
 ### License
 
-(MIT License) - Copyright (c) 2013 Ilya Grigorik
+(MIT License) - Copyright (c) 2013 Ilya Grigorik ![GA](https://www.google-analytics.com/__utm.gif?utmac=UA-71196-9&utmhn=www.github.com&utmdt=HTTP2&utmp=/http-2/readme)
