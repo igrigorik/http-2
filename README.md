@@ -3,6 +3,7 @@
 [![Gem Version](https://badge.fury.io/rb/http-2.png)](http://rubygems.org/gems/http-2)
 [![Build Status](https://travis-ci.org/igrigorik/http-2.png?branch=master)](https://travis-ci.org/igrigorik/http-2)
 [![Coverage Status](https://coveralls.io/repos/igrigorik/http-2/badge.png)](https://coveralls.io/r/igrigorik/http-2)
+[![Analytics](https://ga-beacon.appspot.com/UA-71196-10/http-2/readme)](https://github.com/igrigorik/ga-beacon)
 
 Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) with support for:
 
