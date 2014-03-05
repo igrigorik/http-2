@@ -355,7 +355,7 @@ module HTTP2
             event(:remote_closed) if end_stream?(frame)
           when :rst_stream then event(:remote_rst)
           when :window_update, :priority
-            frame[:igore] = true
+            frame[:ignore] = true
           end
         end
 

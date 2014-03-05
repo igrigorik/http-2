@@ -284,11 +284,11 @@ module HTTP2
 
     def pack_error(e)
       if !e.is_a? Integer
-        e = DEFINED_ERRORS[e]
-
-        if e.nil?
+        if DEFINED_ERRORS[e].nil?
           raise CompressionError.new("Unknown error ID for #{e}")
         end
+
+        e = DEFINED_ERRORS[e]
       end
 
       [e].pack(UINT32)
