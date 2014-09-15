@@ -182,14 +182,14 @@ describe HTTP2::Framer do
       frame = {
         length: 11,
         type: :push_promise,
-        flags: [:end_push_promise],
+        flags: [:end_headers],
         stream: 1,
         promise_stream: 2,
         payload: 'headers'
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0xb,0x5,0x1,0x1,0x2,*'headers'.bytes].pack("nCCNNC*")
+      bytes.should eq [0xb,0x5,0x4,0x1,0x2,*'headers'.bytes].pack("nCCNNC*")
       f.parse(bytes).should eq frame
     end
   end
@@ -272,7 +272,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0xc,0xa,0x3,0x1,*'header-block'.bytes].pack("nCCNC*")
+      bytes.should eq [0xc,0xa,0x5,0x1,*'header-block'.bytes].pack("nCCNC*")
       f.parse(bytes).should eq frame
     end
   end

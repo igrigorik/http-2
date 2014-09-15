@@ -140,10 +140,10 @@ module HTTP2
       send({type: :headers, flags: flags, payload: headers.to_a})
     end
 
-    def promise(headers, end_push_promise: true, &block)
+    def promise(headers, end_headers: true, &block)
       raise Exception.new("must provide callback") if !block_given?
 
-      flags = end_push_promise ? [:end_push_promise] : []
+      flags = end_headers ? [:end_headers] : []
       emit(:promise, self, headers, flags, &block)
     end
 
