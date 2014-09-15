@@ -25,6 +25,7 @@ module HTTP2
       @state        = :connection_header
       @compressor   = Header::Compressor.new(:request)
       @decompressor = Header::Decompressor.new(:response)
+      @prefaced     = false
 
       super
     end
@@ -36,7 +37,8 @@ module HTTP2
     # @note Client will emit the connection header as the first 24 bytes
     # @param frame [Hash]
     def send(frame)
-      if @state == :connection_header
+      if @state == :connection_header && !@prefaced
+        @prefaced = true
         emit(:frame, CONNECTION_HEADER)
         @state = :connected
 
