@@ -273,8 +273,9 @@ describe HTTP2::Connection do
   context "connection management" do
     it "should raise error on invalid connection header" do
       srv = Server.new
-      expect { srv.dup << f.generate(SETTINGS) }.to raise_error(HandshakeError)
+      expect { srv << f.generate(SETTINGS) }.to raise_error(HandshakeError)
 
+      srv = Server.new
       expect {
         srv << CONNECTION_HEADER
         srv << f.generate(SETTINGS)
