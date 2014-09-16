@@ -94,6 +94,22 @@ FRAME_TYPES = [
   PING, GOAWAY, WINDOW_UPDATE, CONTINUATION
 ]
 
+def set_type(bytes, type)
+  # FIXME: update this if/when igrigorik#12 is merged
+  head = bytes.slice!(0,8).unpack('nCCN')
+  head[1] = type
+
+  head.pack('nCCN') + bytes
+end
+
+def set_flags(bytes, flags)
+  # FIXME: update this if/when igrigorik#12 is merged
+  head = bytes.slice!(0,8).unpack('nCCN')
+  head[2] = flags
+
+  head.pack('nCCN') + bytes
+end
+
 def set_stream_id(bytes, id)
   head = bytes.slice!(0,8).unpack('nCCN')
   head[3] = id

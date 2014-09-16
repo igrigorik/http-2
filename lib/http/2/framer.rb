@@ -124,9 +124,14 @@ module HTTP2
       frame[:length], type, flags, stream = buf.slice(0,8).unpack(HEADERPACK)
 
       frame[:type], _ = FRAME_TYPES.select { |t,pos| type == pos }.first
-      frame[:flags] = FRAME_FLAGS[frame[:type]].reduce([]) do |acc, (name, pos)|
-        acc << name if (flags & (1 << pos)) > 0
-        acc
+
+      # Unknown frame types MUST be ignored and discarded,
+      # and undefined flags MUST be ignored.
+      if frame[:type]
+        frame[:flags] = FRAME_FLAGS[frame[:type]].reduce([]) do |acc, (name, pos)|
+          acc << name if (flags & (1 << pos)) > 0
+          acc
+        end
       end
 
       frame[:stream] = stream & RBIT
@@ -275,6 +280,9 @@ module HTTP2
         frame[:increment] = payload.read_uint32 & RBIT
       when :continuation
         frame[:payload] = payload.read(frame[:length])
+      else
+        # Unknown frame types MUST be ignored and discarded.
+        return nil
       end
 
       frame
