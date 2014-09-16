@@ -31,14 +31,6 @@ describe HTTP2::Framer do
       }.to raise_error(CompressionError, /invalid.*type/i)
     end
 
-    it "should ignore received frames with unknown type" do
-      unknown = set_type(bytes, 0x80)
-      f.parse(unknown).should be_nil
-
-      unknown = set_stream_id(unknown, 0x00)
-      f.parse(unknown).should be_nil
-    end
-
     it "should raise exception on invalid stream ID" do
       expect {
         frame[:stream] = Framer::MAX_STREAM_ID + 1
@@ -51,13 +43,6 @@ describe HTTP2::Framer do
         frame[:flags] = [:bogus]
         f.commonHeader(frame)
       }.to raise_error(CompressionError, /frame flag/)
-    end
-
-    it "should ignore unknown flags in received frames" do
-      frame = f.parse(set_flags(bytes, 0x87))
-      frame[:flags].should have(2).items
-      frame[:flags].should include(:end_stream)
-      frame[:flags].should include(:end_headers)
     end
 
     it "should raise exception on invalid frame size" do
@@ -331,6 +316,27 @@ describe HTTP2::Framer do
     f.parse(bytes[0...-1]).should be_nil
     f.parse(bytes).should eq frame
     bytes.should be_empty
+  end
+
+  it "should ignore received frames with unknown type" do
+    frame = {type: :headers, stream: 1, payload: "headers"}
+    bytes = f.generate(frame)
+
+    # unknown frame type on stream 1
+    bytes = Buffer.new(set_type(bytes, 0x80))
+    f.parse(bytes.dup).should be_nil
+
+    # unknown frame type on stream 0
+    bytes = Buffer.new(set_stream_id(bytes, 0x00))
+    f.parse(bytes).should be_nil
+  end
+
+  it "should ignore unknown flags in received frames" do
+    frame = {type: :headers, stream: 1, flags: [:end_headers], payload: "headers"}
+    bytes = f.generate(frame)
+    bytes = Buffer.new(set_flags(bytes, 0x84))
+
+    f.parse(bytes)[:flags].should eq [:end_headers]
   end
 
 end
