@@ -328,14 +328,24 @@ module HTTP2
     def connection_management(frame)
       case @state
       when :connection_header
-        # SETTINGS frames MUST be sent at the start of a connection.
-        connection_settings(frame)
-        @state = :connected
+        if frame[:type] == :settings and frame[:flags].include? :ack
+          # FIXME: currently we can receive *our* settings' ACK
+          #        before their initial settings...
+          nil
+        else
+          # SETTINGS frames MUST be sent at the start of a connection.
+          connection_settings(frame)
+          @state = :connected
+        end
 
       when :connected
         case frame[:type]
         when :settings
-          connection_settings(frame)
+          if frame[:flags].include? :ack
+            # TODO: synchronize receipt...
+          else
+            connection_settings(frame)
+          end
         when :window_update
           flow_control_allowed?
           @window += frame[:increment]
@@ -403,6 +413,12 @@ module HTTP2
           end
         end
       end
+
+      # Send acknowledgement of settings
+      send({
+        type: :settings, stream: 0,
+        flags: [:ack], payload: {}
+      })
     end
 
     # Decode headers payload and update connection decompressor state.

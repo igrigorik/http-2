@@ -281,6 +281,17 @@ describe HTTP2::Connection do
       }.to_not raise_error
     end
 
+    it "should acknowledge SETTINGS frames" do
+      ack_payload = {}
+
+      @conn.should_receive(:send) do |frame|
+        frame[:type].should eq :settings
+        frame[:flags].should eq [:ack]
+        frame[:payload].should eq ack_payload
+      end
+      @conn << f.generate(SETTINGS)
+    end
+
     it "should respond to PING frames" do
       @conn << f.generate(SETTINGS)
       @conn.should_receive(:send) do |frame|
@@ -344,6 +355,8 @@ describe HTTP2::Connection do
     it "should send GOAWAY frame on connection error" do
       stream = @conn.new_stream
 
+      @conn << f.generate(SETTINGS)
+
       @conn.stub(:encode)
       @conn.should_receive(:encode) do |frame|
         frame[:type].should eq :goaway
@@ -351,7 +364,6 @@ describe HTTP2::Connection do
         frame[:error].should eq :protocol_error
       end
 
-      @conn << f.generate(SETTINGS)
       expect { @conn << f.generate(DATA) }.to raise_error(ProtocolError)
     end
   end

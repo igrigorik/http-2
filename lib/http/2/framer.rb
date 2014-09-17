@@ -39,7 +39,7 @@ module HTTP2
       },
       priority:     {},
       rst_stream:   {},
-      settings:     {},
+      settings:     { ack: 0 },
       push_promise: { end_push_promise: 0 },
       ping:         { pong: 0 },
       goaway:       {},
