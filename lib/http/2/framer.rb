@@ -40,12 +40,12 @@ module HTTP2
       priority:     {},
       rst_stream:   {},
       settings:     {},
-      push_promise: { end_push_promise: 0 },
+      push_promise: { end_headers: 2 },
       ping:         { pong: 0 },
       goaway:       {},
       window_update:{},
       continuation: {
-        end_stream: 0, end_headers: 1
+        end_stream: 0, end_headers: 2
       }
     }
 

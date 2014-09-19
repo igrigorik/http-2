@@ -67,7 +67,7 @@ SETTINGS = {
 
 PUSH_PROMISE = {
   type: :push_promise,
-  flags: [:end_push_promise],
+  flags: [:end_headers],
   stream: 1,
   promise_stream: 2,
   payload: 'headers'
