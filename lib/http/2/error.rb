@@ -18,12 +18,6 @@ module HTTP2
     # @see ProtocolError
     class CompressionError < ProtocolError; end
 
-    # Raised on invalid reference for current compression context: the
-    # client and server contexts are out of sync.
-    #
-    # @see ProtocolError
-    class HeaderException < ProtocolError; end
-
     # Raised on invalid flow control frame or command.
     #
     # @see ProtocolError
