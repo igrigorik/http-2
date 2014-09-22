@@ -252,19 +252,18 @@ describe HTTP2::Connection do
     end
 
     it "should compress stream headers" do
-      @conn.ping("12345678")
       @conn.on(:frame) do |bytes|
         bytes.force_encoding('binary')
         bytes.should_not match('get')
         bytes.should_not match('http')
-        bytes.should match('www.example.org')
+        bytes.should_not match('www.example.org') # should be huffman encoded
       end
 
       stream = @conn.new_stream
       stream.headers({
         ':method' => 'get',
         ':scheme' => 'http',
-        ':host'   => 'www.example.org',
+        ':authority' => 'www.example.org',
         ':path'   => '/resource'
       })
     end
