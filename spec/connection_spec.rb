@@ -237,9 +237,7 @@ describe HTTP2::Connection do
 
     it "should raise connection error on decode exception" do
       @conn << f.generate(SETTINGS)
-      frame = f.generate(HEADERS.dup)
-      frame[2] = 0.chr
-
+      frame = f.generate(DATA.dup) # Receiving DATA on unopened stream 1 is an error.
       expect { @conn << frame }.to raise_error(ProtocolError)
     end
 
