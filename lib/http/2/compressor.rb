@@ -184,7 +184,7 @@ module HTTP2
           emit = [cmd[:name], cmd[:value]]
 
           if cmd[:type] == :incremental
-            idx = add_to_table(emit)
+            add_to_table(emit)
           end
 
         else
@@ -278,13 +278,9 @@ module HTTP2
       # the new entry fits in the header table.
       #
       # @param cmd [Array] +[name, value]+
-      # @return [Integer] index of the newly added entry or nil if not added
       def add_to_table(cmd)
         if size_check(cmd)
           @table.unshift(cmd)
-          0
-        else
-          nil
         end
       end
 
