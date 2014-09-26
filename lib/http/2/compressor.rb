@@ -207,7 +207,9 @@ module HTTP2
         noindex = [:static, :never].include?(@options[:index])
         headers.each do |h|
           cmd = addcmd(h)
-          noindex && cmd[:type] == :incremental and cmd[:type] = :noindex
+          if noindex && cmd[:type] == :incremental
+            cmd[:type] = :noindex
+          end
           commands << cmd
           process(cmd)
         end
