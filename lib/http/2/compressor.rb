@@ -149,7 +149,7 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
-          set_table_size(cmd[:name])
+          set_table_size(cmd[:value])
 
         when :indexed
           # Indexed Representation
@@ -427,7 +427,7 @@ module HTTP2
         when :indexed
           buffer << integer(h[:name]+1, rep[:prefix])
         when :changetablesize
-          buffer << integer(h[:size], rep[:prefix])
+          buffer << integer(h[:value], rep[:prefix])
         else
           if h[:name].is_a? Integer
             buffer << integer(h[:name]+1, rep[:prefix])
@@ -537,7 +537,7 @@ module HTTP2
           header[:name] == 0 and raise CompressionError.new
           header[:name] -= 1
         when :changetablesize
-          header[:size] = header[:name]
+          header[:value] = header[:name]
         else
           if header[:name] == 0
             header[:name] = string(buf)

@@ -235,7 +235,7 @@ describe HTTP2::Header do
           add_to_table(["test2", "2" * 500])
         end
 
-        cc.process({type: :changetablesize, name: 1500})
+        cc.process({type: :changetablesize, value: 1500})
         cc.table.size.should be 1
         cc.table.first[0].should eq 'test2'
       end
