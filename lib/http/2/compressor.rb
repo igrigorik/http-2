@@ -236,15 +236,17 @@ module HTTP2
           STATIC_TABLE.each_index do |i|
             if STATIC_TABLE[i] == header
               exact ||= i
+              break
             elsif STATIC_TABLE[i].first == header.first
               name_only ||= i
             end
           end
         end
-        if [:all].include?(@options[:index])
+        if [:all].include?(@options[:index]) && !exact
           @table.each_index do |i|
             if @table[i] == header
               exact ||= i + STATIC_TABLE.size
+              break
             elsif @table[i].first == header.first
               name_only ||= i + STATIC_TABLE.size
             end
