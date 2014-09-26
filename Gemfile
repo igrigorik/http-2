@@ -6,6 +6,7 @@ gem 'yard'
 group :test do
   gem 'coveralls', :require => false
   gem 'rspec'
+  gem 'rspec-autotest'
   gem 'autotest-standalone'
   gem 'autotest-growl'
   gem 'pry'
