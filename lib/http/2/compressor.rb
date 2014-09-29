@@ -343,6 +343,12 @@ module HTTP2
         @cc = EncodingContext.new(type, options)
       end
 
+      # Set header table size in EncodingContext
+      # @param size [Integer] new header table size
+      def set_table_size(size)
+        @cc.set_table_size(size)
+      end
+
       # Encodes provided value via integer representation.
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09#section-6.1
       #
@@ -478,6 +484,12 @@ module HTTP2
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(type, options = {})
         @cc = EncodingContext.new(type, options)
+      end
+
+      # Set header table size in EncodingContext
+      # @param size [Integer] new header table size
+      def set_table_size(size)
+        @cc.set_table_size(size)
       end
 
       # Decodes integer value from provided buffer.
