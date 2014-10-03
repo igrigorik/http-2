@@ -166,11 +166,7 @@ module HTTP2
 
           frame.delete(:length)
           frame[:payload] = headers
-          frame[:flags] << if frame[:type] == :push_promise
-            :end_push_promise
-          else
-            :end_headers
-          end
+          frame[:flags] << :end_headers
         end
 
         # SETTINGS frames always apply to a connection, never a single stream.
@@ -209,8 +205,8 @@ module HTTP2
 
           when :push_promise
             # The last frame in a sequence of PUSH_PROMISE/CONTINUATION
-            # frames MUST have the END_PUSH_PROMISE/END_HEADERS flag set
-            if !frame[:flags].include? :end_push_promise
+            # frames MUST have the END_HEADERS flag set
+            if !frame[:flags].include? :end_headers
               @continuation << frame
               return
             end
