@@ -200,7 +200,7 @@ describe HTTP2::Framer do
         length: 8,
         stream: 1,
         type: :ping,
-        flags: [:pong],
+        flags: [:ack],
         payload: '12345678'
       }
     }
