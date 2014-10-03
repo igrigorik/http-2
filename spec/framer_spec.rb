@@ -321,22 +321,17 @@ describe HTTP2::Framer do
   it "should ignore received frames with unknown type" do
     frame = {type: :headers, stream: 1, payload: "headers"}
     bytes = f.generate(frame)
-
-    # unknown frame type on stream 1
     bytes = Buffer.new(set_type(bytes, 0x80))
-    f.parse(bytes.dup).should be_nil
-
-    # unknown frame type on stream 0
-    bytes = Buffer.new(set_stream_id(bytes, 0x00))
     f.parse(bytes).should be_nil
   end
 
   it "should ignore unknown flags in received frames" do
     frame = {type: :headers, stream: 1, flags: [:end_headers], payload: "headers"}
     bytes = f.generate(frame)
-    bytes = Buffer.new(set_flags(bytes, 0x84))
+    f.parse(bytes.dup)[:flags].should eq [:end_headers]
 
-    f.parse(bytes)[:flags].should eq [:end_headers]
+    bytes = Buffer.new(set_flags(bytes, 0x84))
+    f.parse(bytes.dup)[:flags].should eq [:end_headers]
   end
 
 end
