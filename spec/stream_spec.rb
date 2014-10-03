@@ -173,8 +173,8 @@ describe HTTP2::Stream do
         sp.receive HEADERS
         sr.send HEADERS
 
-        openp.should be_true
-        openr.should be_true
+        openp.should be_truthy
+        openr.should be_truthy
       end
 
       it "should not emit :active on transition from open" do
@@ -202,8 +202,8 @@ describe HTTP2::Stream do
         sp.receive RST_STREAM
         sr.close
 
-        closep.should be_true
-        closer.should be_true
+        closep.should be_truthy
+        closer.should be_truthy
       end
 
       it "should emit :close after frame is processed" do
@@ -286,7 +286,7 @@ describe HTTP2::Stream do
         @stream.receive RST_STREAM
 
         @stream.state.should eq :closed
-        closed.should be_true
+        closed.should be_truthy
       end
     end
 
@@ -346,7 +346,7 @@ describe HTTP2::Stream do
         @stream.close
 
         @stream.state.should eq :closed
-        closed.should be_true
+        closed.should be_truthy
       end
     end
 

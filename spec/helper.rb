@@ -1,3 +1,18 @@
+begin
+  if RSpec::Core::Version::STRING.to_i >= 3
+    # Disable deprecation warnings for newer RSpec
+    RSpec.configure do |config|
+      config.expect_with :rspec do |c|
+        c.syntax = [:should, :expect]
+      end
+      config.mock_with :rspec do |c|
+        c.syntax = [:should, :expect]
+      end
+    end
+  end
+rescue Exception
+end
+
 require 'http/2'
 require 'json'
 require 'coveralls'
@@ -52,7 +67,7 @@ SETTINGS = {
 
 PUSH_PROMISE = {
   type: :push_promise,
-  flags: [:end_push_promise],
+  flags: [:end_headers],
   stream: 1,
   promise_stream: 2,
   payload: 'headers'
@@ -111,8 +126,8 @@ def set_flags(bytes, flags)
 end
 
 def set_stream_id(bytes, id)
-  head = bytes.slice!(0,8).unpack('nCCN')
-  head[3] = id
+  head = bytes.slice!(0,9).unpack('CnCCN')
+  head[4] = id
 
-  head.pack('nCCN') + bytes
+  head.pack('CnCCN') + bytes
 end

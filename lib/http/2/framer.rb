@@ -5,8 +5,8 @@ module HTTP2
   class Framer
     include Error
 
-    # Maximum frame size (65535 bytes)
-    MAX_PAYLOAD_SIZE = 2**16-1
+    # Maximum frame size (16383 bytes)
+    MAX_PAYLOAD_SIZE = 2**14-1
 
     # Maximum stream ID (2^31)
     MAX_STREAM_ID = 0x7fffffff
@@ -40,12 +40,12 @@ module HTTP2
       priority:     {},
       rst_stream:   {},
       settings:     {},
-      push_promise: { end_push_promise: 0 },
+      push_promise: { end_headers: 2 },
       ping:         { pong: 0 },
       goaway:       {},
       window_update:{},
       continuation: {
-        end_stream: 0, end_headers: 1
+        end_stream: 0, end_headers: 2
       }
     }
 
@@ -71,13 +71,16 @@ module HTTP2
 
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff
-    HEADERPACK = "nCCN"
+    HEADERPACK = "CnCCN"
     UINT32 = "N"
+
+    FRAME_LENGTH_HISHIFT = 16
+    FRAME_LENGTH_LOMASK  = 0xFFFF
 
     private_constant :RBIT, :RBYTE, :HEADERPACK, :UINT32
 
-    # Generates common 8-byte frame header.
-    # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-04#section-4.1
+    # Generates common 9-byte frame header.
+    # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-14#section-4.1
     #
     # @param frame [Hash]
     # @return [String]
@@ -100,7 +103,8 @@ module HTTP2
         raise CompressionError.new("Window increment (#{frame[:increment]}) is too large")
       end
 
-      header << frame[:length]
+      header << (frame[:length] >> FRAME_LENGTH_HISHIFT)
+      header << (frame[:length] & FRAME_LENGTH_LOMASK)
       header << FRAME_TYPES[frame[:type]]
       header << frame[:flags].reduce(0) do |acc, f|
         position = FRAME_FLAGS[frame[:type]][f]
@@ -113,16 +117,17 @@ module HTTP2
       end
 
       header << frame[:stream]
-      header.pack(HEADERPACK) # 16,8,8,32
+      header.pack(HEADERPACK) # 8+16,8,8,32
     end
 
-    # Decodes common 8-byte header.
+    # Decodes common 9-byte header.
     #
     # @param buf [Buffer]
     def readCommonHeader(buf)
       frame = {}
-      frame[:length], type, flags, stream = buf.slice(0,8).unpack(HEADERPACK)
+      len_hi, len_lo, type, flags, stream = buf.slice(0,9).unpack(HEADERPACK)
 
+      frame[:length] = (len_hi << FRAME_LENGTH_HISHIFT) | len_lo
       frame[:type], _ = FRAME_TYPES.select { |t,pos| type == pos }.first
 
       # Unknown frame types MUST be ignored and discarded,
@@ -235,11 +240,11 @@ module HTTP2
     #
     # @param buf [Buffer]
     def parse(buf)
-      return nil if buf.size < 8
+      return nil if buf.size < 9
       frame = readCommonHeader(buf)
-      return nil if buf.size < 8 + frame[:length]
+      return nil if buf.size < 9 + frame[:length]
 
-      buf.read(8)
+      buf.read(9)
       payload = buf.read(frame[:length])
 
       case frame[:type]
