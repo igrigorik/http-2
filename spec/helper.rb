@@ -110,19 +110,17 @@ FRAME_TYPES = [
 ]
 
 def set_type(bytes, type)
-  # FIXME: update this if/when igrigorik#12 is merged
-  head = bytes.slice!(0,8).unpack('nCCN')
-  head[1] = type
+  head = bytes.slice!(0,9).unpack('CnCCN')
+  head[2] = type
 
-  head.pack('nCCN') + bytes
+  head.pack('CnCCN') + bytes
 end
 
 def set_flags(bytes, flags)
-  # FIXME: update this if/when igrigorik#12 is merged
-  head = bytes.slice!(0,8).unpack('nCCN')
-  head[2] = flags
+  head = bytes.slice!(0,9).unpack('CnCCN')
+  head[3] = flags
 
-  head.pack('nCCN') + bytes
+  head.pack('CnCCN') + bytes
 end
 
 def set_stream_id(bytes, id)
