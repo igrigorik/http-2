@@ -3,14 +3,12 @@ module HTTP2
   # Simple binary buffer backed by string.
   #
   class Buffer < String
-
     UINT32 = "N"
-    BINARY = "binary"
-    private_constant :UINT32, :BINARY
+    private_constant :UINT32
 
     # Forces binary encoding on the string
-    def initialize(data = '')
-      super(data.force_encoding(BINARY))
+    def initialize(*)
+      super.force_encoding(Encoding::BINARY)
     end
 
     # Emulate StringIO#read: slice first n bytes from the buffer.

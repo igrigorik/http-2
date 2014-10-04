@@ -32,7 +32,7 @@ RSpec.describe HTTP2::Header::Huffman do
       "UTF-8でエンコードした日本語文字列",
     ].each do |string|
       it "should encode then decode '#{string}' into the same" do
-        s = string.dup.force_encoding('binary')
+        s = string.dup.force_encoding(Encoding::BINARY)
         encoded = @encoder.encode(s)
         expect(@encoder.decode(HTTP2::Buffer.new(encoded))).to eq s
       end
@@ -40,7 +40,7 @@ RSpec.describe HTTP2::Header::Huffman do
 
     it "should encode/decode all_possible 2-byte sequences" do
       (2**16).times do |n|
-        str = [n].pack("V")[0,2].force_encoding('binary')
+        str = [n].pack("V")[0,2].force_encoding(Encoding::BINARY)
         expect(@encoder.decode(HTTP2::Buffer.new(@encoder.encode(str)))).to eq str
       end
     end

@@ -139,7 +139,7 @@ RSpec.describe HTTP2::Connection do
       ]
       headers = []
       @conn.on(:frame) do |bytes|
-        bytes.force_encoding('binary')
+        bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
         [1,5,9].include?(bytes[3].ord) and headers << f.parse(bytes)
       end
@@ -334,7 +334,7 @@ RSpec.describe HTTP2::Connection do
 
     it "should compress stream headers" do
       @conn.on(:frame) do |bytes|
-        bytes.force_encoding('binary')
+        bytes.force_encoding(Encoding::BINARY)
         expect(bytes).not_to match('get')
         expect(bytes).not_to match('http')
         expect(bytes).not_to match('www.example.org') # should be huffman encoded
@@ -352,7 +352,7 @@ RSpec.describe HTTP2::Connection do
     it "should generate CONTINUATION if HEADERS is too long" do
       headers = []
       @conn.on(:frame) do |bytes|
-        bytes.force_encoding('binary')
+        bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
         [1,5,9].include?(bytes[3].ord) and headers << f.parse(bytes)
       end
@@ -377,7 +377,7 @@ RSpec.describe HTTP2::Connection do
     it "should not generate CONTINUATION if HEADERS fits exactly in a frame" do
       headers = []
       @conn.on(:frame) do |bytes|
-        bytes.force_encoding('binary')
+        bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
         [1,5,9].include?(bytes[3].ord) and headers << f.parse(bytes)
       end
@@ -400,7 +400,7 @@ RSpec.describe HTTP2::Connection do
     it "should not generate CONTINUATION if HEADERS fits exactly in a frame" do
       headers = []
       @conn.on(:frame) do |bytes|
-        bytes.force_encoding('binary')
+        bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
         [1,5,9].include?(bytes[3].ord) and headers << f.parse(bytes)
       end
@@ -423,7 +423,7 @@ RSpec.describe HTTP2::Connection do
     it "should generate CONTINUATION if HEADERS exceed the max payload by one byte" do
       headers = []
       @conn.on(:frame) do |bytes|
-        bytes.force_encoding('binary')
+        bytes.force_encoding(Encoding::BINARY)
         [1,5,9].include?(bytes[3].ord) and headers << f.parse(bytes)
       end
 

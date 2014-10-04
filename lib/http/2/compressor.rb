@@ -5,9 +5,6 @@ module HTTP2
   #
   # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10
   module Header
-
-    BINARY = 'binary'
-
     # To decompress header blocks, a decoder only needs to maintain a
     # dynamic table as a decoding context.
     # No other state information is needed.
@@ -397,7 +394,7 @@ module HTTP2
       def string(str)
         plain, huffman = nil, nil
         unless @cc.options[:huffman] == :always
-          plain = integer(str.bytesize, 7) << str.dup.force_encoding(BINARY)
+          plain = integer(str.bytesize, 7) << str.dup.force_encoding(Encoding::BINARY)
         end
         unless @cc.options[:huffman] == :never
           huffman = Huffman.new.encode(str)
@@ -515,8 +512,7 @@ module HTTP2
         str = buf.read(len)
         str.bytesize == len or raise CompressionError, "string too short"
         huffman and str = Huffman.new.decode(Buffer.new(str))
-        str = str.force_encoding('utf-8')
-        str
+        str.force_encoding(Encoding::UTF_8)
       end
 
       # Decodes header command from provided buffer.
