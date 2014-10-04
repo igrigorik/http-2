@@ -4,13 +4,13 @@ gem 'rake'
 gem 'yard'
 
 group :test do
+  gem 'autotest-growl'
+  gem 'autotest-standalone'
   gem 'coveralls', :require => false
+  gem 'pry'
+  gem 'pry-byebug', :platform => :mri
   gem 'rspec'
   gem 'rspec-autotest'
-  gem 'autotest-standalone'
-  gem 'autotest-growl'
-  gem 'pry'
-  gem 'pry-byebug'
 end
 
 gemspec
