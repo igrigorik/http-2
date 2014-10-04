@@ -11,6 +11,7 @@ group :test do
   gem 'pry-byebug', :platform => :mri
   gem 'rspec'
   gem 'rspec-autotest'
+  gem 'rubocop', '~> 0.30.0'
 end
 
 gemspec
