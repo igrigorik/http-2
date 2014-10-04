@@ -1,6 +1,6 @@
 require "helper"
 
-describe HTTP2::Header::Huffman do
+RSpec.describe HTTP2::Header::Huffman do
   huffman_examples = [# plain, encoded
     ["www.example.com", "f1e3c2e5f23a6ba0ab90f4ff"],
     ["no-cache",        "a8eb10649cbf"],
@@ -10,7 +10,7 @@ describe HTTP2::Header::Huffman do
     before(:all) { @encoder = HTTP2::Header::Huffman.new }
     huffman_examples.each do |plain, encoded|
       it "should encode #{plain} into #{encoded}" do
-        @encoder.encode(plain).unpack("H*").first.should eq encoded
+        expect(@encoder.encode(plain).unpack("H*").first).to eq encoded
       end
     end
   end
@@ -18,7 +18,7 @@ describe HTTP2::Header::Huffman do
     before(:all) { @encoder = HTTP2::Header::Huffman.new }
     huffman_examples.each do |plain, encoded|
       it "should decode #{encoded} into #{plain}" do
-        @encoder.decode(HTTP2::Buffer.new([encoded].pack("H*"))).should eq plain
+        expect(@encoder.decode(HTTP2::Buffer.new([encoded].pack("H*")))).to eq plain
       end
     end
 
@@ -34,14 +34,14 @@ describe HTTP2::Header::Huffman do
       it "should encode then decode '#{string}' into the same" do
         s = string.dup.force_encoding('binary')
         encoded = @encoder.encode(s)
-        @encoder.decode(HTTP2::Buffer.new(encoded)).should eq s
+        expect(@encoder.decode(HTTP2::Buffer.new(encoded))).to eq s
       end
     end
 
     it "should encode/decode all_possible 2-byte sequences" do
       (2**16).times do |n|
         str = [n].pack("V")[0,2].force_encoding('binary')
-        @encoder.decode(HTTP2::Buffer.new(@encoder.encode(str))).should eq str
+        expect(@encoder.decode(HTTP2::Buffer.new(@encoder.encode(str)))).to eq str
       end
     end
 

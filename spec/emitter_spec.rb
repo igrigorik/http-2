@@ -1,6 +1,6 @@
 require "helper"
 
-describe HTTP2::Emitter do
+RSpec.describe HTTP2::Emitter do
   class Worker
     include Emitter
   end
@@ -20,7 +20,7 @@ describe HTTP2::Emitter do
     @w.on(:a) { @cnt += 1 }
     @w.emit(:a)
 
-    @cnt.should eq 2
+    expect(@cnt).to eq 2
   end
 
   it "should execute callback with optional args" do
@@ -28,7 +28,7 @@ describe HTTP2::Emitter do
     @w.on(:a) { |a| args = a }
     @w.emit(:a, 123)
 
-    args.should eq 123
+    expect(args).to eq 123
   end
 
   it "should pass emitted callbacks to listeners" do
@@ -36,7 +36,7 @@ describe HTTP2::Emitter do
     @w.once(:a) { |&block| block.call }
     @w.emit(:a) { @cnt += 1 }
 
-    @cnt.should eq 2
+    expect(@cnt).to eq 2
   end
 
   it "should allow events with no callbacks" do
@@ -49,6 +49,6 @@ describe HTTP2::Emitter do
     @w.emit(:a)
     @w.emit(:a)
 
-    @cnt.should eq 3
+    expect(@cnt).to eq 3
   end
 end

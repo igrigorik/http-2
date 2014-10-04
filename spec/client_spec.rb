@@ -1,6 +1,6 @@
 require "helper"
 
-describe HTTP2::Client do
+RSpec.describe HTTP2::Client do
   before(:each) do
     @client = Client.new
   end
@@ -9,7 +9,7 @@ describe HTTP2::Client do
 
   context "initialization and settings" do
     it "should return odd stream IDs" do
-      @client.new_stream.id.should_not be_even
+      expect(@client.new_stream.id).not_to be_even
     end
 
     it "should emit connection header and SETTINGS on new client connection" do
@@ -17,8 +17,8 @@ describe HTTP2::Client do
       @client.on(:frame) { |bytes| frames << bytes }
       @client.ping("12345678")
 
-      frames[0].should eq CONNECTION_PREFACE_MAGIC
-      f.parse(frames[1])[:type].should eq :settings
+      expect(frames[0]).to eq CONNECTION_PREFACE_MAGIC
+      expect(f.parse(frames[1])[:type]).to eq :settings
     end
 
     it "should initialize client with custom connection settings" do
@@ -29,8 +29,8 @@ describe HTTP2::Client do
       @client.ping("12345678")
 
       frame = f.parse(frames[1])
-      frame[:type].should eq :settings
-      frame[:payload].should include([:settings_max_concurrent_streams, 200])
+      expect(frame[:type]).to eq :settings
+      expect(frame[:payload]).to include([:settings_max_concurrent_streams, 200])
     end
   end
 
@@ -71,8 +71,8 @@ describe HTTP2::Client do
       @client.on(:promise) {|s| promise = s }
       @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
 
-      promise.id.should eq 2
-      promise.state.should eq :reserved_remote
+      expect(promise.id).to eq 2
+      expect(promise.state).to eq :reserved_remote
     end
 
     it "should auto RST_STREAM promises against locally-RST stream" do
@@ -80,10 +80,10 @@ describe HTTP2::Client do
       s.send HEADERS
       s.close
 
-      @client.stub(:send)
-      @client.should_receive(:send) do |frame|
-        frame[:type].should eq :rst_stream
-        frame[:stream].should eq 2
+      allow(@client).to receive(:send)
+      expect(@client).to receive(:send) do |frame|
+        expect(frame[:type]).to eq :rst_stream
+        expect(frame[:stream]).to eq 2
       end
 
       @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)

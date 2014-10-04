@@ -1,6 +1,6 @@
 require "helper"
 
-describe HTTP2::Header do
+RSpec.describe HTTP2::Header do
 
   let(:c) { Compressor.new }
   let(:d) { Decompressor.new }
@@ -9,26 +9,26 @@ describe HTTP2::Header do
     context "integer" do
       it "should encode 10 using a 5-bit prefix" do
         buf = c.integer(10, 5)
-        buf.should eq [10].pack('C')
-        d.integer(Buffer.new(buf), 5).should eq 10
+        expect(buf).to eq [10].pack('C')
+        expect(d.integer(Buffer.new(buf), 5)).to eq 10
       end
 
       it "should encode 10 using a 0-bit prefix" do
         buf = c.integer(10, 0)
-        buf.should eq [10].pack('C')
-        d.integer(Buffer.new(buf), 0).should eq 10
+        expect(buf).to eq [10].pack('C')
+        expect(d.integer(Buffer.new(buf), 0)).to eq 10
       end
 
       it "should encode 1337 using a 5-bit prefix" do
         buf = c.integer(1337, 5)
-        buf.should eq [31,128+26,10].pack('C*')
-        d.integer(Buffer.new(buf), 5).should eq 1337
+        expect(buf).to eq [31,128+26,10].pack('C*')
+        expect(d.integer(Buffer.new(buf), 5)).to eq 1337
       end
 
       it "should encode 1337 using a 0-bit prefix" do
         buf = c.integer(1337,0)
-        buf.should eq [128+57,10].pack('C*')
-        d.integer(Buffer.new(buf), 0).should eq 1337
+        expect(buf).to eq [128+57,10].pack('C*')
+        expect(d.integer(Buffer.new(buf), 0)).to eq 1337
       end
     end
 
@@ -46,11 +46,11 @@ describe HTTP2::Header do
             # NOTE: don't put this new in before{} because of test case shuffling
             @c = Compressor.new(huffman: option)
             str = @c.string(plain)
-            (str.getbyte(0) & 0x80).should eq msb
+            expect(str.getbyte(0) & 0x80).to eq msb
 
             buf = Buffer.new(str + trailer)
-            d.string(buf).should eq plain
-            buf.should eq trailer
+            expect(d.string(buf)).to eq plain
+            expect(buf).to eq trailer
           end
         end
       end
@@ -63,7 +63,7 @@ describe HTTP2::Header do
 
           it "should return #{choice} representation" do
             wire = @c.string(string)
-            (wire.getbyte(0) & 0x80).should eq (choice == :plain ? 0 : 0x80)
+            expect(wire.getbyte(0) & 0x80).to eq (choice == :plain ? 0 : 0x80)
           end
         end
       end
@@ -74,9 +74,9 @@ describe HTTP2::Header do
     it "should handle indexed representation" do
       h = {name: 10, type: :indexed}
       wire = c.header(h)
-      (wire.readbyte(0) & 0x80).should eq 0x80
-      (wire.readbyte(0) & 0x7f).should eq h[:name] + 1
-      d.header(wire).should eq h
+      expect(wire.readbyte(0) & 0x80).to eq 0x80
+      expect(wire.readbyte(0) & 0x7f).to eq h[:name] + 1
+      expect(d.header(wire)).to eq h
     end
     it "should raise when decoding indexed representation with index zero" do
       h = {name: 10, type: :indexed}
@@ -89,17 +89,17 @@ describe HTTP2::Header do
       it "should handle indexed header" do
         h = {name: 10, value: "my-value", type: :noindex}
         wire = c.header(h)
-        (wire.readbyte(0) & 0xf0).should eq 0x0
-        (wire.readbyte(0) & 0x0f).should eq h[:name] + 1
-        d.header(wire).should eq h
+        expect(wire.readbyte(0) & 0xf0).to eq 0x0
+        expect(wire.readbyte(0) & 0x0f).to eq h[:name] + 1
+        expect(d.header(wire)).to eq h
       end
 
       it "should handle literal header" do
         h = {name: "x-custom", value: "my-value", type: :noindex}
         wire = c.header(h)
-        (wire.readbyte(0) & 0xf0).should eq 0x0
-        (wire.readbyte(0) & 0x0f).should eq 0
-        d.header(wire).should eq h
+        expect(wire.readbyte(0) & 0xf0).to eq 0x0
+        expect(wire.readbyte(0) & 0x0f).to eq 0
+        expect(d.header(wire)).to eq h
       end
     end
 
@@ -107,17 +107,17 @@ describe HTTP2::Header do
       it "should handle indexed header" do
         h = {name: 10, value: "my-value", type: :incremental}
         wire = c.header(h)
-        (wire.readbyte(0) & 0xc0).should eq 0x40
-        (wire.readbyte(0) & 0x3f).should eq h[:name] + 1
-        d.header(wire).should eq h
+        expect(wire.readbyte(0) & 0xc0).to eq 0x40
+        expect(wire.readbyte(0) & 0x3f).to eq h[:name] + 1
+        expect(d.header(wire)).to eq h
       end
 
       it "should handle literal header" do
         h = {name: "x-custom", value: "my-value", type: :incremental}
         wire = c.header(h)
-        (wire.readbyte(0) & 0xc0).should eq 0x40
-        (wire.readbyte(0) & 0x3f).should eq 0
-        d.header(wire).should eq h
+        expect(wire.readbyte(0) & 0xc0).to eq 0x40
+        expect(wire.readbyte(0) & 0x3f).to eq 0
+        expect(d.header(wire)).to eq h
       end
     end
 
@@ -125,17 +125,17 @@ describe HTTP2::Header do
       it "should handle indexed header" do
         h = {name: 10, value: "my-value", type: :neverindexed}
         wire = c.header(h)
-        (wire.readbyte(0) & 0xf0).should eq 0x10
-        (wire.readbyte(0) & 0x0f).should eq h[:name] + 1
-        d.header(wire).should eq h
+        expect(wire.readbyte(0) & 0xf0).to eq 0x10
+        expect(wire.readbyte(0) & 0x0f).to eq h[:name] + 1
+        expect(d.header(wire)).to eq h
       end
 
       it "should handle literal header" do
         h = {name: "x-custom", value: "my-value", type: :neverindexed}
         wire = c.header(h)
-        (wire.readbyte(0) & 0xf0).should eq 0x10
-        (wire.readbyte(0) & 0x0f).should eq 0
-        d.header(wire).should eq h
+        expect(wire.readbyte(0) & 0xf0).to eq 0x10
+        expect(wire.readbyte(0) & 0x0f).to eq 0
+        expect(d.header(wire)).to eq h
       end
     end
   end
@@ -145,7 +145,7 @@ describe HTTP2::Header do
 
     it "should be initialized with empty headers" do
       cc = EncodingContext.new
-      cc.table.should be_empty
+      expect(cc.table).to be_empty
     end
 
     context "processing" do
@@ -156,16 +156,16 @@ describe HTTP2::Header do
             original_table = @cc.table.dup
 
             emit = @cc.process({name: 4, value: "/path", type: type})
-            emit.should eq [":path", "/path"]
-            @cc.table.should eq original_table
+            expect(emit).to eq [":path", "/path"]
+            expect(@cc.table).to eq original_table
           end
 
           it "should process literal header with literal value" do
             original_table = @cc.table.dup
 
             emit = @cc.process({name: "x-custom", value: "random", type: type})
-            emit.should eq ["x-custom", "random"]
-            @cc.table.should eq original_table
+            expect(emit).to eq ["x-custom", "random"]
+            expect(@cc.table).to eq original_table
           end
         end
       end
@@ -175,15 +175,15 @@ describe HTTP2::Header do
           original_table = @cc.table.dup
 
           emit = @cc.process({name: 4, value: "/path", type: :incremental})
-          emit.should eq [":path", "/path"]
-          (@cc.table - original_table).should eq [[":path", "/path"]]
+          expect(emit).to eq [":path", "/path"]
+          expect(@cc.table - original_table).to eq [[":path", "/path"]]
         end
 
         it "should process literal header with literal value" do
           original_table = @cc.table.dup
 
           @cc.process({name: "x-custom", value: "random", type: :incremental})
-          (@cc.table - original_table).should eq [["x-custom", "random"]]
+          expect(@cc.table - original_table).to eq [["x-custom", "random"]]
         end
       end
 
@@ -205,8 +205,8 @@ describe HTTP2::Header do
                        type: :incremental
                      })
 
-          cc.table.first[0].should eq "x-custom"
-          cc.table.size.should eq original_table.size # number of entries
+          expect(cc.table.first[0]).to eq "x-custom"
+          expect(cc.table.size).to eq original_table.size # number of entries
         end
       end
 
@@ -222,7 +222,7 @@ describe HTTP2::Header do
 
         cc.process(h)
         cc.process(e.merge({type: :incremental}))
-        cc.table.should be_empty
+        expect(cc.table).to be_empty
       end
 
       it "should shrink table if set smaller size" do
@@ -233,8 +233,8 @@ describe HTTP2::Header do
         end
 
         cc.process({type: :changetablesize, value: 1500})
-        cc.table.size.should be 1
-        cc.table.first[0].should eq 'test2'
+        expect(cc.table.size).to be 1
+        expect(cc.table.first[0]).to eq 'test2'
       end
     end
   end
@@ -483,15 +483,15 @@ describe HTTP2::Header do
             it "should emit expected headers" do
               subject
               # order-perserving compare
-              @emitted.should eq ex[:streams][nth][:emitted]
+              expect(@emitted).to eq ex[:streams][nth][:emitted]
             end
             it "should update header table" do
               subject
-              @dc.instance_eval{@cc.table}.should eq ex[:streams][nth][:table]
+              expect(@dc.instance_eval{@cc.table}).to eq ex[:streams][nth][:table]
             end
             it "should compute header table size" do
               subject
-              @dc.instance_eval{@cc.current_table_size}.should eq ex[:streams][nth][:table_size]
+              expect(@dc.instance_eval{@cc.current_table_size}).to eq ex[:streams][nth][:table_size]
             end
           end
         end
@@ -515,15 +515,15 @@ describe HTTP2::Header do
               @cc.encode(ex[:streams][nth][:emitted])
             end
             it "should emit expected bytes on wire" do
-              subject.unpack("H*").first.should eq ex[:streams][nth][:wire].delete(" \n")
+              expect(subject.unpack("H*").first).to eq ex[:streams][nth][:wire].delete(" \n")
             end
             it "should update header table" do
               subject
-              @cc.instance_eval{@cc.table}.should eq ex[:streams][nth][:table]
+              expect(@cc.instance_eval{@cc.table}).to eq ex[:streams][nth][:table]
             end
             it "should compute header table size" do
               subject
-              @cc.instance_eval{@cc.current_table_size}.should eq ex[:streams][nth][:table_size]
+              expect(@cc.instance_eval{@cc.current_table_size}).to eq ex[:streams][nth][:table_size]
             end
           end
         end

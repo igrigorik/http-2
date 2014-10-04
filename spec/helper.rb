@@ -1,17 +1,4 @@
-begin
-  if RSpec::Core::Version::STRING.to_i >= 3
-    # Disable deprecation warnings for newer RSpec
-    RSpec.configure do |config|
-      config.expect_with :rspec do |c|
-        c.syntax = [:should, :expect]
-      end
-      config.mock_with :rspec do |c|
-        c.syntax = [:should, :expect]
-      end
-    end
-  end
-rescue Exception
-end
+RSpec.configure(&:disable_monkey_patching!)
 
 require 'json'
 require 'coveralls'

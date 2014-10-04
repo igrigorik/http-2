@@ -1,7 +1,7 @@
 require "helper"
 require 'json'
 
-describe HTTP2::Header do
+RSpec.describe HTTP2::Header do
   folders = %w[
     go-hpack
     haskell-http2-diff
@@ -37,7 +37,7 @@ describe HTTP2::Header do
               wire = [c['wire']].pack("H*").force_encoding('binary')
               @emitted = @dc.decode(HTTP2::Buffer.new(wire))
               headers = c['headers'].flat_map(&:to_a)
-              @emitted.should eq headers
+              expect(@emitted).to eq headers
             end
           end
         end
@@ -70,7 +70,7 @@ describe HTTP2::Header do
                   headers = c['headers'].flat_map(&:to_a)
                   wire = @cc.encode(headers)
                   decoded = @dc.decode(HTTP2::Buffer.new(wire))
-                  decoded.should eq headers
+                  expect(decoded).to eq headers
                 end
               end
             end
