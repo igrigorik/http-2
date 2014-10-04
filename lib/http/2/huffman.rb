@@ -12,9 +12,8 @@ module HTTP2
       include Error
 
       BITS_AT_ONCE = 4
-      BINARY = "binary"
       EOS = 256
-      private_constant :BINARY, :EOS
+      private_constant :EOS
 
       def initialize
         @@encode_table ||= CODES.map{|c,l| [c].pack("N").unpack("B*").first[-l..-1]}
@@ -60,7 +59,7 @@ module HTTP2
         unless state <= MAX_FINAL_STATE
           raise CompressionError, 'Huffman decode error (EOS invalid)'
         end
-        emit.force_encoding(BINARY)
+        emit.force_encoding(Encoding::BINARY)
       end
 
       # Huffman table as specified in

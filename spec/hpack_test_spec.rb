@@ -34,7 +34,7 @@ RSpec.describe HTTP2::Header do
             context = story['context'] ? story['context'].to_sym : :request
             @dc = Decompressor.new(table_size: table_size)
             cases.each do |c|
-              wire = [c['wire']].pack("H*").force_encoding('binary')
+              wire = [c['wire']].pack("H*").force_encoding(Encoding::BINARY)
               @emitted = @dc.decode(HTTP2::Buffer.new(wire))
               headers = c['headers'].flat_map(&:to_a)
               expect(@emitted).to eq headers
