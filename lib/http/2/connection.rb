@@ -76,7 +76,7 @@ module HTTP2
     # @param blk [Proc] callback to execute when PONG is received
     def ping(payload, &blk)
       send({type: :ping, stream: 0, payload: payload})
-      once(:pong, &blk) if blk
+      once(:ack, &blk) if blk
     end
 
     # Sends a GOAWAY frame indicating that the peer should stop creating
@@ -337,12 +337,12 @@ module HTTP2
           @window += frame[:increment]
           send_data(nil, true)
         when :ping
-          if frame[:flags].include? :pong
-            emit(:pong, frame[:payload])
+          if frame[:flags].include? :ack
+            emit(:ack, frame[:payload])
           else
             send({
               type: :ping, stream: 0,
-              flags: [:pong], payload: frame[:payload]
+              flags: [:ack], payload: frame[:payload]
             })
           end
         when :goaway

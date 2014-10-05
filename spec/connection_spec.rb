@@ -286,7 +286,7 @@ describe HTTP2::Connection do
       @conn << f.generate(SETTINGS)
       @conn.should_receive(:send) do |frame|
         frame[:type].should eq :ping
-        frame[:flags].should eq [:pong]
+        frame[:flags].should eq [:ack]
         frame[:payload].should eq "12345678"
       end
 

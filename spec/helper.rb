@@ -82,7 +82,7 @@ PING = {
 PONG = {
   stream: 0,
   type: :ping,
-  flags: [:pong],
+  flags: [:ack],
   payload: '12345678'
 }
 

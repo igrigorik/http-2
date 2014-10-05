@@ -41,7 +41,7 @@ module HTTP2
       rst_stream:   {},
       settings:     {},
       push_promise: { end_headers: 2 },
-      ping:         { pong: 0 },
+      ping:         { ack: 0 },
       goaway:       {},
       window_update:{},
       continuation: {
