@@ -300,6 +300,7 @@ module HTTP2
       end
 
     rescue => e
+      raise if e.is_a?(Error::Error)
       connection_error
     end
     alias :<< :receive
@@ -564,7 +565,7 @@ module HTTP2
         frame[:payload] = @decompressor.decode(frame[:payload])
       end
 
-    rescue Exception => e
+    rescue => e
       connection_error(:compression_error, msg: e.message)
     end
 
@@ -597,7 +598,7 @@ module HTTP2
 
       frames
 
-    rescue Exception => e
+    rescue => e
       [connection_error(:compression_error, msg: e.message)]
     end
 

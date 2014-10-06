@@ -112,7 +112,7 @@ while !sock.closed? && !sock.eof?
 
   begin
     conn << data
-  rescue Exception => e
+  rescue => e
     puts "Exception: #{e}, #{e.message} - closing socket."
     sock.close
   end
