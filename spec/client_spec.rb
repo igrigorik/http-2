@@ -38,7 +38,7 @@ RSpec.describe HTTP2::Client do
     it "should disallow client initiated push" do
       expect do
         @client.promise({}) {}
-      end.to raise_error(Exception)
+      end.to raise_error(NoMethodError)
     end
 
     it "should raise error on PUSH_PROMISE against stream 0" do
