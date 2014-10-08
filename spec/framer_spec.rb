@@ -318,4 +318,20 @@ describe HTTP2::Framer do
     bytes.should be_empty
   end
 
+  it "should ignore received frames with unknown type" do
+    frame = {type: :headers, stream: 1, payload: "headers"}
+    bytes = f.generate(frame)
+    bytes = Buffer.new(set_type(bytes, 0x80))
+    f.parse(bytes).should be_nil
+  end
+
+  it "should ignore unknown flags in received frames" do
+    frame = {type: :headers, stream: 1, flags: [:end_headers], payload: "headers"}
+    bytes = f.generate(frame)
+    f.parse(bytes.dup)[:flags].should eq [:end_headers]
+
+    bytes = Buffer.new(set_flags(bytes, 0x84))
+    f.parse(bytes.dup)[:flags].should eq [:end_headers]
+  end
+
 end

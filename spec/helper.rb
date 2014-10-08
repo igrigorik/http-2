@@ -109,6 +109,20 @@ FRAME_TYPES = [
   PING, GOAWAY, WINDOW_UPDATE, CONTINUATION
 ]
 
+def set_type(bytes, type)
+  head = bytes.slice!(0,9).unpack('CnCCN')
+  head[2] = type
+
+  head.pack('CnCCN') + bytes
+end
+
+def set_flags(bytes, flags)
+  head = bytes.slice!(0,9).unpack('CnCCN')
+  head[3] = flags
+
+  head.pack('CnCCN') + bytes
+end
+
 def set_stream_id(bytes, id)
   head = bytes.slice!(0,9).unpack('CnCCN')
   head[4] = id
