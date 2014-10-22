@@ -9,12 +9,12 @@ describe HTTP2::Framer do
       {
         length: 4,
         type: :headers,
-        flags: [:end_stream, :reserved, :end_headers],
+        flags: [:end_stream, :end_headers],
         stream: 15,
       }
     }
 
-    let(:bytes) { [0,0x04, 0x01, 0x7, 0x0000000F].pack("CnCCN") }
+    let(:bytes) { [0,0x04, 0x01, 0x5, 0x0000000F].pack("CnCCN") }
 
     it "should generate common 9 byte header" do
       f.commonHeader(frame).should eq bytes
@@ -24,7 +24,21 @@ describe HTTP2::Framer do
       f.readCommonHeader(Buffer.new(bytes)).should eq frame
     end
 
-    it "should raise exception on invalid frame type" do
+    it "should generate a large frame" do
+      f = Framer.new
+      f.max_frame_size = 2**24-1
+      frame = {
+        length: 2**18 + 2**16 + 17,
+        type: :headers,
+        flags: [:end_stream, :end_headers],
+        stream: 15,
+      }
+      bytes = [5, 17, 0x01, 0x5, 0x0000000F].pack("CnCCN")
+      f.commonHeader(frame).should eq bytes
+      f.readCommonHeader(Buffer.new(bytes)).should eq frame
+    end
+
+    it "should raise exception on invalid frame type when sending" do
       expect {
         frame[:type] = :bogus
         f.commonHeader(frame)
@@ -47,7 +61,7 @@ describe HTTP2::Framer do
 
     it "should raise exception on invalid frame size" do
       expect {
-        frame[:length] = 2**14
+        frame[:length] = 2**24
         f.commonHeader(frame)
       }.to raise_error(CompressionError, /too large/)
     end
@@ -58,13 +72,13 @@ describe HTTP2::Framer do
       frame = {
         length: 4,
         type: :data,
-        flags: [:end_stream, :reserved],
+        flags: [:end_stream],
         stream: 1,
         payload: 'text'
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0,0x4,0x0,0x3,0x1,*'text'.bytes].pack("CnCCNC*")
+      bytes.should eq [0,0x4,0x0,0x1,0x1,*'text'.bytes].pack("CnCCNC*")
 
       f.parse(bytes).should eq frame
     end
@@ -75,13 +89,13 @@ describe HTTP2::Framer do
       frame = {
         length: 12,
         type: :headers,
-        flags: [:end_stream, :reserved, :end_headers],
+        flags: [:end_stream, :end_headers],
         stream: 1,
         payload: 'header-block'
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0,0xc,0x1,0x7,0x1,*'header-block'.bytes].pack("CnCCNC*")
+      bytes.should eq [0,0xc,0x1,0x5,0x1,*'header-block'.bytes].pack("CnCCNC*")
       f.parse(bytes).should eq frame
     end
 
@@ -89,14 +103,16 @@ describe HTTP2::Framer do
       frame = {
         length: 16,
         type: :headers,
-        flags: [:end_headers, :priority],
+        flags: [:end_headers],
         stream: 1,
-        priority: 15,
+        stream_dependency: 15,
+        weight: 12,
+        exclusive: false,
         payload: 'header-block'
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0,0x10,0x1,0xc,0x1,0xf,*'header-block'.bytes].pack("CnCCNNC*")
+      bytes.should eq [0,0x11,0x1,0x24,0x1,0xf,0xb,*'header-block'.bytes].pack("CnCCNNCC*")
       f.parse(bytes).should eq frame
     end
   end
@@ -104,14 +120,16 @@ describe HTTP2::Framer do
   context "PRIORITY" do
     it "should generate and parse bytes" do
       frame = {
-        length: 4,
+        length: 5,
         type: :priority,
         stream: 1,
-        priority: 15
+        stream_dependency: 15,
+        weight: 12,
+        exclusive: true,
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0,0x4,0x2,0x0,0x1,0xf].pack("CnCCNN")
+      bytes.should eq [0,0x5,0x2,0x0,0x1,0x8000000f,0xb].pack("CnCCNNC")
       f.parse(bytes).should eq frame
     end
   end
@@ -134,46 +152,87 @@ describe HTTP2::Framer do
   context "SETTINGS" do
     let(:frame) {
       {
-        length: 8,
         type: :settings,
         flags: [],
         stream: 0,
-        payload: {
-          settings_max_concurrent_streams: 10
-        }
+        payload: [
+          [:settings_max_concurrent_streams, 10],
+          [:settings_header_table_size,      2048],
+        ]
       }
     }
 
     it "should generate and parse bytes" do
-
       bytes = f.generate(frame)
-      bytes.should eq [0,0x8,0x4,0x0,0x0,0x4,0xa].pack("CnCCNNN")
-      f.parse(bytes).should eq frame
+      bytes.should eq [0,12,0x4,0x0,0x0,3,10,1,2048].pack("CnCCNnNnN")
+      parsed = f.parse(bytes)
+      parsed.delete(:length)
+      frame.delete(:length)
+      parsed.should eq frame
     end
 
-    it "should ignore custom settings" do
-      frame[:length] = 8*2
-      frame[:payload] = {
-        settings_max_concurrent_streams: 10,
-        settings_initial_window_size:    20
-      }
+    it "should generate settings when id is given as an integer" do
+      frame[:payload][1][0] = 1
+      bytes = f.generate(frame)
+      bytes.should eq [0,12,0x4,0x0,0x0,3,10,1,2048].pack("CnCCNnNnN")
+    end
 
-      buf = f.generate(frame.merge({55 => 30}))
+    it "should ignore custom settings when sending" do
+      frame[:payload] = [
+        [:settings_max_concurrent_streams, 10],
+        [:settings_initial_window_size,    20],
+        [55, 30],
+      ]
+
+      buf = f.generate(frame)
+      frame[:payload].slice!(2) # cut off the extension
+      frame[:length] = 12       # frame length should be computed WITHOUT extensions
       f.parse(buf).should eq frame
     end
 
-    it "should raise exception on invalid stream ID" do
+    it "should ignore custom settings when receiving" do
+      frame[:payload] = [
+        [:settings_max_concurrent_streams, 10],
+        [:settings_initial_window_size,    20],
+      ]
+
+      buf = f.generate(frame)
+      buf.setbyte(2, 18) # add 6 to the frame length
+      buf << "\x00\x37\x00\x00\x00\x1e"
+      parsed = f.parse(buf)
+      parsed.delete(:length)
+      frame.delete(:length)
+      parsed.should eq frame
+    end
+
+    it "should raise exception on sending invalid stream ID" do
       expect {
         frame[:stream] = 1
         f.generate(frame)
       }.to raise_error(CompressionError, /Invalid stream ID/)
     end
 
-    it "should raise exception on invalid setting" do
+    it "should raise exception on receiving invalid stream ID" do
       expect {
-        frame[:payload] = {random: 23}
+        buf = f.generate(frame)
+        buf.setbyte(8, 1)
+        f.parse(buf)
+      }.to raise_error(ProtocolError, /Invalid stream ID/)
+    end
+
+    it "should raise exception on sending invalid setting" do
+      expect {
+        frame[:payload] = [[:random, 23]]
         f.generate(frame)
       }.to raise_error(CompressionError, /Unknown settings ID/)
+    end
+
+    it "should raise exception on receiving invalid payload length" do
+      expect {
+        buf = f.generate(frame)
+        buf.setbyte(2, 11) # change payload length
+        f.parse(buf)
+      }.to raise_error(ProtocolError, /Invalid settings payload length/)
     end
   end
 
@@ -256,7 +315,7 @@ describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0,0x4,0x9,0x0,0x0,0xa].pack("CnCCNN")
+      bytes.should eq [0,0x4,0x8,0x0,0x0,0xa].pack("CnCCNN")
       f.parse(bytes).should eq frame
     end
   end
@@ -267,13 +326,110 @@ describe HTTP2::Framer do
         length: 12,
         type: :continuation,
         stream: 1,
-        flags: [:end_stream, :end_headers],
+        flags: [:end_headers],
         payload: 'header-block'
       }
 
       bytes = f.generate(frame)
-      bytes.should eq [0,0xc,0xa,0x5,0x1,*'header-block'.bytes].pack("CnCCNC*")
+      bytes.should eq [0,0xc,0x9,0x4,0x1,*'header-block'.bytes].pack("CnCCNC*")
       f.parse(bytes).should eq frame
+    end
+  end
+
+  context "ALTSVC" do
+    it "should generate and parse bytes" do
+      frame = {
+        length: 44,
+        type: :altsvc,
+        stream: 1,
+        max_age: 1402290402,	   # 4
+        port: 8080,		   # 2
+        proto: 'h2-13',		   # 1 + 5
+        host: 'www.example.com',   # 1 + 15
+        origin: 'www.example.com', # 15
+      }
+      bytes = f.generate(frame)
+      expected = [0, 43, 0xa, 0, 1, 1402290402, 8080].pack("CnCCNNn")
+      expected << [5, *'h2-13'.bytes].pack("CC*")
+      expected << [15, *'www.example.com'.bytes].pack("CC*")
+      expected << [*'www.example.com'.bytes].pack("C*")
+      bytes.should eq expected
+      f.parse(bytes).should eq frame
+    end
+  end
+
+  context "Padding" do
+    [:data, :headers, :push_promise].each do |type|
+      [1,256].each do |padlen|
+        context "generating #{type} frame padded #{padlen}" do
+          before do
+            @frame = {
+              length: 12,
+              type: type,
+              stream: 1,
+              payload: 'example data',
+            }
+            type == :push_promise and @frame[:promise_stream] = 2
+            @normal = f.generate(@frame)
+            @padded = f.generate(@frame.merge(:padding => padlen))
+          end
+          it "should generate a frame with padding" do
+            @padded.bytesize.should eq @normal.bytesize + padlen
+          end
+          it "should fill padded octets with zero" do
+            trailer_len = padlen - 1
+            @padded[-trailer_len, trailer_len].should match(/\A\0*\z/)
+          end
+          it "should parse a frame with padding" do
+            f.parse(Buffer.new(@padded)).should eq \
+            f.parse(Buffer.new(@normal)).merge(:padding => padlen)
+          end
+          it "should preserve payload" do
+            f.parse(Buffer.new(@padded))[:payload].should eq @frame[:payload]
+          end
+        end
+      end
+    end
+    context "generating with invalid padding length" do
+      before do
+        @frame = {
+          length: 12,
+          type: :data,
+          stream: 1,
+          payload: 'example data',
+        }
+      end
+      [0, 257,1334].each do |padlen|
+        it "should raise error on trying to generate data frame padded with invalid #{padlen}" do
+          expect {
+            f.generate(@frame.merge(:padding => padlen))
+          }.to raise_error(CompressionError, /padding/i)
+        end
+      end
+      it "should raise error when adding a padding would make frame too large" do
+        @frame[:payload] = 'q' * (f.max_frame_size - 200)
+        @frame[:length]  = @frame[:payload].size
+        @frame[:padding] = 210 # would exceed 4096
+        expect {
+          f.generate(@frame)
+        }.to raise_error(CompressionError, /padding/i)
+      end
+    end
+    context "parsing frames with invalid paddings" do
+      before do
+        @frame = {
+          length: 12,
+          type: :data,
+          stream: 1,
+          payload: 'example data',
+        }
+        @padlen = 123
+        @padded = f.generate(@frame.merge(:padding => @padlen))
+      end
+      it "should raise exception when the given padding is longer than the payload" do
+        @padded.setbyte(9,240)
+        expect { f.parse(Buffer.new(@padded)) }.to raise_error(ProtocolError, /padding/)
+      end
     end
   end
 
@@ -281,9 +437,9 @@ describe HTTP2::Framer do
     frames = [
       [{type: :data, stream: 1, flags: [:end_stream], payload: "abc"}, 3],
       [{type: :headers, stream: 1, payload: "abc"}, 3],
-      [{type: :priority, stream: 3, priority: 30}, 4],
+      [{type: :priority, stream: 3, stream_dependency: 30, exclusive: false, weight: 1}, 5],
       [{type: :rst_stream, stream: 3, error: 100}, 4],
-      [{type: :settings, payload: {settings_max_concurrent_streams: 10}}, 8],
+      [{type: :settings, payload: [[:settings_max_concurrent_streams, 10]]}, 6],
       [{type: :push_promise, promise_stream: 5, payload: "abc"}, 7],
       [{type: :ping, payload: "blob"*2}, 8],
       [{type: :goaway, last_stream: 5, error: 20, payload: "blob"}, 12],
@@ -293,7 +449,8 @@ describe HTTP2::Framer do
 
     frames.each do |(frame, size)|
       bytes = f.generate(frame)
-      bytes.slice(0,3).unpack("Cn")[1].should eq size
+      bytes.slice(1,2).unpack("n").first.should eq size
+      bytes.readbyte(0).should eq 0
     end
   end
 
@@ -315,6 +472,17 @@ describe HTTP2::Framer do
 
     f.parse(bytes[0...-1]).should be_nil
     f.parse(bytes).should eq frame
+    bytes.should be_empty
+  end
+
+  it "should ignore unknown extension frames" do
+    frame = {type: :headers, stream: 1, payload: "headers"}
+    bytes = f.generate(frame)
+    bytes = Buffer.new(bytes + bytes) # Two HEADERS frames in bytes
+    bytes.setbyte(3, 42) # Make the first unknown type 42
+
+    f.parse(bytes).should be_nil   # first frame should be ignored
+    f.parse(bytes).should eq frame # should generate only one HEADERS
     bytes.should be_empty
   end
 
