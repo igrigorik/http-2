@@ -449,21 +449,21 @@ describe HTTP2::Stream do
 
   context "flow control" do
     it "should initialize to default flow control window" do
-      @stream.window.should eq DEFAULT_FLOW_WINDOW
+      @stream.remote_window.should eq DEFAULT_FLOW_WINDOW
     end
 
     it "should update window size on DATA frames only" do
       @stream.send HEADERS # go to open
-      @stream.window.should eq DEFAULT_FLOW_WINDOW
+      @stream.remote_window.should eq DEFAULT_FLOW_WINDOW
 
       (FRAME_TYPES - [DATA,PING,GOAWAY,SETTINGS]).each do |frame|
         s = @stream.dup
         s.send frame
-        s.window.should eq DEFAULT_FLOW_WINDOW
+        s.remote_window.should eq DEFAULT_FLOW_WINDOW
       end
 
       @stream.send DATA
-      @stream.window.should eq DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize
+      @stream.remote_window.should eq DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize
     end
 
     it "should update window size on receipt of WINDOW_UPDATE" do
@@ -471,7 +471,7 @@ describe HTTP2::Stream do
       @stream.send DATA
       @stream.receive WINDOW_UPDATE
 
-      @stream.window.should eq (
+      @stream.remote_window.should eq (
         DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize + WINDOW_UPDATE[:increment]
       )
     end
@@ -487,17 +487,17 @@ describe HTTP2::Stream do
       s1 = @client.new_stream
       s1.send HEADERS
       s1.send data.merge({payload: "x" * 900, flags: []})
-      s1.window.should eq 100
+      s1.remote_window.should eq 100
 
       s1.send data.merge({payload: "x" * 200})
-      s1.window.should eq 0
+      s1.remote_window.should eq 0
       s1.buffered_amount.should eq 100
 
       @client << framer.generate(WINDOW_UPDATE.merge({
         stream: s1.id, increment: 1000
       }))
       s1.buffered_amount.should eq 0
-      s1.window.should eq 900
+      s1.remote_window.should eq 900
     end
   end
 

@@ -17,7 +17,7 @@ describe HTTP2::Client do
       @client.on(:frame) { |bytes| frames << bytes }
       @client.ping("12345678")
 
-      frames[0].should eq CONNECTION_HEADER
+      frames[0].should eq CONNECTION_PREFACE_MAGIC
       f.parse(frames[1])[:type].should eq :settings
     end
 

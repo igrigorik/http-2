@@ -22,7 +22,10 @@ module HTTP2
     # Initialize new HTTP 2.0 client object.
     def initialize(**settings)
       @stream_id    = 1
-      @state        = :connection_header
+      @state        = :waiting_connection_preface
+
+      @local_role   = :client
+      @remote_role  = :server
 
       super
     end
@@ -31,19 +34,23 @@ module HTTP2
     # by Connection class.
     #
     # @see Connection
-    # @note Client will emit the connection header as the first 24 bytes
     # @param frame [Hash]
     def send(frame)
-      if @state == :connection_header
-        @state = :connected
-        emit(:frame, CONNECTION_HEADER)
-
-        payload = @settings.select {|k,v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k]}
-        settings(payload)
-      end
-
+      send_connection_preface
       super(frame)
     end
+
+    # Emit the connection preface if not yet
+    def send_connection_preface
+      if @state == :waiting_connection_preface
+        @state = :connected
+        emit(:frame, CONNECTION_PREFACE_MAGIC)
+
+        payload = @local_settings.select {|k,v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k]}
+        settings(payload)
+      end
+    end
+
   end
 
 end
