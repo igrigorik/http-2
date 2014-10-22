@@ -47,7 +47,9 @@ HEADERS_END_STREAM = {
 PRIORITY = {
   type: :priority,
   stream: 1,
-  priority: 15
+  exclusive: false,
+  stream_dependency: 0,
+  weight: 20,
 }
 
 RST_STREAM = {
@@ -59,10 +61,10 @@ RST_STREAM = {
 SETTINGS = {
   type: :settings,
   stream: 0,
-  payload: {
-    settings_max_concurrent_streams: 10,
-    settings_flow_control_options: 1
-  }
+  payload: [
+    [:settings_max_concurrent_streams, 10],
+    [:settings_initial_window_size, 0x7fffffff],
+  ]
 }
 
 PUSH_PROMISE = {
@@ -104,9 +106,18 @@ CONTINUATION = {
   payload: '-second-block'
 }
 
+ALTSVC = {
+  type: :altsvc,
+  max_age: 1402290402,          # 4
+  port: 8080,                   # 2    reserved 1
+  proto: 'h2-12',               # 1 + 5
+  host: 'www.example.com',      # 1 + 15
+  origin: 'www.example.com',    # 15
+}
+
 FRAME_TYPES = [
   DATA, HEADERS, PRIORITY, RST_STREAM, SETTINGS, PUSH_PROMISE,
-  PING, GOAWAY, WINDOW_UPDATE, CONTINUATION
+  PING, GOAWAY, WINDOW_UPDATE, CONTINUATION, ALTSVC
 ]
 
 def set_stream_id(bytes, id)

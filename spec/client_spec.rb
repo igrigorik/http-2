@@ -24,13 +24,13 @@ describe HTTP2::Client do
     it "should initialize client with custom connection settings" do
       frames = []
 
-      @client = Client.new(streams: 200)
+      @client = Client.new(:settings_max_concurrent_streams => 200)
       @client.on(:frame) { |bytes| frames << bytes }
       @client.ping("12345678")
 
       frame = f.parse(frames[1])
       frame[:type].should eq :settings
-      frame[:payload][:settings_max_concurrent_streams].should eq 200
+      frame[:payload].should include([:settings_max_concurrent_streams, 200])
     end
   end
 

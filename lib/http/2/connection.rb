@@ -3,8 +3,33 @@ module HTTP2
   # Default connection and stream flow control window (64KB).
   DEFAULT_FLOW_WINDOW = 65535
 
+  # Default header table size
+  DEFAULT_HEADER_SIZE = 4096
+
+  # Default stream_limit
+  DEFAULT_MAX_CONCURRENT_STREAMS = 100
+
+  # Default values for SETTINGS frame, as defined by the spec.
+  SPEC_DEFAULT_CONNECTION_SETTINGS = {
+    settings_header_table_size:       4096,
+    settings_enable_push:             1,                     # enabled for servers
+    settings_max_concurrent_streams:  Framer::MAX_STREAM_ID, # unlimited
+    settings_initial_window_size:     65535,
+    settings_max_frame_size:          16384,
+    settings_max_header_list_size:    2**31 - 1,             # unlimited
+  }.freeze
+
+  DEFAULT_CONNECTIONS_SETTINGS = {
+    settings_header_table_size:       4096,
+    settings_enable_push:             1,     # enabled for servers
+    settings_max_concurrent_streams:  100,
+    settings_initial_window_size:     65535, #
+    settings_max_frame_size:          16384,
+    settings_max_header_list_size:    2**31 - 1,             # unlimited
+  }.freeze
+
   # Default stream priority (lower values are higher priority).
-  DEFAULT_PRIORITY    = 2**30
+  DEFAULT_WEIGHT    = 16
 
   # Default connection "fast-fail" preamble string as defined by the spec.
   CONNECTION_HEADER   = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
@@ -30,9 +55,18 @@ module HTTP2
     # infinity, but is automatically updated on receipt of peer settings).
     attr_reader :window
 
-    # Maximum number of concurrent streams allowed by the peer (automatically
-    # updated on receipt of peer settings).
-    attr_reader :stream_limit
+    # Max frame size
+    attr_reader :max_frame_size
+    def max_frame_size=(size)
+      @framer.max_frame_size = @max_frame_size = size
+    end
+
+    # Current value of connection SETTINGS
+    def settings_value; @settings; end
+
+    # Pending settings value
+    #  Sent but not ack'ed settings
+    attr_reader :pending_settings
 
     # Number of active streams between client and server (reserved streams
     # are not counted towards the stream limit).
@@ -40,18 +74,22 @@ module HTTP2
 
     # Initializes new connection object.
     #
-    def initialize(streams: 100, window: DEFAULT_FLOW_WINDOW, **settings)
-      @stream_limit = streams
+    def initialize(**settings)
+      @settings = DEFAULT_CONNECTIONS_SETTINGS.merge(settings)
 
       @compressor   = Header::Compressor.new(settings)
       @decompressor = Header::Decompressor.new(settings)
 
       @active_stream_count = 0
       @streams = {}
+      @pending_settings = []
 
       @framer = Framer.new
-      @window = window
-      @window_limit = window
+
+      @window_limit = @settings[:settings_initial_window_size]
+      @window = @window_limit
+
+      self.max_frame_size = @settings[:settings_max_frame_size]
 
       @recv_buffer = Buffer.new
       @send_buffer = []
@@ -64,11 +102,11 @@ module HTTP2
     # @param priority [Integer]
     # @param window [Integer]
     # @param parent [Stream]
-    def new_stream(priority: DEFAULT_PRIORITY, parent: nil)
+    def new_stream(**args)
       raise ConnectionClosed.new if @state == :closed
-      raise StreamLimitExceeded.new if @active_stream_count == @stream_limit
+      raise StreamLimitExceeded.new if @active_stream_count == @settings[:settings_max_concurrent_streams]
 
-      stream = activate_stream(@stream_id, priority, parent)
+      stream = activate_stream(id: @stream_id, **args)
       @stream_id += 2
 
       stream
@@ -101,20 +139,14 @@ module HTTP2
       @state = :closed
     end
 
-    # Sends a connection SETTINGS frame to the peer. Setting window size
-    # to Float::INFINITY disables flow control.
+    # Sends a connection SETTINGS frame to the peer.
     #
-    # @param stream_limit [Integer] maximum number of concurrent streams
-    # @param window_limit [Float] maximum flow window size
-    def settings(stream_limit: @stream_limit, window_limit: @window_limit)
-      payload = { settings_max_concurrent_streams: stream_limit }
-      if window_limit.to_f.infinite?
-        payload[:settings_flow_control_options] = 1
-      else
-        payload[:settings_initial_window_size] = window_limit
-      end
-
+    # @param settings [Array or Hash]
+    def settings(payload)
+      payload = payload.to_a
+      @pending_settings << payload
       send({type: :settings, stream: 0, payload: payload})
+      @pending_settings << payload
     end
 
     # Decodes incoming bytes into HTTP 2.0 frames and routes them to
@@ -144,11 +176,14 @@ module HTTP2
           raise HandshakeError.new
         else
           @state = :connection_header
-          settings(stream_limit: @stream_limit, window_limit: @window_limit)
+          payload = @settings.select {|k,v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k]}
+          settings(payload)
         end
       end
 
       while frame = @framer.parse(@recv_buffer) do
+        emit(:frame_received, frame)
+
         # Header blocks MUST be transmitted as a contiguous sequence of frames
         # with no interleaved frames of any other type, or from any other stream.
         if !@continuation.empty?
@@ -160,16 +195,13 @@ module HTTP2
           @continuation << frame
           return if !frame[:flags].include? :end_headers
 
-          headers = @continuation.collect do |chunk|
-            decode_headers(chunk)
-            chunk[:payload]
-          end.flatten(1)
+          payload = @continuation.map {|f| f[:payload]}.join
 
           frame = @continuation.shift
           @continuation.clear
 
           frame.delete(:length)
-          frame[:payload] = headers
+          frame[:payload] = Buffer.new(payload)
           frame[:flags] << :end_headers
         end
 
@@ -200,8 +232,10 @@ module HTTP2
 
             stream = @streams[frame[:stream]]
             if stream.nil?
-              stream = activate_stream(frame[:stream],
-                                       frame[:priority] || DEFAULT_PRIORITY)
+              stream = activate_stream(id:         frame[:stream],
+                                       weight:     frame[:weight]     || DEFAULT_WEIGHT,
+                                       dependency: frame[:dependency] || 0,
+                                       exclusive:  frame[:exclusive]  || false)
               emit(:stream, stream)
             end
 
@@ -248,7 +282,7 @@ module HTTP2
               end
             end
 
-            stream = activate_stream(pid, DEFAULT_PRIORITY, parent)
+            stream = activate_stream(id: pid, parent: parent)
             emit(:promise, stream)
             stream << frame
           else
@@ -277,6 +311,7 @@ module HTTP2
     # @note all frames are currently delivered in FIFO order.
     # @param frame [Hash]
     def send(frame)
+      emit(:frame_sent, frame)
       if frame[:type] == :data
         send_data(frame, true)
 
@@ -288,7 +323,9 @@ module HTTP2
             goaway(frame[:error])
           end
         else
-          emit(:frame, encode(frame))
+          # HEADERS and PUSH_PROMISE may generate CONTINUATION
+          frames = encode(frame)
+          frames.each {|f| emit(:frame, f) }
         end
       end
     end
@@ -296,14 +333,15 @@ module HTTP2
     # Applies HTTP 2.0 binary encoding to the frame.
     #
     # @param frame [Hash]
-    # @return [Buffer] encoded frame
+    # @return [Array of Buffer] encoded frame
     def encode(frame)
+      frames = [frame]
       if frame[:type] == :headers ||
          frame[:type] == :push_promise
-        encode_headers(frame)
+        frames = encode_headers(frame)
       end
 
-      @framer.generate(frame)
+      frames.map {|f| @framer.generate(f) }
     end
 
     # Check if frame is a connection frame: SETTINGS, PING, GOAWAY, and any
@@ -329,15 +367,14 @@ module HTTP2
       case @state
       when :connection_header
         # SETTINGS frames MUST be sent at the start of a connection.
-        connection_settings(frame)
         @state = :connected
+        connection_settings(frame)
 
       when :connected
         case frame[:type]
         when :settings
           connection_settings(frame)
         when :window_update
-          flow_control_allowed?
           @window += frame[:increment]
           send_data(nil, true)
         when :ping
@@ -355,7 +392,8 @@ module HTTP2
           # for new streams.
           @state = :closed
           emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
-
+        when :altsvc, :blocked
+          emit(frame[:type], frame)
         else
           connection_error
         end
@@ -372,10 +410,18 @@ module HTTP2
         connection_error
       end
 
-      frame[:payload].each do |key,v|
+      settings, ack_received = \
+        if frame[:flags].include?(:ack)
+          # Process pending settings we have sent.
+          [@pending_settings.shift, true]
+        else
+          [frame[:payload], false]
+        end
+
+      settings.each do |key,v|
+        @settings[key] = v
         case key
         when :settings_max_concurrent_streams
-          @stream_limit = v
 
         # A change to SETTINGS_INITIAL_WINDOW_SIZE could cause the available
         # space in a flow control window to become negative. A sender MUST
@@ -383,7 +429,7 @@ module HTTP2
         # controlled frames until it receives WINDOW_UPDATE frames that cause
         # the flow control window to become positive.
         when :settings_initial_window_size
-          flow_control_allowed?
+          v > 0x7fffffff and connection_error
           @window = @window - @window_limit + v
           @streams.each do |id, stream|
             stream.emit(:window, stream.window - @window_limit + v)
@@ -391,17 +437,36 @@ module HTTP2
 
           @window_limit = v
 
-        # Flow control can be disabled the entire connection using the
-        # SETTINGS_FLOW_CONTROL_OPTIONS setting. This setting ends all forms
-        # of flow control. An implementation that does not wish to perform
-        # flow control can use this in the initial SETTINGS exchange.
-        when :settings_flow_control_options
-          flow_control_allowed?
+        # Setting header table size might cause some headers evicted
+        when :settings_header_table_size
+          @compressor.set_table_size(v)
 
-          if v == 1
-            @window = @window_limit = Float::INFINITY
+        when :settings_enable_push
+          if @stream_id % 2 == 1
+            # This is client.  Peer (server) is not allowed to change settings_enable_push.
+            v == 0 or connection_error
+          else
+            # This is server.  Peer (client) can set either 0 or 1.
+            v == 0 || v == 1 or connection_error
           end
+
+        when :settings_max_frame_size
+          self.max_frame_size = v
+
+        when :settings_compress_data
+          # This is server.  Peer (client) can set either 0 or 1.
+          v == 0 || v == 1 or connection_error
+
+        else
+          # ignore unknown settings
         end
+      end
+
+      if ack_received
+        emit(:settings_ack, frame, @pending_settings.size)
+      elsif @state != :closed
+        # send ack
+        send({type: :settings, stream: 0, payload: [], flags: [:ack]})
       end
     end
 
@@ -425,21 +490,34 @@ module HTTP2
     # Encode headers payload and update connection compressor state.
     #
     # @param frame [Hash]
+    # @return [Array of Frame]
     def encode_headers(frame)
-      if !frame[:payload].is_a? String
-        frame[:payload] = @compressor.encode(frame[:payload])
+      payload = frame[:payload]
+      unless payload.is_a? String
+        payload = @compressor.encode(payload)
       end
+
+      frames = []
+
+      while payload.size > 0
+        cont = frame.dup
+        cont[:type] = :continuation
+        cont[:flags] = []
+        cont[:payload] = payload.slice!(0, max_frame_size)
+        frames << cont
+      end
+      if frames.empty?
+        frames = [frame]
+      else
+        frames.first[:type]  = frame[:type]
+        frames.first[:flags] = frame[:flags] - [:end_headers]
+        frames.last[:flags]  << :end_headers
+      end
+
+      frames
 
     rescue Exception => e
-      connection_error(:compression_error, msg: e.message)
-    end
-
-    # Once disabled, no further flow control operations are permitted.
-    #
-    def flow_control_allowed?
-      if @window_limit == Float::INFINITY
-        connection_error(:flow_control_error)
-      end
+      [connection_error(:compression_error, msg: e.message)]
     end
 
     # Activates new incoming or outgoing stream and registers appropriate
@@ -449,12 +527,12 @@ module HTTP2
     # @param priority [Integer]
     # @param window [Integer]
     # @param parent [Stream]
-    def activate_stream(id, priority, parent = nil)
+    def activate_stream(id: nil, **args)
       if @streams.key?(id)
         connection_error(msg: 'Stream ID already exists')
       end
 
-      stream = Stream.new(id, priority, @window_limit, parent)
+      stream = Stream.new({connection: self, id: id, window: @window_limit}.merge(args))
 
       # Streams that are in the "open" state, or either of the "half closed"
       # states count toward the maximum number of streams that an endpoint is
