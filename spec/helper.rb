@@ -34,14 +34,14 @@ HEADERS = {
   type: :headers,
   flags: [:end_headers],
   stream: 1,
-  payload: Compressor.new(:request).encode([['a','b']])
+  payload: Compressor.new.encode([['a','b']])
 }
 
 HEADERS_END_STREAM = {
   type: :headers,
   flags: [:end_headers, :end_stream],
   stream: 1,
-  payload: Compressor.new(:request).encode([['a','b']])
+  payload: Compressor.new.encode([['a','b']])
 }
 
 PRIORITY = {
@@ -70,7 +70,7 @@ PUSH_PROMISE = {
   flags: [:end_headers],
   stream: 1,
   promise_stream: 2,
-  payload: Compressor.new(:request).encode([['a','b']])
+  payload: Compressor.new.encode([['a','b']])
 }
 
 PING = {

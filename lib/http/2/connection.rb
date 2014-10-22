@@ -40,8 +40,12 @@ module HTTP2
 
     # Initializes new connection object.
     #
-    def initialize(streams: 100, window: DEFAULT_FLOW_WINDOW)
+    def initialize(streams: 100, window: DEFAULT_FLOW_WINDOW, **settings)
       @stream_limit = streams
+
+      @compressor   = Header::Compressor.new(settings)
+      @decompressor = Header::Decompressor.new(settings)
+
       @active_stream_count = 0
       @streams = {}
 

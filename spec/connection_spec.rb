@@ -175,7 +175,7 @@ describe HTTP2::Connection do
         ["x-my-header", "first"]
       ]
 
-      cc = Compressor.new(:response)
+      cc = Compressor.new
       headers = HEADERS.dup
       headers[:payload] = cc.encode(req_headers)
 
@@ -195,7 +195,7 @@ describe HTTP2::Connection do
         ["x-my-header", "first"]
       ]
 
-      cc = Compressor.new(:response)
+      cc = Compressor.new
       h1, h2 = HEADERS.dup, CONTINUATION.dup
       h1[:payload] = cc.encode([req_headers.first])
       h1[:stream] = 5
