@@ -94,16 +94,16 @@ module HTTP2
       # Initializes compression context with appropriate client/server
       # defaults and maximum size of the header table.
       #
-      # @param type [Symbol] either :request or :response
-      # @param limit [Integer] maximum header table size in bytes
       # @param options [Hash] encoding options
-      def initialize(type, options = {})
+      #   :table_size  Integer  maximum header table size in bytes
+      #   :huffman     Symbol   :always, :never, :shorter
+      #   :index       Symbol   :all, :static, :never
+      def initialize(**options)
         default_options = {
           huffman:    :shorter,
           index:      :all,
           table_size: 4096,
         }
-        @type = type
         @table = []
         @options = default_options.merge(options)
         @limit = @options[:table_size]
@@ -112,7 +112,7 @@ module HTTP2
       # Duplicates current compression context
       # @return [EncodingContext]
       def dup
-        other = EncodingContext.new(@type, @options)
+        other = EncodingContext.new(@options)
         t = @table
         l = @limit
         other.instance_eval {
@@ -330,17 +330,10 @@ module HTTP2
     SHORTERH = { index: :all,    huffman: :shorter }.freeze
 
     # Responsible for encoding header key-value pairs using HPACK algorithm.
-    # Compressor must be initialized with appropriate starting context based
-    # on local role: client or server.
-    #
-    # @example
-    #   client_role = Compressor.new(:request)
-    #   server_role = Compressor.new(:response)
     class Compressor
-      # @param type [Symbol] either :request or :response
       # @param options [Hash] encoding options
-      def initialize(type, options = {})
-        @cc = EncodingContext.new(type, options)
+      def initialize(**options)
+        @cc = EncodingContext.new(options)
       end
 
       # Set header table size in EncodingContext
@@ -480,10 +473,9 @@ module HTTP2
     #   server_role = Decompressor.new(:request)
     #   client_role = Decompressor.new(:response)
     class Decompressor
-      # @param type [Symbol] either :request or :response
       # @param options [Hash] decoding options.  Only :table_size is effective.
-      def initialize(type, options = {})
-        @cc = EncodingContext.new(type, options)
+      def initialize(**options)
+        @cc = EncodingContext.new(options)
       end
 
       # Set header table size in EncodingContext

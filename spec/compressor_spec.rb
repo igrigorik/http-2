@@ -2,8 +2,8 @@ require "helper"
 
 describe HTTP2::Header do
 
-  let(:c) { Compressor.new :request }
-  let(:d) { Decompressor.new :response }
+  let(:c) { Compressor.new }
+  let(:d) { Decompressor.new }
 
   context "literal representation" do
     context "integer" do
@@ -44,7 +44,7 @@ describe HTTP2::Header do
         ].each do |datatype, plain|
           it "should handle #{datatype} #{desc}" do
             # NOTE: don't put this new in before{} because of test case shuffling
-            @c = Compressor.new(:request, huffman: option)
+            @c = Compressor.new(huffman: option)
             str = @c.string(plain)
             (str.getbyte(0) & 0x80).should eq msb
 
@@ -59,7 +59,7 @@ describe HTTP2::Header do
           ['200', :huffman],
           ['xq', :plain],   # prefer plain if equal size
         ].each do |string, choice|
-          before { @c = Compressor.new(:request, huffman: :shorter) }
+          before { @c = Compressor.new(huffman: :shorter) }
 
           it "should return #{choice} representation" do
             wire = @c.string(string)
@@ -141,13 +141,10 @@ describe HTTP2::Header do
   end
 
   context "shared compression context" do
-    before(:each) { @cc = EncodingContext.new(:request) }
+    before(:each) { @cc = EncodingContext.new }
 
     it "should be initialized with empty headers" do
-      cc = EncodingContext.new(:request)
-      cc.table.should be_empty
-
-      cc = EncodingContext.new(:response)
+      cc = EncodingContext.new
       cc.table.should be_empty
     end
 
@@ -192,7 +189,7 @@ describe HTTP2::Header do
 
       context "size bounds" do
         it "should drop headers from end of table" do
-          cc = EncodingContext.new(:request, table_size: 2048)
+          cc = EncodingContext.new(table_size: 2048)
           cc.instance_eval do
             add_to_table(["test1", "1" * 1024])
             add_to_table(["test2", "2" * 500])
@@ -214,7 +211,7 @@ describe HTTP2::Header do
       end
 
       it "should clear table if entry exceeds table size" do
-        cc = EncodingContext.new(:request, table_size: 2048)
+        cc = EncodingContext.new(table_size: 2048)
         cc.instance_eval do
           add_to_table(["test1", "1" * 1024])
           add_to_table(["test2", "2" * 500])
@@ -229,7 +226,7 @@ describe HTTP2::Header do
       end
 
       it "should shrink table if set smaller size" do
-        cc = EncodingContext.new(:request, table_size: 2048)
+        cc = EncodingContext.new(table_size: 2048)
         cc.instance_eval do
           add_to_table(["test1", "1" * 1024])
           add_to_table(["test2", "2" * 500])
@@ -472,7 +469,7 @@ describe HTTP2::Header do
       context "spec example #{ex[:title]}" do
         ex[:streams].size.times do |nth|
           context "request #{nth+1}" do
-            before { @dc = Decompressor.new(ex[:type], table_size: ex[:table_size]) }
+            before { @dc = Decompressor.new(table_size: ex[:table_size]) }
             before do
               (0...nth).each do |i|
                 bytes = [ex[:streams][i][:wire].delete(" \n")].pack("H*")
@@ -507,8 +504,7 @@ describe HTTP2::Header do
       context "spec example #{ex[:title]}" do
         ex[:streams].size.times do |nth|
           context "request #{nth+1}" do
-            before { @cc = Compressor.new(ex[:type],
-                                          table_size: ex[:table_size],
+            before { @cc = Compressor.new(table_size: ex[:table_size],
                                           huffman: ex[:huffman]) }
             before do
               (0...nth).each do |i|

@@ -32,7 +32,7 @@ describe HTTP2::Header do
             cases = story['cases']
             table_size = cases[0]['header_table_size'] || 4096
             context = story['context'] ? story['context'].to_sym : :request
-            @dc = Decompressor.new(context, table_size: table_size)
+            @dc = Decompressor.new(table_size: table_size)
             cases.each do |c|
               wire = [c['wire']].pack("H*").force_encoding('binary')
               @emitted = @dc.decode(HTTP2::Buffer.new(wire))
@@ -64,8 +64,8 @@ describe HTTP2::Header do
                 story = JSON.parse(File.read("#{path}/#{file}"))
                 cases = story['cases']
                 context = story['context'] ? story['context'].to_sym : :request
-                @cc = Compressor  .new(context, table_size: table_size)
-                @dc = Decompressor.new(context, table_size: table_size)
+                @cc = Compressor  .new(table_size: table_size)
+                @dc = Decompressor.new(table_size: table_size)
                 cases.each do |c|
                   headers = c['headers'].flat_map(&:to_a)
                   wire = @cc.encode(headers)
