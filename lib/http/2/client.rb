@@ -35,10 +35,11 @@ module HTTP2
     # @param frame [Hash]
     def send(frame)
       if @state == :connection_header
-        emit(:frame, CONNECTION_HEADER)
         @state = :connected
+        emit(:frame, CONNECTION_HEADER)
 
-        settings(stream_limit: @stream_limit, window_limit: @window_limit)
+        payload = @settings.select {|k,v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k]}
+        settings(payload)
       end
 
       super(frame)

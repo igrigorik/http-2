@@ -23,14 +23,15 @@ describe HTTP2::Server do
     it "should initialize client with custom connection settings" do
       frames = []
 
-      @srv = Server.new(streams: 200, window: 2**10)
+      @srv = Server.new(settings_max_concurrent_streams: 200,
+                        settings_initial_window_size:    2**10)
       @srv.on(:frame) { |recv| frames << recv }
       @srv << CONNECTION_HEADER
 
       frame = f.parse(frames[0])
       frame[:type].should eq :settings
-      frame[:payload][:settings_max_concurrent_streams].should eq 200
-      frame[:payload][:settings_initial_window_size].should eq 2**10
+      frame[:payload].should include([:settings_max_concurrent_streams, 200])
+      frame[:payload].should include([:settings_initial_window_size, 2**10])
     end
   end
 
@@ -40,7 +41,7 @@ describe HTTP2::Server do
 
     @srv.on(:stream) do |stream|
       expect {
-        stream.promise({}) {}
+        stream.promise(':method' => 'GET') {}
       }.to_not raise_error
     end
 
