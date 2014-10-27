@@ -480,6 +480,10 @@ module HTTP2
            dependency:  frame[:stream_dependency],
            exclusive:   frame[:exclusive])
       # TODO: implement dependency tree housekeeping
+      #   Latest draft defines a fairly complex priority control.
+      #   See https://tools.ietf.org/html/draft-ietf-httpbis-http2-14#section-5.3
+      #   We currently have no prioritization among streams.
+      #   We should add code here.
     end
 
     def end_stream?(frame)
