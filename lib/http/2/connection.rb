@@ -335,10 +335,11 @@ module HTTP2
     # @param frame [Hash]
     # @return [Array of Buffer] encoded frame
     def encode(frame)
-      frames = [frame]
       if frame[:type] == :headers ||
          frame[:type] == :push_promise
-        frames = encode_headers(frame)
+        frames = encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
+      else
+        frames = [frame]               # otherwise one frame
       end
 
       frames.map {|f| @framer.generate(f) }
@@ -444,10 +445,14 @@ module HTTP2
         when :settings_enable_push
           if @stream_id % 2 == 1
             # This is client.  Peer (server) is not allowed to change settings_enable_push.
-            v == 0 or connection_error
+            unless v == 0
+              connection_error
+            end
           else
             # This is server.  Peer (client) can set either 0 or 1.
-            v == 0 || v == 1 or connection_error
+            unless v == 0 || v == 1
+              connection_error
+            end
           end
 
         when :settings_max_frame_size
