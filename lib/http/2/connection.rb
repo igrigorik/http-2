@@ -460,7 +460,9 @@ module HTTP2
 
         when :settings_compress_data
           # This is server.  Peer (client) can set either 0 or 1.
-          v == 0 || v == 1 or connection_error
+          unless v == 0 || v == 1
+            connection_error
+          end
 
         else
           # ignore unknown settings
