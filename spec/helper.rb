@@ -13,11 +13,12 @@ begin
 rescue Exception
 end
 
-require 'http/2'
 require 'json'
 require 'coveralls'
 
 Coveralls.wear! if ENV["CI"]
+
+require 'http/2'
 
 include HTTP2
 include HTTP2::Header
