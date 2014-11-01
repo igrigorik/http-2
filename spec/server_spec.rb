@@ -15,7 +15,7 @@ describe HTTP2::Server do
     it "should emit SETTINGS on new connection" do
       frames = []
       @srv.on(:frame) { |recv| frames << recv }
-      @srv << CONNECTION_HEADER
+      @srv << CONNECTION_PREFACE_MAGIC
 
       f.parse(frames[0])[:type].should eq :settings
     end
@@ -26,7 +26,7 @@ describe HTTP2::Server do
       @srv = Server.new(settings_max_concurrent_streams: 200,
                         settings_initial_window_size:    2**10)
       @srv.on(:frame) { |recv| frames << recv }
-      @srv << CONNECTION_HEADER
+      @srv << CONNECTION_PREFACE_MAGIC
 
       frame = f.parse(frames[0])
       frame[:type].should eq :settings

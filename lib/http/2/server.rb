@@ -24,7 +24,10 @@ module HTTP2
     # Initialize new HTTP 2.0 server object.
     def initialize(**settings)
       @stream_id    = 2
-      @state        = :new
+      @state        = :waiting_magic
+
+      @local_role   = :server
+      @remote_role  = :client
 
       super
     end

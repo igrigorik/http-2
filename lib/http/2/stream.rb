@@ -53,7 +53,9 @@ module HTTP2
     attr_reader :dependency
 
     # Size of current stream flow control window.
-    attr_reader :window
+    attr_reader :local_window
+    attr_reader :remote_window
+    alias :window :local_window
 
     # Reason why connection was closed.
     attr_reader :closed
@@ -70,20 +72,21 @@ module HTTP2
     # @param exclusive [Boolean]
     # @param window [Integer]
     # @param parent [Stream]
-    def initialize(connection: nil, id: nil, weight: 16, dependency: 0, exclusive: false, window: nil, parent: nil)
-      @connection = connection or raise ArgumentError("missing mandatory argument connection")
-      @id = id                 or raise ArgumentError("missing mandatory argument id")
+    def initialize(connection: nil, id: nil, weight: 16, dependency: 0, exclusive: false, parent: nil)
+      @connection = connection or raise ArgumentError.new("missing mandatory argument connection")
+      @id = id                 or raise ArgumentError.new("missing mandatory argument id")
       @weight = weight
       @dependency = dependency
       process_priority({weight: weight, stream_dependency: dependency, exclusive: exclusive})
-      @window = window or raise ArgumentError("missing mandatory argument window")
+      @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
       @state  = :idle
       @error  = false
       @closed = false
       @send_buffer = []
 
-      on(:window) { |v| @window = v }
+      on(:window) { |v| @remote_window = v }
+      on(:local_window) { |v| @local_window = v }
     end
 
     # Processes incoming HTTP 2.0 frames. The frames must be decoded upstream.
@@ -94,13 +97,14 @@ module HTTP2
 
       case frame[:type]
       when :data
+        # TODO: when receiving DATA, keep track of local_window.
         emit(:data, frame[:payload]) if !frame[:ignore]
       when :headers, :push_promise
         emit(:headers, frame[:payload]) if !frame[:ignore]
       when :priority
         process_priority(frame)
       when :window_update
-        @window += frame[:increment]
+        @remote_window += frame[:increment]
         send_data
       when :altsvc, :blocked
         emit(frame[:type], frame)
@@ -168,8 +172,11 @@ module HTTP2
       flags = []
       flags << :end_stream if end_stream
 
-      while payload.bytesize > @connection.max_frame_size do
-        chunk = payload.slice!(0, @connection.max_frame_size)
+      # Split data according to each frame is smaller enough
+      # TODO: consider padding?
+      max_size = @connection.remote_settings[:settings_max_frame_size]
+      while payload.bytesize > max_size do
+        chunk = payload.slice!(0, max_size)
         send({type: :data, payload: chunk})
       end
 

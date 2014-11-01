@@ -24,14 +24,50 @@ describe HTTP2::Connection do
     end
   end
 
+  context "settings synchronization" do
+    it "should reflect outgoing settings when ack is received" do
+      @conn.local_settings[:settings_header_table_size].should eq 4096
+      @conn.settings(settings_header_table_size: 256)
+      @conn.local_settings[:settings_header_table_size].should eq 4096
+
+      ack = { type: :settings, stream: 0, payload: [], flags: [:ack] }
+      @conn << f.generate(ack)
+
+      @conn.local_settings[:settings_header_table_size].should eq 256
+    end
+
+    it "should reflect incoming settings when SETTINGS is received" do
+      @conn.remote_settings[:settings_header_table_size].should eq 4096
+      settings = SETTINGS.dup
+      settings[:payload] = [[:settings_header_table_size, 256]]
+
+      @conn << f.generate(settings)
+
+      @conn.remote_settings[:settings_header_table_size].should eq 256
+    end
+
+    it "should send SETTINGS ACK when SETTINGS is received" do
+      settings = SETTINGS.dup
+      settings[:payload] = [[:settings_header_table_size, 256]]
+
+      @conn.should_receive(:send) do |frame|
+        frame[:type].should eq :settings
+        frame[:flags].should eq [:ack]
+        frame[:payload].should eq []
+      end
+
+      @conn << f.generate(settings)
+    end
+  end
+
   context "stream management" do
     it "should initialize to default stream limit (100)" do
-      @conn.settings_value[:settings_max_concurrent_streams].should eq 100
+      @conn.local_settings[:settings_max_concurrent_streams].should eq 100
     end
 
     it "should change stream limit to received SETTINGS value" do
       @conn << f.generate(SETTINGS)
-      @conn.settings_value[:settings_max_concurrent_streams].should eq 10
+      @conn.remote_settings[:settings_max_concurrent_streams].should eq 10
     end
 
     it "should count open streams against stream limit" do
@@ -145,7 +181,7 @@ describe HTTP2::Connection do
 
   context "flow control" do
     it "should initialize to default flow window" do
-      @conn.window.should eq DEFAULT_FLOW_WINDOW
+      @conn.remote_window.should eq DEFAULT_FLOW_WINDOW
     end
 
     it "should update connection and stream windows on SETTINGS" do
@@ -157,12 +193,12 @@ describe HTTP2::Connection do
 
       stream.send HEADERS
       stream.send data
-      stream.window.should eq (DEFAULT_FLOW_WINDOW - 2048)
-      @conn.window.should  eq (DEFAULT_FLOW_WINDOW - 2048)
+      stream.remote_window.should eq (DEFAULT_FLOW_WINDOW - 2048)
+      @conn.remote_window.should  eq (DEFAULT_FLOW_WINDOW - 2048)
 
       @conn << f.generate(settings)
-      @conn.window.should  eq -1024
-      stream.window.should eq -1024
+      @conn.remote_window.should  eq -1024
+      stream.remote_window.should eq -1024
     end
 
     it "should initialize streams with window specified by peer" do
@@ -170,7 +206,7 @@ describe HTTP2::Connection do
       settings[:payload] = [[:settings_initial_window_size, 1024]]
 
       @conn << f.generate(settings)
-      @conn.new_stream.window.should eq 1024
+      @conn.new_stream.remote_window.should eq 1024
     end
 
     it "should observe connection flow control" do
@@ -183,16 +219,16 @@ describe HTTP2::Connection do
 
       s1.send HEADERS
       s1.send data.merge({payload: "x" * 900})
-      @conn.window.should eq 100
+      @conn.remote_window.should eq 100
 
       s2.send HEADERS
       s2.send data.merge({payload: "x" * 200})
-      @conn.window.should eq 0
+      @conn.remote_window.should eq 0
       @conn.buffered_amount.should eq 100
 
       @conn << f.generate(WINDOW_UPDATE.merge({stream: 0, increment: 1000}))
       @conn.buffered_amount.should eq 0
-      @conn.window.should eq 900
+      @conn.remote_window.should eq 900
     end
   end
 
@@ -204,11 +240,11 @@ describe HTTP2::Connection do
 
       frame = f.generate(WINDOW_UPDATE.merge({stream: 0, increment: 1000}))
       @conn << frame
-      @conn.window.should eq 2000
+      @conn.remote_window.should eq 2000
 
       @conn << frame.slice!(0,1)
       @conn << frame
-      @conn.window.should eq 3000
+      @conn.remote_window.should eq 3000
     end
 
     it "should decompress header blocks regardless of stream state" do
@@ -354,7 +390,30 @@ describe HTTP2::Connection do
         ':path'   => '/resource',
         'custom' => 'q' * 18682, # this number should be updated when Huffman table is changed
       }, end_stream: true)
-      headers[0][:length].should eq @conn.max_frame_size
+      headers[0][:length].should eq @conn.remote_settings[:settings_max_frame_size]
+      headers.size.should eq 1
+      headers[0][:type].should eq :headers
+      headers[0][:flags].should include(:end_headers)
+      headers[0][:flags].should include(:end_stream)
+    end
+
+    it "should not generate CONTINUATION if HEADERS fits exactly in a frame" do
+      headers = []
+      @conn.on(:frame) do |bytes|
+        bytes.force_encoding('binary')
+        # bytes[3]: frame's type field
+        [1,5,9].include?(bytes[3].ord) and headers << f.parse(bytes)
+      end
+
+      stream = @conn.new_stream
+      stream.headers({
+        ':method' => 'get',
+        ':scheme' => 'http',
+        ':authority' => 'www.example.org',
+        ':path'   => '/resource',
+        'custom' => 'q' * 18682, # this number should be updated when Huffman table is changed
+      }, end_stream: true)
+      headers[0][:length].should eq @conn.remote_settings[:settings_max_frame_size]
       headers.size.should eq 1
       headers[0][:type].should eq :headers
       headers[0][:flags].should include(:end_headers)
@@ -376,7 +435,7 @@ describe HTTP2::Connection do
         ':path'   => '/resource',
         'custom' => 'q' * 18683, # this number should be updated when Huffman table is changed
       }, end_stream: true)
-      headers[0][:length].should eq @conn.max_frame_size
+      headers[0][:length].should eq @conn.remote_settings[:settings_max_frame_size]
       headers[1][:length].should eq 1
       headers.size.should eq 2
       headers[0][:type].should eq :headers
@@ -393,7 +452,7 @@ describe HTTP2::Connection do
 
       srv = Server.new
       expect {
-        srv << CONNECTION_HEADER
+        srv << CONNECTION_PREFACE_MAGIC
         srv << f.generate(SETTINGS)
       }.to_not raise_error
     end

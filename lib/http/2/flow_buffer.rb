@@ -27,16 +27,21 @@ module HTTP2
     def send_data(frame = nil, encode = false)
       @send_buffer.push frame if !frame.nil?
 
-      while @window > 0 && !@send_buffer.empty? do
+      # FIXME: Frames with zero length with the END_STREAM flag set (that
+      # is, an empty DATA frame) MAY be sent if there is no available space
+      # in either flow control window.
+      while @remote_window > 0 && !@send_buffer.empty? do
         frame = @send_buffer.shift
 
         sent, frame_size = 0, frame[:payload].bytesize
 
-        if frame_size > @window
+        if frame_size > @remote_window
           payload = frame.delete(:payload)
           chunk   = frame.dup
 
-          frame[:payload] = payload.slice!(0, @window)
+          # Split frame so that it fits in the window
+          # TODO: consider padding!
+          frame[:payload] = payload.slice!(0, @remote_window)
           chunk[:length]  = payload.bytesize
           chunk[:payload] = payload
 
@@ -46,14 +51,14 @@ module HTTP2
           end
 
           @send_buffer.unshift chunk
-          sent = @window
+          sent = @remote_window
         else
           sent = frame_size
         end
 
         frames = encode ? encode(frame) : [frame]
         frames.each {|f| emit(:frame, f) }
-        @window -= sent
+        @remote_window -= sent
       end
     end
   end

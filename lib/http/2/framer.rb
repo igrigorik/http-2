@@ -302,6 +302,7 @@ module HTTP2
         end
 
         padlen = frame[:padding]
+
         if padlen <= 0 || padlen > 256 || padlen + length > @max_frame_size
           raise CompressionError.new("Invalid padding #{padlen}")
         end
