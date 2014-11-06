@@ -39,9 +39,15 @@ end
 
 conn = HTTP2::Client.new
 conn.on(:frame) do |bytes|
-  puts "Sending bytes: #{bytes.inspect}"
+  # puts "Sending bytes: #{bytes.unpack("H*").first}"
   sock.print bytes
   sock.flush
+end
+conn.on(:frame_sent) do |frame|
+  puts "Sent frame: #{frame.inspect}"
+end
+conn.on(:frame_received) do |frame|
+  puts "Received frame: #{frame.inspect}"
 end
 
 stream = conn.new_stream
@@ -55,6 +61,10 @@ conn.on(:promise) do |promise|
   promise.on(:data) do |d|
     log.info "promise data chunk: <<#{d.size}>>"
   end
+end
+
+conn.on(:altsvc) do |f|
+  log.info "received ALTSVC #{f}"
 end
 
 stream.on(:close) do
@@ -75,16 +85,21 @@ stream.on(:data) do |d|
   log.info "response data chunk: <<#{d}>>"
 end
 
+stream.on(:altsvc) do |f|
+  log.info "received ALTSVC #{f}"
+end
+
+
 head = {
   ":scheme" => uri.scheme,
-  ":method" => (options[:payload].nil? ? "get" : "post"),
-  ":host" => [uri.host, uri.port].join(':'),
+  ":method" => (options[:payload].nil? ? "GET" : "POST"),
+  ":authority" => [uri.host, uri.port].join(':'),
   ":path" => uri.path,
   "accept" => "*/*"
 }
 
 puts "Sending HTTP 2.0 request"
-if head[":method"] == "get"
+if head[":method"] == "GET"
   stream.headers(head, end_stream: true)
 else
   stream.headers(head, end_stream: false)
@@ -93,7 +108,7 @@ end
 
 while !sock.closed? && !sock.eof?
   data = sock.read_nonblock(1024)
-  # puts "Received bytes: #{data.inspect}"
+  # puts "Received bytes: #{data.unpack("H*").first}"
 
   begin
     conn << data
