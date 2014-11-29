@@ -307,7 +307,7 @@ describe HTTP2::Connection do
       end
     end
 
-    it "should raise connection error on encode exception" do
+    it "should raise compression error on encode of invalid frame" do
       @conn << f.generate(SETTINGS)
       stream = @conn.new_stream
 
@@ -316,10 +316,10 @@ describe HTTP2::Connection do
       }.to raise_error(CompressionError)
     end
 
-    it "should raise connection error on decode exception" do
+    it "should raise connection error on decode of invalid frame" do
       @conn << f.generate(SETTINGS)
-      frame = f.generate(HEADERS.dup)
-      @conn.instance_eval{@framer}.should_receive(:parse).and_raise(CompressionError.new)
+      frame = f.generate(DATA.dup) # Receiving DATA on unopened stream 1 is an error.
+      # Connection errors emit protocol error frames
       expect { @conn << frame }.to raise_error(ProtocolError)
     end
 
