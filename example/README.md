@@ -30,19 +30,6 @@ $> ruby server.rb
 $> nghttp -vnu http://localhost:8080       # Direct request to Ruby server
 ```
 
-### [node-http2](https://github.com/molnarg/node-http2) (node.js client/server)
-
-```bash
-# NPN + GET request (http-2 > node-http2)
-$> ruby client.rb https://gabor.molnar.es:8080/
-
-# NPN + GET request with server push (http-2 > node-http2)
-$> ruby client.rb https://gabor.molnar.es:8080/test/push.html
-
-# NPN + POST request (http-2 > node-http2)
-$> ruby client.rb https://gabor.molnar.es:8080/post -d'some data'
-```
-
 ### Twitter (Java server)
 
 ```bash
