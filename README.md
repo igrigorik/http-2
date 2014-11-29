@@ -16,8 +16,8 @@ Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol
 
 Current implementation (see [HPBN chapter for HTTP 2.0 overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), is based on:
 
-* [draft-ietf-httpbis-http2-06](http://tools.ietf.org/html/draft-ietf-httpbis-http2-06)
-* [draft-ietf-httpbis-header-compression-03](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-03)
+* [draft-ietf-httpbis-http2-14](http://tools.ietf.org/html/draft-ietf-httpbis-http2-14)
+* [draft-ietf-httpbis-header-compression-09](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09)
 
 _Note: the underlying specifications are still evolving, expect APIs to change and evolve also..._
 
@@ -44,7 +44,7 @@ while bytes = socket.read
 end
 ```
 
-Checkout provided [client](https://github.com/igrigorik/http-2/blob/master/example/client.rb) and [server]((https://github.com/igrigorik/http-2/blob/master/example/server.rb) implementations for basic examples.
+Checkout provided [client](https://github.com/igrigorik/http-2/blob/master/example/client.rb) and [server](https://github.com/igrigorik/http-2/blob/master/example/server.rb) implementations for basic examples.
 
 
 ### Connection lifecycle management
