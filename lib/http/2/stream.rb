@@ -258,6 +258,7 @@ module HTTP2
               event(:open)
             end
           when :rst_stream then event(:local_rst)
+          when :priority then process_priority(frame)
           else stream_error; end
         else
           case frame[:type]
@@ -268,6 +269,7 @@ module HTTP2
             else
               event(:open)
             end
+          when :priority then process_priority(frame)
           else stream_error(:protocol_error); end
         end
 

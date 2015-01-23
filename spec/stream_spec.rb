@@ -16,6 +16,33 @@ describe HTTP2::Stream do
       stream.weight.should eq 3
     end
 
+    context "idle" do
+      it "should transition to open on sent HEADERS" do
+        @stream.send HEADERS
+        @stream.state.should eq :open
+      end
+      it "should transition to open on received HEADERS" do
+        @stream.receive HEADERS
+        @stream.state.should eq :open
+      end
+      it "should transition to reserved (local) on sent PUSH_PROMISE" do
+        @stream.send PUSH_PROMISE
+        @stream.state.should eq :reserved_local
+      end
+      it "should transition to reserved (remote) on received PUSH_PROMISE" do
+        @stream.receive PUSH_PROMISE
+        @stream.state.should eq :reserved_remote
+      end
+      it "should reprioritize stream on sent PRIORITY" do
+        expect { @stream.send PRIORITY }.to_not raise_error
+        @stream.weight.should eq 20
+      end
+      it "should reprioritize stream on received PRIORITY" do
+        expect { @stream.send PRIORITY }.to_not raise_error
+        @stream.weight.should eq 20
+      end
+    end
+
     context "reserved (local)" do
       before(:each) { @stream.send PUSH_PROMISE }
 
@@ -230,6 +257,15 @@ describe HTTP2::Stream do
         @stream.receive RST_STREAM
         reason.should_not be_nil
       end
+
+      it "should reprioritize stream on sent PRIORITY" do
+        expect { @stream.send PRIORITY }.to_not raise_error
+        @stream.weight.should eq 20
+      end
+      it "should reprioritize stream on received PRIORITY" do
+        expect { @stream.receive PRIORITY }.to_not raise_error
+        @stream.weight.should eq 20
+      end
     end
 
     context "half closed (local)" do
@@ -263,12 +299,15 @@ describe HTTP2::Stream do
 
       it "should ignore received WINDOW_UPDATE, PRIORITY frames" do
         expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
-        expect { @stream.receive PRIORITY }.to_not raise_error
         @stream.state.should eq :half_closed_local
       end
 
-      it "should reprioritize stream on PRIORITY" do
+      it "should reprioritize stream on sent PRIORITY" do
         expect { @stream.send PRIORITY }.to_not raise_error
+        @stream.weight.should eq 20
+      end
+      it "should reprioritize stream (and decendants) on received PRIORITY" do
+        expect { @stream.receive PRIORITY }.to_not raise_error
         @stream.weight.should eq 20
       end
 
@@ -332,7 +371,11 @@ describe HTTP2::Stream do
         @stream.state.should eq :half_closed_remote
       end
 
-      it "should reprioritize stream on PRIORITY" do
+      it "should reprioritize stream on sent PRIORITY" do
+        expect { @stream.send PRIORITY }.to_not raise_error
+        @stream.weight.should eq 20
+      end
+      it "should reprioritize stream on received PRIORITY" do
         expect { @stream.receive PRIORITY }.to_not raise_error
         @stream.weight.should eq 20
       end
@@ -393,7 +436,11 @@ describe HTTP2::Stream do
           expect { @stream.receive RST_STREAM }.to_not raise_error
         end
 
-        it "should reprioritize stream on PRIORITY" do
+        it "should reprioritize stream on sent PRIORITY" do
+          expect { @stream.send PRIORITY }.to_not raise_error
+          @stream.weight.should eq 20
+        end
+        it "should reprioritize stream on received PRIORITY" do
           expect { @stream.receive PRIORITY }.to_not raise_error
           @stream.weight.should eq 20
         end
