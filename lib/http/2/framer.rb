@@ -83,6 +83,7 @@ module HTTP2
       connect_error:      10,
       enhance_your_calm:  11,
       inadequate_security: 12,
+      http_1_1_required:  13,
     }
 
     RBIT  = 0x7fffffff
