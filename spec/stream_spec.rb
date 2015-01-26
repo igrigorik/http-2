@@ -61,7 +61,7 @@ describe HTTP2::Stream do
       end
 
       it "should raise error on receipt of invalid frames" do
-        (FRAME_TYPES - [PRIORITY, RST_STREAM]).each do |type|
+        (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |type|
           expect { @stream.dup.receive type }.to raise_error StreamError
         end
       end
@@ -85,6 +85,11 @@ describe HTTP2::Stream do
         expect { @stream.receive PRIORITY }.to_not raise_error
         @stream.weight.should eq 20
       end
+
+      it "should increment remote_window on received WINDOW_UPDATE" do
+        expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
+        @stream.remote_window.should eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
+      end
     end
 
     context "reserved (remote)" do
@@ -95,7 +100,7 @@ describe HTTP2::Stream do
       end
 
       it "should raise error if sending invalid frames" do
-        (FRAME_TYPES - [PRIORITY, RST_STREAM]).each do |type|
+        (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |type|
           expect { @stream.dup.send type }.to raise_error StreamError
         end
       end
@@ -124,6 +129,11 @@ describe HTTP2::Stream do
       it "should reprioritize stream on PRIORITY" do
         expect { @stream.send PRIORITY }.to_not raise_error
         @stream.weight.should eq 20
+      end
+
+      it "should increment local_window on sent WINDOW_UPDATE" do
+        expect { @stream.send WINDOW_UPDATE }.to_not raise_error
+        @stream.local_window.should eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
       end
     end
 
@@ -271,8 +281,8 @@ describe HTTP2::Stream do
     context "half closed (local)" do
       before(:each) { @stream.send HEADERS_END_STREAM }
 
-      it "should raise error on attempt to send frames" do
-        (FRAME_TYPES - [PRIORITY, RST_STREAM]).each do |frame|
+      it "should raise error on attempt to send invalid frames" do
+        (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |frame|
           expect { @stream.dup.send frame }.to raise_error StreamError
         end
       end
@@ -297,8 +307,13 @@ describe HTTP2::Stream do
         @stream.state.should eq :closed
       end
 
-      it "should ignore received WINDOW_UPDATE, PRIORITY frames" do
+      it "should ignore received WINDOW_UPDATE frames" do
         expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
+        @stream.state.should eq :half_closed_local
+      end
+
+      it "should ignore received PRIORITY frames" do
+        expect { @stream.receive PRIORITY }.to_not raise_error
         @stream.state.should eq :half_closed_local
       end
 
@@ -306,9 +321,15 @@ describe HTTP2::Stream do
         expect { @stream.send PRIORITY }.to_not raise_error
         @stream.weight.should eq 20
       end
+
       it "should reprioritize stream (and decendants) on received PRIORITY" do
         expect { @stream.receive PRIORITY }.to_not raise_error
         @stream.weight.should eq 20
+      end
+
+      it "should increment local_window on sent WINDOW_UPDATE" do
+        expect { @stream.send WINDOW_UPDATE }.to_not raise_error
+        @stream.local_window.should eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
       end
 
       it "should emit :half_close event on transition" do
@@ -366,9 +387,14 @@ describe HTTP2::Stream do
         @stream.state.should eq :closed
       end
 
-      it "should ignore received WINDOW_UPDATE frames" do
-        expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
+      it "should ignore sent WINDOW_UPDATE frames" do
+        expect { @stream.send WINDOW_UPDATE }.to_not raise_error
         @stream.state.should eq :half_closed_remote
+      end
+
+      it "should increment remote_window on received WINDOW_UPDATE" do
+        expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
+        @stream.remote_window.should eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
       end
 
       it "should reprioritize stream on sent PRIORITY" do
@@ -443,6 +469,11 @@ describe HTTP2::Stream do
         it "should reprioritize stream on received PRIORITY" do
           expect { @stream.receive PRIORITY }.to_not raise_error
           @stream.weight.should eq 20
+        end
+
+        it "should ignore received WINDOW_UPDATE frames" do
+          expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
+          @stream.state.should eq :closed
         end
 
       end

@@ -61,6 +61,13 @@ module HTTP2
         @remote_window -= sent
       end
     end
+
+    def process_window_update(frame)
+      unless frame[:ignore]
+        @remote_window += frame[:increment]
+        send_data
+      end
+    end
   end
 
 end

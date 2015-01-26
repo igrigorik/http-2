@@ -78,6 +78,7 @@ module HTTP2
       @weight = weight
       @dependency = dependency
       process_priority({weight: weight, stream_dependency: dependency, exclusive: exclusive})
+      @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
       @state  = :idle
@@ -98,14 +99,14 @@ module HTTP2
       case frame[:type]
       when :data
         # TODO: when receiving DATA, keep track of local_window.
+        @local_window -= frame[:payload].size
         emit(:data, frame[:payload]) if !frame[:ignore]
       when :headers, :push_promise
         emit(:headers, frame[:payload]) if !frame[:ignore]
       when :priority
         process_priority(frame)
       when :window_update
-        @remote_window += frame[:increment]
-        send_data
+        process_window_update(frame) if !frame[:ignore]
       when :altsvc, :blocked
         emit(frame[:type], frame)
       end
@@ -125,8 +126,13 @@ module HTTP2
 
       process_priority(frame) if frame[:type] == :priority
 
-      if frame[:type] == :data
+      case frame[:type]
+      when :data
+        # @remote_window is maintained in send_data
         send_data(frame)
+      when :window_update
+        @local_window += frame[:increment]
+        emit(:frame, frame)
       else
         emit(:frame, frame)
       end
@@ -293,8 +299,8 @@ module HTTP2
           else stream_error; end
         else
           @state = case frame[:type]
-          when :rst_stream  then event(:remote_rst)
-          when :priority    then @state
+          when :rst_stream then event(:remote_rst)
+          when :priority, :window_update then @state
           else stream_error; end
         end
 
@@ -312,12 +318,12 @@ module HTTP2
         if sending
           @state = case frame[:type]
           when :rst_stream then event(:local_rst)
-          when :priority then @state
+          when :priority, :window_update then @state
           else stream_error; end
         else
           @state = case frame[:type]
-          when :headers     then event(:half_closed_local)
-          when :rst_stream  then event(:remote_rst)
+          when :headers then event(:half_closed_local)
+          when :rst_stream then event(:remote_rst)
           else stream_error; end
         end
 
@@ -362,6 +368,8 @@ module HTTP2
             event(:local_rst)
           when :priority
             process_priority(frame)
+          when :window_update
+            # nop here
           else
             stream_error
           end
@@ -373,7 +381,7 @@ module HTTP2
           when :priority
             process_priority(frame)
           when :window_update
-            frame[:ignore] = true
+            # nop here
           end
         end
 
@@ -397,10 +405,13 @@ module HTTP2
         else
           case frame[:type]
           when :rst_stream then event(:remote_rst)
-          when :window_update then frame[:ignore] = true
           when :priority
             process_priority(frame)
-          else stream_error(:stream_closed); end
+          when :window_update
+            # nop
+          else
+            stream_error(:stream_closed)
+          end
         end
 
       # An endpoint MUST NOT send frames on a closed stream. An endpoint
@@ -438,9 +449,13 @@ module HTTP2
           else
             case @closed
             when :remote_rst, :remote_closed
-              stream_error(:stream_closed) if !(frame[:type] == :rst_stream)
+              case frame[:type]
+              when :rst_stream, :window_update # nop here
+              else
+                stream_error(:stream_closed)
+              end
             when :local_rst, :local_closed
-              frame[:ignore] = true
+              frame[:ignore] = true if frame[:type] != :window_update
             end
           end
         end
