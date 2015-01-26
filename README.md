@@ -5,7 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/igrigorik/http-2/badge.png)](https://coveralls.io/r/igrigorik/http-2)
 [![Analytics](https://ga-beacon.appspot.com/UA-71196-10/http-2/readme)](https://github.com/igrigorik/ga-beacon)
 
-Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) with support for:
+Pure ruby, framework and transport agnostic implementation of [HTTP 2 protocol](http://tools.ietf.org/html/draft-ietf-httpbis-http2) with support for:
 
 * [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parsing and encoding
 * [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
@@ -14,10 +14,10 @@ Pure ruby, framework and transport agnostic implementation of [HTTP 2.0 protocol
 * Connection and stream management
 * And more... see [API docs](http://www.rubydoc.info/github/igrigorik/http-2/frames)
 
-Current implementation (see [HPBN chapter for HTTP 2.0 overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), is based on:
+Current implementation (see [HPBN chapter for HTTP 2 overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)), is based on:
 
-* [draft-ietf-httpbis-http2-14](http://tools.ietf.org/html/draft-ietf-httpbis-http2-14)
-* [draft-ietf-httpbis-header-compression-09](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09)
+* [draft-ietf-httpbis-http2-16](http://tools.ietf.org/html/draft-ietf-httpbis-http2-16)
+* [draft-ietf-httpbis-header-compression-10](http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10)
 
 _Note: the underlying specifications are still evolving, expect APIs to change and evolve also..._
 
@@ -30,7 +30,7 @@ $> gem install http-2
 
 This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use - e.g. ZeroMQ, [avian carriers](http://www.ietf.org/rfc/rfc1149.txt), etc.
 
-Your code is responsible for feeding data into the parser, which performs all of the necessary HTTP 2.0 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP 2.0 frames) that you can then route to the destination. Roughly, this works as follows:
+Your code is responsible for feeding data into the parser, which performs all of the necessary HTTP 2 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP 2 frames) that you can then route to the destination. Roughly, this works as follows:
 
 ```ruby
 require 'http/2'
@@ -56,7 +56,7 @@ Depending on the role of the endpoint you must initialize either a [Client](http
 server = HTTP2::Server.new
 
 server.on(:stream) { |stream| ... } # process inbound stream
-server.on(:frame)  { |bytes| ... }  # encoded HTTP 2.0 frames
+server.on(:frame)  { |bytes| ... }  # encoded HTTP 2 frames
 
 server.ping { ... } # run liveness check, process pong response
 server.goaway # send goaway frame to the client
@@ -83,42 +83,42 @@ Events emitted by the connection object:
   </tr>
   <tr>
     <td><b>:frame</b></td>
-    <td>fires once for every encoded HTTP 2.0 frame that needs to be sent to the peer</td>
+    <td>fires once for every encoded HTTP 2 frame that needs to be sent to the peer</td>
   </tr>
 </table>
 
 
 ### Stream lifecycle management
 
-A single HTTP 2.0 connection can [multiplex multiple streams](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#REQUEST_RESPONSE_MULTIPLEXING) in parallel: multiple requests and responses can be in flight simultaneously and stream data can be interleaved and prioritized. Further, the specification provides a well-defined lifecycle for each stream (see below).
+A single HTTP 2 connection can [multiplex multiple streams](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#REQUEST_RESPONSE_MULTIPLEXING) in parallel: multiple requests and responses can be in flight simultaneously and stream data can be interleaved and prioritized. Further, the specification provides a well-defined lifecycle for each stream (see below).
 
 The good news is, all of the stream management, and state transitions, and error checking is handled by the library. All you have to do is subscribe to appropriate events (marked with ":" prefix in diagram below) and provide your application logic to handle request and response processing.
 
 ```
-                         +--------+
-                    PP   |        |   PP
-                ,--------|  idle  |--------.
-               /         |        |         \
-              v          +--------+          v
-       +----------+          |           +----------+
-       |          |          | H         |          |
-   ,---|:reserved |          |           |:reserved |---.
-   |   | (local)  |          v           | (remote) |   |
-   |   +----------+      +--------+      +----------+   |
-   |      | :active      |        |      :active |      |
-   |      |      ,-------|:active |-------.      |      |
-   |      | H   /   ES   |        |   ES   \   H |      |
-   |      v    v         +--------+         v    v      |
-   |   +-----------+          |          +-_---------+  |
-   |   |:half_close|          |          |:half_close|  |
-   |   |  (remote) |          |          |  (local)  |  |
-   |   +-----------+          |          +-----------+  |
-   |        |                 v                |        |
-   |        |    ES/R    +--------+    ES/R    |        |
-   |        `----------->|        |<-----------'        |
-   | R                   | :close |                   R |
-   `-------------------->|        |<--------------------'
-                         +--------+
+                      +--------+
+                 PP   |        |   PP
+             ,--------|  idle  |--------.
+            /         |        |         \
+           v          +--------+          v
+    +----------+          |           +----------+
+    |          |          | H         |          |
+,---|:reserved |          |           |:reserved |---.
+|   | (local)  |          v           | (remote) |   |
+|   +----------+      +--------+      +----------+   |
+|      | :active      |        |      :active |      |
+|      |      ,-------|:active |-------.      |      |
+|      | H   /   ES   |        |   ES   \   H |      |
+|      v    v         +--------+         v    v      |
+|   +-----------+          |          +-----------+  |
+|   |:half_close|          |          |:half_close|  |
+|   |  (remote) |          |          |  (local)  |  |
+|   +-----------+          |          +-----------+  |
+|        |                 v                |        |
+|        |    ES/R    +--------+    ES/R    |        |
+|        `----------->|        |<-----------'        |
+| R                   | :close |                   R |
+`-------------------->|        |<--------------------'
+                      +--------+
 ```
 
 For sake of example, let's take a look at a simple server implementation:
@@ -188,7 +188,7 @@ Events emitted by the [Stream object](http://www.rubydoc.info/github/igrigorik/h
 
 ### Prioritization
 
-Each HTTP 2.0 [stream has a priority value](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION) that can be sent when the new stream is initialized, and optionally reprioritized later:
+Each HTTP 2 [stream has a priority value](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION) that can be sent when the new stream is initialized, and optionally reprioritized later:
 
 ```ruby
 client = HTTP2::Client.new
@@ -205,7 +205,7 @@ On the opposite side, the server can optimize its stream processing order or res
 
 ### Flow control
 
-Multiplexing multiple streams over the same TCP connection introduces contention for shared bandwidth resources. Stream priorities can help determine the relative order of delivery, but priorities alone are insufficient to control how the resource allocation is performed between multiple streams. To address this, HTTP 2.0 provides a simple mechanism for [stream and connection flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control).
+Multiplexing multiple streams over the same TCP connection introduces contention for shared bandwidth resources. Stream priorities can help determine the relative order of delivery, but priorities alone are insufficient to control how the resource allocation is performed between multiple streams. To address this, HTTP 2 provides a simple mechanism for [stream and connection flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control).
 
 Connection and stream flow control is handled by the library: all streams are initialized with the default window size (64KB), and send/receive window updates are automatically processed - i.e. window is decremented on outgoing data transfers, and incremented on receipt of window frames. Similarly, if the window is exceeded, then data frames are automatically buffered until window is updated.
 
@@ -230,7 +230,7 @@ conn.settings(streams: 100, window: Float::INFINITY)
 
 ### Server push
 
-An HTTP 2.0 server can [send multiple replies](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH) to a single client request. To do so, first it emits a "push promise" frame which contains the headers of the promised resource, followed by the response to the original request, as well as promised resource payloads (which may be interleaved). A simple example is in order:
+An HTTP 2 server can [send multiple replies](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH) to a single client request. To do so, first it emits a "push promise" frame which contains the headers of the promised resource, followed by the response to the original request, as well as promised resource payloads (which may be interleaved). A simple example is in order:
 
 ```ruby
 conn = HTTP2::Server.new

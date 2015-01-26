@@ -3,20 +3,20 @@ module HTTP2
   # Implementation of header compression for HTTP 2.0 (HPACK) format adapted
   # to efficiently represent HTTP headers in the context of HTTP 2.0.
   #
-  # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09
+  # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10
   module Header
 
     BINARY = 'binary'
 
     # To decompress header blocks, a decoder only needs to maintain a
-    # header table as a decoding context.
+    # dynamic table as a decoding context.
     # No other state information is needed.
     class EncodingContext
       include Error
 
       # @private
       # Static table
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09#appendix-B
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#appendix-A
       STATIC_TABLE = [
         [':authority',                  ''            ],
         [':method',                     'GET'         ],
@@ -86,16 +86,16 @@ module HTTP2
 
       # Current encoding options
       #
-      #   :table_size  Integer  maximum header table size in bytes
+      #   :table_size  Integer  maximum dynamic table size in bytes
       #   :huffman     Symbol   :always, :never, :shorter
       #   :index       Symbol   :all, :static, :never
       attr_reader :options
 
       # Initializes compression context with appropriate client/server
-      # defaults and maximum size of the header table.
+      # defaults and maximum size of the dynamic table.
       #
       # @param options [Hash] encoding options
-      #   :table_size  Integer  maximum header table size in bytes
+      #   :table_size  Integer  maximum dynamic table size in bytes
       #   :huffman     Symbol   :always, :never, :shorter
       #   :index       Symbol   :all, :static, :never
       def initialize(**options)
@@ -122,15 +122,15 @@ module HTTP2
         other
       end
 
-      # Finds an entry in current header table by index.
+      # Finds an entry in current dynamic table by index.
       # Note that index is zero-based in this module.
       #
       # If the index is greater than the last index in the static table,
-      # an entry in the header table is dereferenced.
+      # an entry in the dynamic table is dereferenced.
       #
       # If the index is greater than the last header index, an error is raised.
       #
-      # @param index [Integer] zero-based index in the header table.
+      # @param index [Integer] zero-based index in the dynamic table.
       # @return [Array] +[key, value]+
       def dereference(index)
         # NOTE: index is zero-based in this module.
@@ -140,7 +140,7 @@ module HTTP2
       end
 
       # Header Block Processing
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09#section-4.1
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-4.1
       #
       # @param cmd [Hash] { type:, name:, value:, index: }
       # @return [Array] +[name, value]+ header field that is added to the decoded header list
@@ -155,7 +155,7 @@ module HTTP2
           # Indexed Representation
           # An _indexed representation_ entails the following actions:
           # o  The header field corresponding to the referenced entry in either
-          # the static table or header table is added to the decoded header
+          # the static table or dynamic table is added to the decoded header
           # list.
           idx = cmd[:name]
 
@@ -163,14 +163,14 @@ module HTTP2
           emit = [k, v]
 
         when :incremental, :noindex, :neverindexed
-          # A _literal representation_ that is _not added_ to the header table
+          # A _literal representation_ that is _not added_ to the dynamic table
           # entails the following action:
           # o  The header field is added to the decoded header list.
 
-          # A _literal representation_ that is _added_ to the header table
+          # A _literal representation_ that is _added_ to the dynamic table
           # entails the following actions:
           # o  The header field is added to the decoded header list.
-          # o  The header field is inserted at the beginning of the header table.
+          # o  The header field is inserted at the beginning of the dynamic table.
 
           if cmd[:name].is_a? Integer
             k, v = dereference(cmd[:name])
@@ -195,7 +195,7 @@ module HTTP2
       end
 
       # Plan header compression according to +@options [:index]+
-      #  :never   Do not use header table or static table reference at all.
+      #  :never   Do not use dynamic table or static table reference at all.
       #  :static  Use static table only.
       #  :all     Use all of them.
       #
@@ -217,12 +217,12 @@ module HTTP2
       end
 
       # Emits command for a header.
-      # Prefer static table over header table.
+      # Prefer static table over dynamic table.
       # Prefer exact match over name-only match.
       #
-      # +@options [:index]+ controls whether to use the header table,
+      # +@options [:index]+ controls whether to use the dynamic table,
       # static table, or both.
-      #  :never   Do not use header table or static table reference at all.
+      #  :never   Do not use dynamic table or static table reference at all.
       #  :static  Use static table only.
       #  :all     Use all of them.
       #
@@ -262,7 +262,7 @@ module HTTP2
         end
       end
 
-      # Alter header table size.
+      # Alter dynamic table size.
       #  When the size is reduced, some headers might be evicted.
       def set_table_size(size)
         @limit = size
@@ -277,9 +277,9 @@ module HTTP2
 
       private
 
-      # Add a name-value pair to the header table.
+      # Add a name-value pair to the dynamic table.
       # Older entries might have been evicted so that
-      # the new entry fits in the header table.
+      # the new entry fits in the dynamic table.
       #
       # @param cmd [Array] +[name, value]+
       def add_to_table(cmd)
@@ -288,11 +288,11 @@ module HTTP2
         end
       end
 
-      # To keep the header table size lower than or equal to @limit,
-      # remove one or more entries at the end of the header table.
+      # To keep the dynamic table size lower than or equal to @limit,
+      # remove one or more entries at the end of the dynamic table.
       #
       # @param cmd [Hash]
-      # @return [Boolean] whether +cmd+ fits in the header table.
+      # @return [Boolean] whether +cmd+ fits in the dynamic table.
       def size_check(cmd)
         cursize = current_table_size
         cmdsize = cmd.nil? ? 0 : cmd[0].bytesize + cmd[1].bytesize + 32
@@ -336,14 +336,14 @@ module HTTP2
         @cc = EncodingContext.new(options)
       end
 
-      # Set header table size in EncodingContext
-      # @param size [Integer] new header table size
+      # Set dynamic table size in EncodingContext
+      # @param size [Integer] new dynamic table size
       def set_table_size(size)
         @cc.set_table_size(size)
       end
 
       # Encodes provided value via integer representation.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09#section-6.1
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-5.1
       #
       #  If I < 2^N - 1, encode I on N bits
       #  Else
@@ -375,7 +375,7 @@ module HTTP2
       end
 
       # Encodes provided value via string literal representation.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09#section-6.2
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-5.2
       #
       # * The string length, defined as the number of bytes needed to store
       #   its UTF-8 representation, is represented as an integer with a seven
@@ -478,8 +478,8 @@ module HTTP2
         @cc = EncodingContext.new(options)
       end
 
-      # Set header table size in EncodingContext
-      # @param size [Integer] new header table size
+      # Set dynamic table size in EncodingContext
+      # @param size [Integer] new dynamic table size
       def set_table_size(size)
         @cc.set_table_size(size)
       end
