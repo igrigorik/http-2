@@ -98,7 +98,6 @@ module HTTP2
 
       case frame[:type]
       when :data
-        # TODO: when receiving DATA, keep track of local_window.
         @local_window -= frame[:payload].size
         emit(:data, frame[:payload]) if !frame[:ignore]
       when :headers, :push_promise
@@ -106,7 +105,7 @@ module HTTP2
       when :priority
         process_priority(frame)
       when :window_update
-        process_window_update(frame) if !frame[:ignore]
+        process_window_update(frame)
       when :altsvc, :blocked
         emit(frame[:type], frame)
       end
