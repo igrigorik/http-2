@@ -6,7 +6,7 @@ require 'openssl'
 require 'http/2'
 require 'uri'
 
-DRAFT = 'h2-14'
+DRAFT = 'h2-16'
 
 class Logger
   def initialize(id)

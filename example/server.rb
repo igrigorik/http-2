@@ -82,7 +82,7 @@ loop do
     end
   end
 
-  while !sock.closed? && !sock.eof?
+  while !sock.closed? && !(sock.eof? rescue true)
     data = sock.readpartial(1024)
     # puts "Received bytes: #{data.unpack("H*").first}"
 

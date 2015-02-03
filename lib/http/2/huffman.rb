@@ -4,7 +4,7 @@ module HTTP2
 
   # Implementation of huffman encoding for HPACK
   #
-  # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-08
+  # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10
   module Header
 
     # Huffman encoder/decoder
@@ -64,7 +64,7 @@ module HTTP2
       end
 
       # Huffman table as specified in
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-08#appendix-C
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#appendix-B
       CODES = [
         [    0x1ff8, 13],
         [  0x7fffd8, 23],

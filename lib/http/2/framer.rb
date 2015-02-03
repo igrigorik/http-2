@@ -83,6 +83,7 @@ module HTTP2
       connect_error:      10,
       enhance_your_calm:  11,
       inadequate_security: 12,
+      http_1_1_required:  13,
     }
 
     RBIT  = 0x7fffffff
@@ -105,7 +106,7 @@ module HTTP2
     end
 
     # Generates common 9-byte frame header.
-    # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-14#section-4.1
+    # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-4.1
     #
     # @param frame [Hash]
     # @return [String]
@@ -295,7 +296,7 @@ module HTTP2
 
       # Process padding.
       #  frame[:padding] gives number of extra octets to be added.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-12#section-6.1
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-6.1
       if frame[:padding]
         unless FRAME_TYPES_WITH_PADDING.include?(frame[:type])
           raise CompressionError.new("Invalid padding flag for #{frame[:type]}")
@@ -335,7 +336,7 @@ module HTTP2
 
       # Implementations MUST discard frames
       # that have unknown or unsupported types.
-      # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-14#section-5.5
+      # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-5.5
       return nil if frame[:type].nil?
 
       # Process padding
