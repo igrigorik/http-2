@@ -5,7 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/igrigorik/http-2/badge.png)](https://coveralls.io/r/igrigorik/http-2)
 [![Analytics](https://ga-beacon.appspot.com/UA-71196-10/http-2/readme)](https://github.com/igrigorik/ga-beacon)
 
-Pure Ruby, framework and transport agnostic, implementation of HTTP/2 protocol (see [HPBN overview](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html)) with support for:
+Pure Ruby, framework and transport agnostic, implementation of HTTP/2 protocol and HPACK header compression with support for:
 
 * [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parsing and encoding
 * [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
