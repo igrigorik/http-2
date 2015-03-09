@@ -51,14 +51,14 @@ module HTTP2
             #  [next] next state number.
             trans = MACHINE[state][branch]
             trans.first == EOS and
-              raise CompressionError.new('Huffman decode error (EOS found)')
+              raise CompressionError, 'Huffman decode error (EOS found)'
             trans.first && emit << trans.first
             state = trans.last
           end
         end
         # Check whether partial input is correctly filled
         unless state <= MAX_FINAL_STATE
-          raise CompressionError.new('Huffman decode error (EOS invalid)')
+          raise CompressionError, 'Huffman decode error (EOS invalid)'
         end
         emit.force_encoding(BINARY)
       end

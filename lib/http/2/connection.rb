@@ -101,8 +101,8 @@ module HTTP2
     # @param window [Integer]
     # @param parent [Stream]
     def new_stream(**args)
-      raise ConnectionClosed.new if @state == :closed
-      raise StreamLimitExceeded.new if @active_stream_count >= @remote_settings[:settings_max_concurrent_streams]
+      raise ConnectionClosed if @state == :closed
+      raise StreamLimitExceeded if @active_stream_count >= @remote_settings[:settings_max_concurrent_streams]
 
       stream = activate_stream(id: @stream_id, **args)
       @stream_id += 2
@@ -168,13 +168,13 @@ module HTTP2
       if @state == :waiting_magic
         if @recv_buffer.size < 24
           if !CONNECTION_PREFACE_MAGIC.start_with? @recv_buffer
-            raise HandshakeError.new
+            raise HandshakeError
           else
             return # maybe next time
           end
 
         elsif @recv_buffer.read(24) != CONNECTION_PREFACE_MAGIC
-          raise HandshakeError.new
+          raise HandshakeError
         else
           # MAGIC is OK.  Send our settings
           @state = :waiting_connection_preface
@@ -642,7 +642,7 @@ module HTTP2
 
       @state, @error = :closed, error
       klass = error.to_s.split('_').map(&:capitalize).join
-      raise Error.const_get(klass).new(msg)
+      raise Error.const_get(klass), msg
     end
 
   end
