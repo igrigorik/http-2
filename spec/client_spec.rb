@@ -68,7 +68,7 @@ RSpec.describe HTTP2::Client do
       s.send HEADERS
 
       promise = nil
-      @client.on(:promise) { |s| promise = s }
+      @client.on(:promise) { |stream| promise = stream }
       @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
 
       expect(promise.id).to eq 2
