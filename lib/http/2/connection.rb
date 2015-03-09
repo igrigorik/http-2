@@ -452,8 +452,7 @@ module HTTP2
           end
         when :settings_max_header_list_size
           # Any value is valid
-        else
-          # ignore unknown settings
+        # else # ignore unknown settings
         end
       end
       nil
@@ -533,8 +532,7 @@ module HTTP2
         when :settings_max_frame_size
           # nothing to do
 
-        else
-          # ignore unknown settings
+        # else # ignore unknown settings
         end
       end
 
