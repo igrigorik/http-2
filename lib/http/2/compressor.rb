@@ -136,7 +136,7 @@ module HTTP2
         # NOTE: index is zero-based in this module.
         STATIC_TABLE[index] or
           @table[index - STATIC_TABLE.size] or
-          raise CompressionError.new("Index too large")
+          raise CompressionError, "Index too large"
       end
 
       # Header Block Processing
@@ -188,7 +188,7 @@ module HTTP2
           end
 
         else
-          raise CompressionError.new("Invalid type: #{cmd[:type]}")
+          raise CompressionError, "Invalid type: #{cmd[:type]}"
         end
 
         emit
@@ -513,7 +513,7 @@ module HTTP2
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
-        str.bytesize == len or raise CompressionError.new("string too short")
+        str.bytesize == len or raise CompressionError, "string too short"
         huffman and str = Huffman.new.decode(Buffer.new(str))
         str = str.force_encoding('utf-8')
         str
@@ -538,7 +538,7 @@ module HTTP2
 
         case header[:type]
         when :indexed
-          header[:name] == 0 and raise CompressionError.new
+          header[:name] == 0 and raise CompressionError
           header[:name] -= 1
         when :changetablesize
           header[:value] = header[:name]

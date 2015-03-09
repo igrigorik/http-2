@@ -73,8 +73,8 @@ module HTTP2
     # @param window [Integer]
     # @param parent [Stream]
     def initialize(connection: nil, id: nil, weight: 16, dependency: 0, exclusive: false, parent: nil)
-      @connection = connection or raise ArgumentError.new("missing mandatory argument connection")
-      @id = id                 or raise ArgumentError.new("missing mandatory argument id")
+      @connection = connection or raise ArgumentError, "missing mandatory argument connection"
+      @id = id                 or raise ArgumentError, "missing mandatory argument id"
       @weight = weight
       @dependency = dependency
       process_priority({weight: weight, stream_dependency: dependency, exclusive: exclusive})
@@ -153,7 +153,7 @@ module HTTP2
     end
 
     def promise(headers, end_headers: true, &block)
-      raise Exception.new("must provide callback") if !block_given?
+      raise Exception, "must provide callback" if !block_given?
 
       flags = end_headers ? [:end_headers] : []
       emit(:promise, self, headers, flags, &block)
@@ -564,7 +564,7 @@ module HTTP2
       close(error) if @state != :closed
 
       klass = error.to_s.split('_').map(&:capitalize).join
-      raise Error.const_get(klass).new(msg)
+      raise Error.const_get(klass), msg
     end
   end
 end
