@@ -145,7 +145,7 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
-          set_table_size(cmd[:value])
+          self.table_size = cmd[:value]
 
         when :indexed
           # Indexed Representation
@@ -260,7 +260,7 @@ module HTTP2
 
       # Alter dynamic table size.
       #  When the size is reduced, some headers might be evicted.
-      def set_table_size(size)
+      def table_size=(size)
         @limit = size
         size_check(nil)
       end
@@ -333,8 +333,8 @@ module HTTP2
 
       # Set dynamic table size in EncodingContext
       # @param size [Integer] new dynamic table size
-      def set_table_size(size)
-        @cc.set_table_size(size)
+      def table_size=(size)
+        @cc.table_size = size
       end
 
       # Encodes provided value via integer representation.
@@ -475,8 +475,8 @@ module HTTP2
 
       # Set dynamic table size in EncodingContext
       # @param size [Integer] new dynamic table size
-      def set_table_size(size)
-        @cc.set_table_size(size)
+      def table_size=(size)
+        @cc.table_size = size
       end
 
       # Decodes integer value from provided buffer.
