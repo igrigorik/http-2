@@ -2,7 +2,7 @@ require "helper"
 require 'json'
 
 RSpec.describe HTTP2::Header do
-  folders = %w[
+  folders = %w(
     go-hpack
     haskell-http2-diff
     haskell-http2-diff-huffman
@@ -17,13 +17,13 @@ RSpec.describe HTTP2::Header do
     nghttp2-16384-4096
     nghttp2-change-table-size
     node-http2-hpack
-  ]
+  )
 
   context "Decompressor" do
     folders.each do |folder|
       next if folder =~ /#/
       path = File.expand_path("hpack-test-case/#{folder}", File.dirname(__FILE__))
-      Dir.exists?(path) or next
+      next unless Dir.exist?(path)
       context "#{folder}" do
         Dir.foreach(path) do |file|
           next if file !~ /\.json/
@@ -45,12 +45,12 @@ RSpec.describe HTTP2::Header do
   end
 
   context "Compressor" do
-    %w[
+    %w(
       LINEAR
       NAIVE
       SHORTER
       STATIC
-    ].each do |mode|
+    ).each do |mode|
       next if mode =~ /#/
       ['', 'H'].each do |huffman|
         [4096, 512].each do |table_size|
@@ -77,4 +77,3 @@ RSpec.describe HTTP2::Header do
     end
   end
 end
-

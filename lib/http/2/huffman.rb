@@ -43,15 +43,15 @@ module HTTP2
             #  [emit] character to be emitted on this transition, empty string, or EOS.
             #  [next] next state number.
             trans = MACHINE[state][branch]
-            trans.first == EOS and
-              raise CompressionError, 'Huffman decode error (EOS found)'
+            trans.first == EOS &&
+              fail(CompressionError, 'Huffman decode error (EOS found)')
             trans.first && emit << trans.first
             state = trans.last
           end
         end
         # Check whether partial input is correctly filled
         unless state <= MAX_FINAL_STATE
-          raise CompressionError, 'Huffman decode error (EOS invalid)'
+          fail CompressionError, 'Huffman decode error (EOS invalid)'
         end
         emit.force_encoding(Encoding::BINARY)
       end

@@ -39,13 +39,13 @@ module HTTP2
     def promise(*args, &callback)
       parent, headers, flags = *args
       promise = new_stream(parent: parent)
-      promise.send({
+      promise.send(
         type: :push_promise,
         flags: flags,
         stream: parent.id,
         promise_stream: promise.id,
-        payload: headers.to_a
-      })
+        payload: headers.to_a,
+      )
 
       callback.call(promise)
     end

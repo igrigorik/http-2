@@ -22,14 +22,14 @@ HEADERS = {
   type: :headers,
   flags: [:end_headers],
   stream: 1,
-  payload: Compressor.new.encode([['a', 'b']])
+  payload: Compressor.new.encode([%w(a b)])
 }
 
 HEADERS_END_STREAM = {
   type: :headers,
   flags: [:end_headers, :end_stream],
   stream: 1,
-  payload: Compressor.new.encode([['a', 'b']])
+  payload: Compressor.new.encode([%w(a b)])
 }
 
 PRIORITY = {
@@ -60,7 +60,7 @@ PUSH_PROMISE = {
   flags: [:end_headers],
   stream: 1,
   promise_stream: 2,
-  payload: Compressor.new.encode([['a', 'b']])
+  payload: Compressor.new.encode([%w(a b)])
 }
 
 PING = {
@@ -96,7 +96,7 @@ CONTINUATION = {
 
 ALTSVC = {
   type: :altsvc,
-  max_age: 1402290402,          # 4
+  max_age: 1_402_290_402,          # 4
   port: 8080,                   # 2    reserved 1
   proto: 'h2-12',               # 1 + 5
   host: 'www.example.com',      # 1 + 15

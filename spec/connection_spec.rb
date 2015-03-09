@@ -100,12 +100,12 @@ RSpec.describe HTTP2::Connection do
     it "should not exceed stream limit set by peer" do
       @conn << f.generate(SETTINGS)
 
-      expect {
+      expect do
         10.times do
           s = @conn.new_stream
           s.send HEADERS
         end
-      }.to_not raise_error
+      end.to_not raise_error
 
       expect { @conn.new_stream }.to raise_error(StreamLimitExceeded)
     end
@@ -141,7 +141,7 @@ RSpec.describe HTTP2::Connection do
       @conn.on(:frame) do |bytes|
         bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) and headers << f.parse(bytes)
+        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
       end
 
       stream = @conn.new_stream
@@ -193,10 +193,10 @@ RSpec.describe HTTP2::Connection do
       stream.send HEADERS
       stream.send data
       expect(stream.remote_window).to eq(DEFAULT_FLOW_WINDOW - 2048)
-      expect(@conn.remote_window).to  eq(DEFAULT_FLOW_WINDOW - 2048)
+      expect(@conn.remote_window).to eq(DEFAULT_FLOW_WINDOW - 2048)
 
       @conn << f.generate(settings)
-      expect(@conn.remote_window).to  eq(-1024)
+      expect(@conn.remote_window).to eq(-1024)
       expect(stream.remote_window).to eq(-1024)
     end
 
@@ -217,15 +217,15 @@ RSpec.describe HTTP2::Connection do
       s2 = @conn.new_stream
 
       s1.send HEADERS
-      s1.send data.merge({ payload: "x" * 900 })
+      s1.send data.merge(payload: "x" * 900)
       expect(@conn.remote_window).to eq 100
 
       s2.send HEADERS
-      s2.send data.merge({ payload: "x" * 200 })
+      s2.send data.merge(payload: "x" * 200)
       expect(@conn.remote_window).to eq 0
       expect(@conn.buffered_amount).to eq 100
 
-      @conn << f.generate(WINDOW_UPDATE.merge({ stream: 0, increment: 1000 }))
+      @conn << f.generate(WINDOW_UPDATE.merge(stream: 0, increment: 1000))
       expect(@conn.buffered_amount).to eq 0
       expect(@conn.remote_window).to eq 900
     end
@@ -237,7 +237,7 @@ RSpec.describe HTTP2::Connection do
       settings[:payload] = [[:settings_initial_window_size, 1000]]
       @conn << f.generate(settings)
 
-      frame = f.generate(WINDOW_UPDATE.merge({ stream: 0, increment: 1000 }))
+      frame = f.generate(WINDOW_UPDATE.merge(stream: 0, increment: 1000))
       @conn << frame
       expect(@conn.remote_window).to eq 2000
 
@@ -310,9 +310,9 @@ RSpec.describe HTTP2::Connection do
       @conn << f.generate(SETTINGS)
       stream = @conn.new_stream
 
-      expect {
-        stream.headers({ "name" => Float::INFINITY })
-      }.to raise_error(CompressionError)
+      expect do
+        stream.headers("name" => Float::INFINITY)
+      end.to raise_error(CompressionError)
     end
 
     it "should raise connection error on decode of invalid frame" do
@@ -340,12 +340,10 @@ RSpec.describe HTTP2::Connection do
       end
 
       stream = @conn.new_stream
-      stream.headers({
-        ':method' => 'get',
-        ':scheme' => 'http',
-        ':authority' => 'www.example.org',
-        ':path'   => '/resource'
-      })
+      stream.headers(':method' => 'get',
+                     ':scheme' => 'http',
+                     ':authority' => 'www.example.org',
+                     ':path'   => '/resource')
     end
 
     it "should generate CONTINUATION if HEADERS is too long" do
@@ -353,7 +351,7 @@ RSpec.describe HTTP2::Connection do
       @conn.on(:frame) do |bytes|
         bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) and headers << f.parse(bytes)
+        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
       end
 
       stream = @conn.new_stream
@@ -362,7 +360,7 @@ RSpec.describe HTTP2::Connection do
         ':scheme' => 'http',
         ':authority' => 'www.example.org',
         ':path'   => '/resource',
-        'custom' => 'q' * 44000,
+        'custom' => 'q' * 44_000,
       }, end_stream: true)
       expect(headers.size).to eq 3
       expect(headers[0][:type]).to eq :headers
@@ -378,7 +376,7 @@ RSpec.describe HTTP2::Connection do
       @conn.on(:frame) do |bytes|
         bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) and headers << f.parse(bytes)
+        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
       end
 
       stream = @conn.new_stream
@@ -387,7 +385,7 @@ RSpec.describe HTTP2::Connection do
         ':scheme' => 'http',
         ':authority' => 'www.example.org',
         ':path'   => '/resource',
-        'custom' => 'q' * 18682, # this number should be updated when Huffman table is changed
+        'custom' => 'q' * 18_682, # this number should be updated when Huffman table is changed
       }, end_stream: true)
       expect(headers[0][:length]).to eq @conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
@@ -401,7 +399,7 @@ RSpec.describe HTTP2::Connection do
       @conn.on(:frame) do |bytes|
         bytes.force_encoding(Encoding::BINARY)
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) and headers << f.parse(bytes)
+        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
       end
 
       stream = @conn.new_stream
@@ -410,7 +408,7 @@ RSpec.describe HTTP2::Connection do
         ':scheme' => 'http',
         ':authority' => 'www.example.org',
         ':path'   => '/resource',
-        'custom' => 'q' * 18682, # this number should be updated when Huffman table is changed
+        'custom' => 'q' * 18_682, # this number should be updated when Huffman table is changed
       }, end_stream: true)
       expect(headers[0][:length]).to eq @conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
@@ -423,7 +421,7 @@ RSpec.describe HTTP2::Connection do
       headers = []
       @conn.on(:frame) do |bytes|
         bytes.force_encoding(Encoding::BINARY)
-        [1, 5, 9].include?(bytes[3].ord) and headers << f.parse(bytes)
+        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
       end
 
       stream = @conn.new_stream
@@ -432,7 +430,7 @@ RSpec.describe HTTP2::Connection do
         ':scheme' => 'http',
         ':authority' => 'www.example.org',
         ':path'   => '/resource',
-        'custom' => 'q' * 18683, # this number should be updated when Huffman table is changed
+        'custom' => 'q' * 18_683, # this number should be updated when Huffman table is changed
       }, end_stream: true)
       expect(headers[0][:length]).to eq @conn.remote_settings[:settings_max_frame_size]
       expect(headers[1][:length]).to eq 1
@@ -450,10 +448,10 @@ RSpec.describe HTTP2::Connection do
       expect { srv << f.generate(SETTINGS) }.to raise_error(HandshakeError)
 
       srv = Server.new
-      expect {
+      expect do
         srv << CONNECTION_PREFACE_MAGIC
         srv << f.generate(SETTINGS)
-      }.to_not raise_error
+      end.to_not raise_error
     end
 
     it "should respond to PING frames" do
@@ -479,8 +477,12 @@ RSpec.describe HTTP2::Connection do
     it "should fire callback on receipt of GOAWAY" do
       last_stream, payload, error = nil
       @conn << f.generate(SETTINGS)
-      @conn.on(:goaway) { |s, e, p| last_stream = s; error = e; payload = p }
-      @conn << f.generate(GOAWAY.merge({ last_stream: 17, payload: "test" }))
+      @conn.on(:goaway) do |s, e, p|
+        last_stream = s
+        error = e
+        payload = p
+      end
+      @conn << f.generate(GOAWAY.merge(last_stream: 17, payload: "test"))
 
       expect(last_stream).to eq 17
       expect(error).to eq :no_error
@@ -502,7 +504,7 @@ RSpec.describe HTTP2::Connection do
       @conn << f.generate(SETTINGS)
       @conn << f.generate(HEADERS)
       @conn << f.generate(GOAWAY)
-      @conn << f.generate(HEADERS.merge({ stream: 7 }))
+      @conn << f.generate(HEADERS.merge(stream: 7))
       @conn << f.generate(PUSH_PROMISE)
 
       expect(@conn.active_stream_count).to eq 1
@@ -511,9 +513,9 @@ RSpec.describe HTTP2::Connection do
     it "should raise error on frame for invalid stream ID" do
       @conn << f.generate(SETTINGS)
 
-      expect {
-        @conn << f.generate(DATA.dup.merge({ :stream => 31 }))
-      }.to raise_error(ProtocolError)
+      expect do
+        @conn << f.generate(DATA.dup.merge(stream: 31))
+      end.to raise_error(ProtocolError)
     end
 
     it "should send GOAWAY frame on connection error" do
@@ -560,7 +562,7 @@ RSpec.describe HTTP2::Connection do
 
     it ".goaway should generate GOAWAY frame with last processed stream ID" do
       @conn << f.generate(SETTINGS)
-      @conn << f.generate(HEADERS.merge({ stream: 17 }))
+      @conn << f.generate(HEADERS.merge(stream: 17))
 
       expect(@conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :goaway

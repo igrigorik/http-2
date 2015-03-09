@@ -360,9 +360,9 @@ RSpec.describe HTTP2::Stream do
 
       it "should raise STREAM_CLOSED error on reciept of frames" do
         (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |frame|
-          expect {
+          expect do
             @stream.dup.receive frame
-          }.to raise_error(StreamClosed)
+          end.to raise_error(StreamClosed)
         end
       end
 
@@ -438,17 +438,17 @@ RSpec.describe HTTP2::Stream do
 
         it "should raise STREAM_CLOSED on attempt to send frames" do
           (FRAME_TYPES - [PRIORITY, RST_STREAM]).each do |frame|
-            expect {
+            expect do
               @stream.dup.send frame
-            }.to raise_error(StreamClosed)
+            end.to raise_error(StreamClosed)
           end
         end
 
         it "should raise STREAM_CLOSED on receipt of frame" do
           (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |frame|
-            expect {
+            expect do
               @stream.dup.receive frame
-            }.to raise_error(StreamClosed)
+            end.to raise_error(StreamClosed)
           end
         end
 
@@ -485,23 +485,23 @@ RSpec.describe HTTP2::Stream do
 
         it "should ignore received frames" do
           (FRAME_TYPES - [PUSH_PROMISE]).each do |frame|
-            expect {
+            expect do
               cb = []
               @stream.on(:data) { cb << :data }
               @stream.on(:headers) { cb << :headers }
               @stream.dup.receive frame
               expect(cb).to be_empty
-            }.to_not raise_error
+            end.to_not raise_error
           end
         end
 
-        #it "should transition to reserved remote on PUSH_PROMISE" do
-          # An endpoint might receive a PUSH_PROMISE frame after it sends
-          # RST_STREAM.  PUSH_PROMISE causes a stream to become "reserved".
-          # ...
-          # We're auto RST'ing PUSH streams in connection class, hence
-          # skipping this transition for now.
-        #end
+        # it "should transition to reserved remote on PUSH_PROMISE" do
+        # An endpoint might receive a PUSH_PROMISE frame after it sends
+        # RST_STREAM.  PUSH_PROMISE causes a stream to become "reserved".
+        # ...
+        # We're auto RST'ing PUSH streams in connection class, hence
+        # skipping this transition for now.
+        # end
       end
 
       # FIXME: Isn't this test same as "half closed (local)"?
@@ -561,16 +561,14 @@ RSpec.describe HTTP2::Stream do
 
       s1 = @client.new_stream
       s1.send HEADERS
-      s1.send data.merge({ payload: "x" * 900, flags: [] })
+      s1.send data.merge(payload: "x" * 900, flags: [])
       expect(s1.remote_window).to eq 100
 
-      s1.send data.merge({ payload: "x" * 200 })
+      s1.send data.merge(payload: "x" * 200)
       expect(s1.remote_window).to eq 0
       expect(s1.buffered_amount).to eq 100
 
-      @client << framer.generate(WINDOW_UPDATE.merge({
-        stream: s1.id, increment: 1000
-      }))
+      @client << framer.generate(WINDOW_UPDATE.merge(stream: s1.id, increment: 1000))
       expect(s1.buffered_amount).to eq 0
       expect(s1.remote_window).to eq 900
     end
@@ -626,7 +624,7 @@ RSpec.describe HTTP2::Stream do
     end
 
     it ".data should split large DATA frames" do
-      data = "x" * 16384 * 2
+      data = "x" * 16_384 * 2
 
       allow(@stream).to receive(:send)
       expect(@stream).to receive(:send).exactly(3).times
@@ -662,7 +660,7 @@ RSpec.describe HTTP2::Stream do
     end
 
     it "should emit received headers via on(:headers)" do
-      headers, recv = [["header", "value"]], nil
+      headers, recv = [%w(header value)], nil
       @srv.on(:stream) do |stream|
         stream.on(:headers) { |h| recv = h }
       end
@@ -679,7 +677,7 @@ RSpec.describe HTTP2::Stream do
         end
       end
 
-      @client_stream.headers({ "key" => "value" })
+      @client_stream.headers("key" => "value")
       @client_stream.data(payload)
     end
 
@@ -695,7 +693,7 @@ RSpec.describe HTTP2::Stream do
         end
       end
 
-      @client_stream.headers({ "key" => "value" })
+      @client_stream.headers("key" => "value")
       @client_stream.reprioritize(weight: new_weight, dependency: new_dependency)
       expect(callback_called).to be
     end
@@ -707,18 +705,18 @@ RSpec.describe HTTP2::Stream do
           @server_stream = stream
         end
 
-        @client_stream.headers({ "key" => "value" })
+        @client_stream.headers("key" => "value")
       end
 
       it ".promise should emit server initiated stream" do
         push = nil
-        @server_stream.promise({ "key" => "val" }) { |pstream| push = pstream }
+        @server_stream.promise("key" => "val") { |pstream| push = pstream }
         expect(push.id).to eq 2
       end
 
       it ".promise push stream should have parent stream" do
         push = nil
-        @server_stream.promise({ "key" => "val" }) { |pstream| push = pstream }
+        @server_stream.promise("key" => "val") { |pstream| push = pstream }
 
         expect(push.state).to eq :reserved_local
         expect(push.parent.id).to eq @server_stream.id
@@ -727,7 +725,7 @@ RSpec.describe HTTP2::Stream do
       context "stream states" do
         it "server: active > half close > close" do
           order = []
-          @server_stream.promise({ "key" => "val" }) do |push|
+          @server_stream.promise("key" => "val") do |push|
             stream = push
 
             expect(push.state).to eq :reserved_local
@@ -737,8 +735,8 @@ RSpec.describe HTTP2::Stream do
             push.on(:half_close) { order << :half_close }
             push.on(:close)     { order << :close }
 
-            push.headers({ "key2" => "val2" })
-            push.send DATA.merge({ stream: stream.id })
+            push.headers("key2" => "val2")
+            push.send DATA.merge(stream: stream.id)
           end
 
           expect(order).to eq [:reserved, :active, :half_close, :close]
@@ -762,14 +760,14 @@ RSpec.describe HTTP2::Stream do
             expect(push.id).to be_even
           end
 
-          @server_stream.promise({ "key" => "val" }) do |push|
+          @server_stream.promise("key" => "val") do |push|
             push.headers("key2" => "val2")
             push.data("somedata")
           end
 
-          expect(headers).to eq([["key", "val"], ["key2", "val2"]])
+          expect(headers).to eq([%w(key val), %w(key2 val2)])
           expect(order).to eq [:reserved, :headers, :active, :headers,
-                           :half_close, :data, :close]
+                               :half_close, :data, :close]
         end
       end
     end

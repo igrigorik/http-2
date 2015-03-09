@@ -24,7 +24,7 @@ module HuffmanTable
     end
 
     def add(code, len, chr)
-      chr == EOS && @depth <= 7 and self.final = true
+      chr == EOS && @depth <= 7 && self.final = true
       if len == 0
         @emit = chr
       else
@@ -122,8 +122,8 @@ HEADER
           f.print "        ["
           (1 << BITS_AT_ONCE).times do |t|
             emit = n.transitions[t].emit
-            emit == EOS or emit = emit.dup.force_encoding(Encoding::BINARY)
-            f.print %Q/[#{emit == '' ? "nil" : emit.inspect},#{state_id[n.transitions[t].node]}],/
+            emit = emit.dup.force_encoding(Encoding::BINARY) unless emit == EOS
+            f.print %([#{emit == '' ? 'nil' : emit.inspect},#{state_id[n.transitions[t].node]}],)
           end
           f.print "],\n"
         end
@@ -136,8 +136,8 @@ TAILER
       end
     end
 
-    def self.root
-      @root
+    class << self
+      attr_reader :root
     end
 
     # Test decoder

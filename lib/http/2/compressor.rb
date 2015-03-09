@@ -111,10 +111,10 @@ module HTTP2
         other = EncodingContext.new(@options)
         t = @table
         l = @limit
-        other.instance_eval {
+        other.instance_eval do
           @table = t.dup              # shallow copy
           @limit = l
-        }
+        end
         other
       end
 
@@ -130,9 +130,9 @@ module HTTP2
       # @return [Array] +[key, value]+
       def dereference(index)
         # NOTE: index is zero-based in this module.
-        STATIC_TABLE[index] or
-          @table[index - STATIC_TABLE.size] or
-          raise CompressionError, "Index too large"
+        STATIC_TABLE[index] ||
+          @table[index - STATIC_TABLE.size] ||
+          fail(CompressionError, "Index too large")
       end
 
       # Header Block Processing
@@ -182,7 +182,7 @@ module HTTP2
           add_to_table(emit) if cmd[:type] == :incremental
 
         else
-          raise CompressionError, "Invalid type: #{cmd[:type]}"
+          fail CompressionError, "Invalid type: #{cmd[:type]}"
         end
 
         emit
@@ -288,14 +288,14 @@ module HTTP2
         cursize = current_table_size
         cmdsize = cmd.nil? ? 0 : cmd[0].bytesize + cmd[1].bytesize + 32
 
-        while cursize + cmdsize > @limit do
+        while cursize + cmdsize > @limit
           break if @table.empty?
 
           e = @table.pop
           cursize -= e[0].bytesize + e[1].bytesize + 32
         end
 
-        return cmdsize <= @limit
+        cmdsize <= @limit
       end
     end
 
@@ -349,15 +349,15 @@ module HTTP2
       # @return [String] binary string
       def integer(i, n)
         limit = 2**n - 1
-        return [i].pack('C') if (i < limit)
+        return [i].pack('C') if i < limit
 
         bytes = []
-        bytes.push limit if !n.zero?
+        bytes.push limit unless n.zero?
 
         i -= limit
-        while (i >= 128) do
+        while (i >= 128)
           bytes.push((i % 128) + 128)
-          i = i / 128
+          i /= 128
         end
 
         bytes.push i
@@ -484,7 +484,7 @@ module HTTP2
         i = !n.zero? ? (buf.getbyte & limit) : 0
 
         m = 0
-        while (byte = buf.getbyte) do
+        while (byte = buf.getbyte)
           i += ((byte & 127) << m)
           m += 7
 
@@ -503,8 +503,8 @@ module HTTP2
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
-        str.bytesize == len or raise CompressionError, "string too short"
-        huffman and str = Huffman.new.decode(Buffer.new(str))
+        str.bytesize == len || fail(CompressionError, "string too short")
+        huffman && str = Huffman.new.decode(Buffer.new(str))
         str.force_encoding(Encoding::UTF_8)
       end
 
@@ -521,13 +521,13 @@ module HTTP2
           mask == desc[:pattern]
         end
 
-        header[:type] or raise CompressionError
+        header[:type] || fail(CompressionError)
 
         header[:name] = integer(buf, type[:prefix])
 
         case header[:type]
         when :indexed
-          header[:name] == 0 and raise CompressionError
+          header[:name] == 0 && fail(CompressionError)
           header[:name] -= 1
         when :changetablesize
           header[:value] = header[:name]
@@ -549,7 +549,7 @@ module HTTP2
       # @return [Array] +[[name, value], ...]+
       def decode(buf)
         list = []
-        list << @cc.process(header(buf)) while !buf.empty?
+        list << @cc.process(header(buf)) until buf.empty?
         list.compact
       end
     end

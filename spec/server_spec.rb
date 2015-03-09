@@ -40,9 +40,9 @@ RSpec.describe HTTP2::Server do
     client.on(:frame) { |bytes| @srv << bytes }
 
     @srv.on(:stream) do |stream|
-      expect {
+      expect do
         stream.promise(':method' => 'GET') {}
-      }.to_not raise_error
+      end.to_not raise_error
     end
 
     client.new_stream
