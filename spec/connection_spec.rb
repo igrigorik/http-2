@@ -192,8 +192,8 @@ RSpec.describe HTTP2::Connection do
 
       stream.send HEADERS
       stream.send data
-      expect(stream.remote_window).to eq (DEFAULT_FLOW_WINDOW - 2048)
-      expect(@conn.remote_window).to  eq (DEFAULT_FLOW_WINDOW - 2048)
+      expect(stream.remote_window).to eq(DEFAULT_FLOW_WINDOW - 2048)
+      expect(@conn.remote_window).to  eq(DEFAULT_FLOW_WINDOW - 2048)
 
       @conn << f.generate(settings)
       expect(@conn.remote_window).to  eq(-1024)

@@ -15,10 +15,6 @@ Lint/BlockAlignment:
 Lint/DeprecatedClassMethods:
   Enabled: false
 
-# Offense count: 5
-Lint/ParenthesesAsGroupedExpression:
-  Enabled: false
-
 # Offense count: 1
 Lint/ShadowingOuterLocalVariable:
   Enabled: false

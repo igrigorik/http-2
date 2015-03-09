@@ -546,7 +546,7 @@ RSpec.describe HTTP2::Stream do
       @stream.send DATA
       @stream.receive WINDOW_UPDATE
 
-      expect(@stream.remote_window).to eq (
+      expect(@stream.remote_window).to eq(
         DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize + WINDOW_UPDATE[:increment]
       )
     end
