@@ -186,10 +186,6 @@ Style/RedundantReturn:
   Enabled: false
 
 # Offense count: 2
-Style/RegexpLiteral:
-  MaxSlashes: 0
-
-# Offense count: 2
 Style/RescueModifier:
   Enabled: false
 
