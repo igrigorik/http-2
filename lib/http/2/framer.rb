@@ -225,9 +225,7 @@ module HTTP2
           else
             k = DEFINED_SETTINGS[k]
 
-            if k.nil?
-              raise CompressionError, "Unknown settings ID for #{k}"
-            end
+            raise CompressionError, "Unknown settings ID for #{k}" if k.nil?
           end
 
           bytes  << [k].pack(UINT16)
@@ -413,9 +411,7 @@ module HTTP2
         len = payload.getbyte
         len > 0 and frame[:host] = payload.read(len)
 
-        if payload.size > 0
-          frame[:origin] = payload.read(payload.size)
-        end
+        frame[:origin] = payload.read(payload.size) if payload.size > 0
       # else # Unknown frame type is explicitly allowed
       end
 

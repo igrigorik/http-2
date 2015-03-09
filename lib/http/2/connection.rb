@@ -321,9 +321,7 @@ module HTTP2
         # An endpoint can end a connection at any time. In particular, an
         # endpoint MAY choose to treat a stream error as a connection error.
         if frame[:type] == :rst_stream
-          if frame[:error] == :protocol_error
-            goaway(frame[:error])
-          end
+          goaway(frame[:error]) if frame[:error] == :protocol_error
         else
           # HEADERS and PUSH_PROMISE may generate CONTINUATION
           frames = encode(frame)
@@ -423,9 +421,7 @@ module HTTP2
             # Clients MUST reject any attempt to change the
             # SETTINGS_ENABLE_PUSH setting to a value other than 0 by treating the
             # message as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
-            unless v == 0
-              return ProtocolError.new("invalid #{key} value")
-            end
+            return ProtocolError.new("invalid #{key} value") unless v == 0
           when :client
             # Any value other than 0 or 1 MUST be treated as a
             # connection error (Section 5.4.1) of type PROTOCOL_ERROR.
@@ -463,9 +459,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def connection_settings(frame)
-      if (frame[:type] != :settings || frame[:stream] != 0)
-        connection_error
-      end
+      connection_error unless (frame[:type] == :settings && frame[:stream] == 0)
 
       # Apply settings.
       #  side =
@@ -572,9 +566,7 @@ module HTTP2
     # @return [Array of Frame]
     def encode_headers(frame)
       payload = frame[:payload]
-      unless payload.is_a? String
-        payload = @compressor.encode(payload)
-      end
+      payload = @compressor.encode(payload) unless payload.is_a? String
 
       frames = []
 
@@ -607,9 +599,7 @@ module HTTP2
     # @param window [Integer]
     # @param parent [Stream]
     def activate_stream(id: nil, **args)
-      if @streams.key?(id)
-        connection_error(msg: 'Stream ID already exists')
-      end
+      connection_error(msg: 'Stream ID already exists') if @streams.key?(id)
 
       stream = Stream.new({ connection: self, id: id }.merge(args))
 
