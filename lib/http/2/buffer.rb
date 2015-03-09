@@ -18,7 +18,7 @@ module HTTP2
     end
 
     # Alias getbyte to readbyte
-    alias :readbyte :getbyte
+    alias_method :readbyte, :getbyte
 
     # Emulate StringIO#getbyte: slice first byte from buffer.
     def getbyte

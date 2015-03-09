@@ -4,14 +4,14 @@ RSpec.describe HTTP2::Framer do
   let(:f) { Framer.new }
 
   context "common header" do
-    let(:frame) {
+    let(:frame) do
       {
         length: 4,
         type: :headers,
         flags: [:end_stream, :end_headers],
         stream: 15,
       }
-    }
+    end
 
     let(:bytes) { [0, 0x04, 0x01, 0x5, 0x0000000F].pack("CnCCN") }
 
@@ -38,31 +38,31 @@ RSpec.describe HTTP2::Framer do
     end
 
     it "should raise exception on invalid frame type when sending" do
-      expect {
+      expect do
         frame[:type] = :bogus
         f.common_header(frame)
-      }.to raise_error(CompressionError, /invalid.*type/i)
+      end.to raise_error(CompressionError, /invalid.*type/i)
     end
 
     it "should raise exception on invalid stream ID" do
-      expect {
+      expect do
         frame[:stream] = Framer::MAX_STREAM_ID + 1
         f.common_header(frame)
-      }.to raise_error(CompressionError, /stream/i)
+      end.to raise_error(CompressionError, /stream/i)
     end
 
     it "should raise exception on invalid frame flag" do
-      expect {
+      expect do
         frame[:flags] = [:bogus]
         f.common_header(frame)
-      }.to raise_error(CompressionError, /frame flag/)
+      end.to raise_error(CompressionError, /frame flag/)
     end
 
     it "should raise exception on invalid frame size" do
-      expect {
+      expect do
         frame[:length] = 2**24
         f.common_header(frame)
-      }.to raise_error(CompressionError, /too large/)
+      end.to raise_error(CompressionError, /too large/)
     end
   end
 
@@ -149,7 +149,7 @@ RSpec.describe HTTP2::Framer do
   end
 
   context "SETTINGS" do
-    let(:frame) {
+    let(:frame) do
       {
         type: :settings,
         flags: [],
@@ -159,7 +159,7 @@ RSpec.describe HTTP2::Framer do
           [:settings_header_table_size,      2048],
         ]
       }
-    }
+    end
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
@@ -205,33 +205,33 @@ RSpec.describe HTTP2::Framer do
     end
 
     it "should raise exception on sending invalid stream ID" do
-      expect {
+      expect do
         frame[:stream] = 1
         f.generate(frame)
-      }.to raise_error(CompressionError, /Invalid stream ID/)
+      end.to raise_error(CompressionError, /Invalid stream ID/)
     end
 
     it "should raise exception on receiving invalid stream ID" do
-      expect {
+      expect do
         buf = f.generate(frame)
         buf.setbyte(8, 1)
         f.parse(buf)
-      }.to raise_error(ProtocolError, /Invalid stream ID/)
+      end.to raise_error(ProtocolError, /Invalid stream ID/)
     end
 
     it "should raise exception on sending invalid setting" do
-      expect {
+      expect do
         frame[:payload] = [[:random, 23]]
         f.generate(frame)
-      }.to raise_error(CompressionError, /Unknown settings ID/)
+      end.to raise_error(CompressionError, /Unknown settings ID/)
     end
 
     it "should raise exception on receiving invalid payload length" do
-      expect {
+      expect do
         buf = f.generate(frame)
         buf.setbyte(2, 11) # change payload length
         f.parse(buf)
-      }.to raise_error(ProtocolError, /Invalid settings payload length/)
+      end.to raise_error(ProtocolError, /Invalid settings payload length/)
     end
   end
 
@@ -253,7 +253,7 @@ RSpec.describe HTTP2::Framer do
   end
 
   context "PING" do
-    let(:frame) {
+    let(:frame) do
       {
         length: 8,
         stream: 1,
@@ -261,7 +261,7 @@ RSpec.describe HTTP2::Framer do
         flags: [:ack],
         payload: '12345678'
       }
-    }
+    end
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
@@ -270,15 +270,15 @@ RSpec.describe HTTP2::Framer do
     end
 
     it "should raise exception on invalid payload" do
-      expect {
+      expect do
         frame[:payload] = "1234"
         f.generate(frame)
-      }.to raise_error(CompressionError, /Invalid payload size/)
+      end.to raise_error(CompressionError, /Invalid payload size/)
     end
   end
 
   context "GOAWAY" do
-    let(:frame) {
+    let(:frame) do
       {
         length: 13,
         stream: 1,
@@ -287,7 +287,7 @@ RSpec.describe HTTP2::Framer do
         error: :no_error,
         payload: 'debug'
       }
-    }
+    end
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
@@ -341,14 +341,14 @@ RSpec.describe HTTP2::Framer do
         length: 44,
         type: :altsvc,
         stream: 1,
-        max_age: 1402290402,	   # 4
+        max_age: 1_402_290_402,	   # 4
         port: 8080,		   # 2
         proto: 'h2-13',		   # 1 + 5
         host: 'www.example.com',   # 1 + 15
         origin: 'www.example.com', # 15
       }
       bytes = f.generate(frame)
-      expected = [0, 43, 0xa, 0, 1, 1402290402, 8080].pack("CnCCNNn")
+      expected = [0, 43, 0xa, 0, 1, 1_402_290_402, 8080].pack("CnCCNNn")
       expected << [5, *'h2-13'.bytes].pack("CC*")
       expected << [15, *'www.example.com'.bytes].pack("CC*")
       expected << [*'www.example.com'.bytes].pack("C*")
@@ -368,9 +368,9 @@ RSpec.describe HTTP2::Framer do
               stream: 1,
               payload: 'example data',
             }
-            type == :push_promise and @frame[:promise_stream] = 2
+            type == :push_promise && @frame[:promise_stream] = 2
             @normal = f.generate(@frame)
-            @padded = f.generate(@frame.merge(:padding => padlen))
+            @padded = f.generate(@frame.merge(padding: padlen))
           end
           it "should generate a frame with padding" do
             expect(@padded.bytesize).to eq @normal.bytesize + padlen
@@ -381,7 +381,7 @@ RSpec.describe HTTP2::Framer do
           end
           it "should parse a frame with padding" do
             expect(f.parse(Buffer.new(@padded))).to eq \
-            f.parse(Buffer.new(@normal)).merge(:padding => padlen)
+              f.parse(Buffer.new(@normal)).merge(padding: padlen)
           end
           it "should preserve payload" do
             expect(f.parse(Buffer.new(@padded))[:payload]).to eq @frame[:payload]
@@ -400,18 +400,18 @@ RSpec.describe HTTP2::Framer do
       end
       [0, 257, 1334].each do |padlen|
         it "should raise error on trying to generate data frame padded with invalid #{padlen}" do
-          expect {
-            f.generate(@frame.merge(:padding => padlen))
-          }.to raise_error(CompressionError, /padding/i)
+          expect do
+            f.generate(@frame.merge(padding: padlen))
+          end.to raise_error(CompressionError, /padding/i)
         end
       end
       it "should raise error when adding a padding would make frame too large" do
         @frame[:payload] = 'q' * (f.max_frame_size - 200)
         @frame[:length]  = @frame[:payload].size
         @frame[:padding] = 210 # would exceed 4096
-        expect {
+        expect do
           f.generate(@frame)
-        }.to raise_error(CompressionError, /padding/i)
+        end.to raise_error(CompressionError, /padding/i)
       end
     end
     context "parsing frames with invalid paddings" do
@@ -423,7 +423,7 @@ RSpec.describe HTTP2::Framer do
           payload: 'example data',
         }
         @padlen = 123
-        @padded = f.generate(@frame.merge(:padding => @padlen))
+        @padded = f.generate(@frame.merge(padding: @padlen))
       end
       it "should raise exception when the given padding is longer than the payload" do
         @padded.setbyte(9, 240)

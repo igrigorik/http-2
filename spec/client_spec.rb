@@ -24,7 +24,7 @@ RSpec.describe HTTP2::Client do
     it "should initialize client with custom connection settings" do
       frames = []
 
-      @client = Client.new(:settings_max_concurrent_streams => 200)
+      @client = Client.new(settings_max_concurrent_streams: 200)
       @client.on(:frame) { |bytes| frames << bytes }
       @client.ping("12345678")
 
@@ -42,25 +42,25 @@ RSpec.describe HTTP2::Client do
     end
 
     it "should raise error on PUSH_PROMISE against stream 0" do
-      expect {
+      expect do
         @client << set_stream_id(f.generate(PUSH_PROMISE), 0)
-      }.to raise_error(ProtocolError)
+      end.to raise_error(ProtocolError)
     end
 
     it "should raise error on PUSH_PROMISE against bogus stream" do
-      expect {
-        @client << set_stream_id(f.generate(PUSH_PROMISE), 31415)
-      }.to raise_error(ProtocolError)
+      expect do
+        @client << set_stream_id(f.generate(PUSH_PROMISE), 31_415)
+      end.to raise_error(ProtocolError)
     end
 
     it "should raise error on PUSH_PROMISE against non-idle stream" do
-      expect {
+      expect do
         s = @client.new_stream
         s.send HEADERS
 
         @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
         @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
-     }.to raise_error(ProtocolError)
+      end.to raise_error(ProtocolError)
     end
 
     it "should emit stream object for received PUSH_PROMISE" do

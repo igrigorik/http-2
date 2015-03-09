@@ -8,3 +8,6 @@ Lint/EndAlignment:
 
 Style/CaseIndentation:
   IndentWhenRelativeTo: end
+
+Style/IndentHash:
+  EnforcedStyle: consistent

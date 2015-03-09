@@ -6,9 +6,9 @@ gem 'yard'
 group :test do
   gem 'autotest-growl'
   gem 'autotest-standalone'
-  gem 'coveralls', :require => false
+  gem 'coveralls', require: false
   gem 'pry'
-  gem 'pry-byebug', :platform => :mri
+  gem 'pry-byebug', platform: :mri
   gem 'rspec'
   gem 'rspec-autotest'
   gem 'rubocop'

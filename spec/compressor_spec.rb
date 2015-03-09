@@ -33,7 +33,7 @@ RSpec.describe HTTP2::Header do
 
     context "string" do
       [['with huffman',    :always, 0x80],
-        ['without huffman', :never,  0]].each do |desc, option, msb|
+       ['without huffman', :never,  0]].each do |desc, option, msb|
         let(:trailer) { "trailer" }
 
         [
@@ -55,8 +55,8 @@ RSpec.describe HTTP2::Header do
       end
       context "choosing shorter representation" do
         [['日本語', :plain],
-          ['200', :huffman],
-          ['xq', :plain],   # prefer plain if equal size
+         ['200', :huffman],
+         ['xq', :plain],   # prefer plain if equal size
         ].each do |string, choice|
           before { @c = Compressor.new(huffman: :shorter) }
 
@@ -149,12 +149,12 @@ RSpec.describe HTTP2::Header do
 
     context "processing" do
       [["no indexing", :noindex],
-        ["never indexed", :neverindexed]].each do |desc, type|
+       ["never indexed", :neverindexed]].each do |desc, type|
         context "#{desc}" do
           it "should process indexed header with literal value" do
             original_table = @cc.table.dup
 
-            emit = @cc.process({ name: 4, value: "/path", type: type })
+            emit = @cc.process(name: 4, value: "/path", type: type)
             expect(emit).to eq [":path", "/path"]
             expect(@cc.table).to eq original_table
           end
@@ -162,7 +162,7 @@ RSpec.describe HTTP2::Header do
           it "should process literal header with literal value" do
             original_table = @cc.table.dup
 
-            emit = @cc.process({ name: "x-custom", value: "random", type: type })
+            emit = @cc.process(name: "x-custom", value: "random", type: type)
             expect(emit).to eq ["x-custom", "random"]
             expect(@cc.table).to eq original_table
           end
@@ -173,7 +173,7 @@ RSpec.describe HTTP2::Header do
         it "should process indexed header with literal value" do
           original_table = @cc.table.dup
 
-          emit = @cc.process({ name: 4, value: "/path", type: :incremental })
+          emit = @cc.process(name: 4, value: "/path", type: :incremental)
           expect(emit).to eq [":path", "/path"]
           expect(@cc.table - original_table).to eq [[":path", "/path"]]
         end
@@ -181,7 +181,7 @@ RSpec.describe HTTP2::Header do
         it "should process literal header with literal value" do
           original_table = @cc.table.dup
 
-          @cc.process({ name: "x-custom", value: "random", type: :incremental })
+          @cc.process(name: "x-custom", value: "random", type: :incremental)
           expect(@cc.table - original_table).to eq [["x-custom", "random"]]
         end
       end
@@ -196,13 +196,11 @@ RSpec.describe HTTP2::Header do
 
           original_table = cc.table.dup
           original_size = original_table.join.bytesize +
-            original_table.size * 32
+                          original_table.size * 32
 
-          cc.process({
-                       name: "x-custom",
-                       value: "a" * (2048 - original_size),
-                       type: :incremental
-                     })
+          cc.process(name: "x-custom",
+                     value: "a" * (2048 - original_size),
+                     type: :incremental)
 
           expect(cc.table.first[0]).to eq "x-custom"
           expect(cc.table.size).to eq original_table.size # number of entries
@@ -220,7 +218,7 @@ RSpec.describe HTTP2::Header do
         e = { name: "large", value: "a" * 2048, index: 0 }
 
         cc.process(h)
-        cc.process(e.merge({ type: :incremental }))
+        cc.process(e.merge(type: :incremental))
         expect(cc.table).to be_empty
       end
 
@@ -231,7 +229,7 @@ RSpec.describe HTTP2::Header do
           add_to_table(["test2", "2" * 500])
         end
 
-        cc.process({ type: :changetablesize, value: 1500 })
+        cc.process(type: :changetablesize, value: 1500)
         expect(cc.table.size).to be 1
         expect(cc.table.first[0]).to eq 'test2'
       end
@@ -503,8 +501,10 @@ RSpec.describe HTTP2::Header do
       context "spec example #{ex[:title]}" do
         ex[:streams].size.times do |nth|
           context "request #{nth + 1}" do
-            before { @cc = Compressor.new(table_size: ex[:table_size],
-                                          huffman: ex[:huffman]) }
+            before do
+              @cc = Compressor.new(table_size: ex[:table_size],
+                                   huffman: ex[:huffman])
+            end
             before do
               (0...nth).each do |i|
                 @cc.encode(ex[:streams][i][:emitted])
