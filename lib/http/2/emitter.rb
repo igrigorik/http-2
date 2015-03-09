@@ -8,7 +8,7 @@ module HTTP2
     # @param event [Symbol]
     # @param block [Proc] callback function
     def add_listener(event, &block)
-      fail ArgumentError, "must provide callback" unless block_given?
+      fail ArgumentError, 'must provide callback' unless block_given?
       listeners(event.to_sym).push block
     end
     alias_method :on, :add_listener

@@ -132,7 +132,7 @@ module HTTP2
         # NOTE: index is zero-based in this module.
         STATIC_TABLE[index] ||
           @table[index - STATIC_TABLE.size] ||
-          fail(CompressionError, "Index too large")
+          fail(CompressionError, 'Index too large')
       end
 
       # Header Block Processing
@@ -503,7 +503,7 @@ module HTTP2
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
-        str.bytesize == len || fail(CompressionError, "string too short")
+        str.bytesize == len || fail(CompressionError, 'string too short')
         huffman && str = Huffman.new.decode(Buffer.new(str))
         str.force_encoding(Encoding::UTF_8)
       end

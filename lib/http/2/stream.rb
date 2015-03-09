@@ -152,7 +152,7 @@ module HTTP2
     end
 
     def promise(headers, end_headers: true, &block)
-      fail ArgumentError, "must provide callback" unless block_given?
+      fail ArgumentError, 'must provide callback' unless block_given?
 
       flags = end_headers ? [:end_headers] : []
       emit(:promise, self, headers, flags, &block)
@@ -303,7 +303,6 @@ module HTTP2
       # Receiving any type of frame other than RST_STREAM, PRIORITY or
       # WINDOW_UPDATE on a stream in this state MUST be treated as a
       # connection error (Section 5.4.1) of type PROTOCOL_ERROR.
-
       when :reserved_local
         if sending
           @state = case frame[:type]
@@ -546,10 +545,12 @@ module HTTP2
     def process_priority(frame)
       @weight = frame[:weight]
       @dependency = frame[:stream_dependency]
-      emit(:priority,
-           weight:      frame[:weight],
-           dependency:  frame[:stream_dependency],
-           exclusive:   frame[:exclusive])
+      emit(
+        :priority,
+        weight:     frame[:weight],
+        dependency: frame[:stream_dependency],
+        exclusive:  frame[:exclusive],
+      )
       # TODO: implement dependency tree housekeeping
       #   Latest draft defines a fairly complex priority control.
       #   See https://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-5.3

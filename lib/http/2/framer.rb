@@ -37,11 +37,14 @@ module HTTP2
     FRAME_FLAGS = {
       data: {
         end_stream:  0,
-        padded: 3, compressed: 5
+        padded: 3,
+        compressed: 5,
       },
       headers: {
-        end_stream:  0, end_headers: 2,
-        padded: 3, priority: 5,
+        end_stream:  0,
+        end_headers: 2,
+        padded: 3,
+        priority: 5,
       },
       priority:     {},
       rst_stream:   {},
@@ -88,9 +91,9 @@ module HTTP2
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff
     EBIT  = 0x80000000
-    UINT32 = "N".freeze
-    UINT16 = "n".freeze
-    UINT8  = "C".freeze
+    UINT32 = 'N'.freeze
+    UINT16 = 'n'.freeze
+    UINT8  = 'C'.freeze
     HEADERPACK = (UINT8 + UINT16 + UINT8 + UINT8 + UINT32).freeze
     FRAME_LENGTH_HISHIFT = 16
     FRAME_LENGTH_LOMASK  = 0xFFFF
@@ -192,8 +195,7 @@ module HTTP2
         end
 
         if frame[:flags].include? :priority
-          bytes << [(frame[:exclusive] ? EBIT : 0) |
-            (frame[:stream_dependency] & RBIT)].pack(UINT32)
+          bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:stream_dependency] & RBIT)].pack(UINT32)
           bytes << [frame[:weight] - 1].pack(UINT8)
           length += 5
         end
@@ -205,8 +207,7 @@ module HTTP2
         unless frame[:weight] && frame[:stream_dependency] && !frame[:exclusive].nil?
           fail CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
         end
-        bytes << [(frame[:exclusive] ? EBIT : 0) |
-          (frame[:stream_dependency] & RBIT)].pack(UINT32)
+        bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:stream_dependency] & RBIT)].pack(UINT32)
         bytes << [frame[:weight] - 1].pack(UINT8)
         length += 5
 
@@ -267,7 +268,7 @@ module HTTP2
         bytes << [frame[:max_age], frame[:port]].pack(UINT32 + UINT16)
         length += 6
         if frame[:proto]
-          frame[:proto].bytesize > 255 && fail(CompressionError, "Proto too long")
+          frame[:proto].bytesize > 255 && fail(CompressionError, 'Proto too long')
           bytes << [frame[:proto].bytesize].pack(UINT8) << frame[:proto].force_encoding(BINARY)
           length += 1 + frame[:proto].bytesize
         else
@@ -275,7 +276,7 @@ module HTTP2
           length += 1
         end
         if frame[:host]
-          frame[:host].bytesize > 255 && fail(CompressionError, "Host too long")
+          frame[:host].bytesize > 255 && fail(CompressionError, 'Host too long')
           bytes << [frame[:host].bytesize].pack(UINT8) << frame[:host].force_encoding(BINARY)
           length += 1 + frame[:host].bytesize
         else
@@ -340,7 +341,7 @@ module HTTP2
         if padded
           padlen = payload.read(1).unpack(UINT8).first
           frame[:padding] = padlen + 1
-          padlen > payload.bytesize && fail(ProtocolError, "padding too long")
+          padlen > payload.bytesize && fail(ProtocolError, 'padding too long')
           padlen > 0 && payload.slice!(-padlen, padlen)
           frame[:length] -= frame[:padding]
           frame[:flags].delete(:padded)
@@ -371,7 +372,7 @@ module HTTP2
         # because unknown extensions are ignored.
         frame[:payload] = []
         unless frame[:length] % 6 == 0
-          fail ProtocolError, "Invalid settings payload length"
+          fail ProtocolError, 'Invalid settings payload length'
         end
 
         if frame[:stream] != 0
