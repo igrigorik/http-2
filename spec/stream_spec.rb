@@ -263,7 +263,7 @@ RSpec.describe HTTP2::Stream do
 
       it "should emit :close with reason" do
         reason = nil
-        @stream.on(:close) {|r| reason = r }
+        @stream.on(:close) { |r| reason = r }
         @stream.receive RST_STREAM
         expect(reason).not_to be_nil
       end
@@ -488,7 +488,7 @@ RSpec.describe HTTP2::Stream do
             expect {
               cb = []
               @stream.on(:data) { cb << :data }
-              @stream.on(:headers) { cb << :headers}
+              @stream.on(:headers) { cb << :headers }
               @stream.dup.receive frame
               expect(cb).to be_empty
             }.to_not raise_error
@@ -531,7 +531,7 @@ RSpec.describe HTTP2::Stream do
       @stream.send HEADERS # go to open
       expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW
 
-      (FRAME_TYPES - [DATA,PING,GOAWAY,SETTINGS]).each do |frame|
+      (FRAME_TYPES - [DATA, PING, GOAWAY, SETTINGS]).each do |frame|
         s = @stream.dup
         s.send frame
         expect(s.remote_window).to eq DEFAULT_FLOW_WINDOW
@@ -561,10 +561,10 @@ RSpec.describe HTTP2::Stream do
 
       s1 = @client.new_stream
       s1.send HEADERS
-      s1.send data.merge({payload: "x" * 900, flags: []})
+      s1.send data.merge({ payload: "x" * 900, flags: [] })
       expect(s1.remote_window).to eq 100
 
-      s1.send data.merge({payload: "x" * 200})
+      s1.send data.merge({ payload: "x" * 200 })
       expect(s1.remote_window).to eq 0
       expect(s1.buffered_amount).to eq 100
 
@@ -657,14 +657,14 @@ RSpec.describe HTTP2::Stream do
       @srv = Server.new
       @frm = Framer.new
 
-      @client.on(:frame) {|bytes| @srv << bytes }
+      @client.on(:frame) { |bytes| @srv << bytes }
       @client_stream = @client.new_stream
     end
 
     it "should emit received headers via on(:headers)" do
       headers, recv = [["header", "value"]], nil
       @srv.on(:stream) do |stream|
-        stream.on(:headers) {|h| recv = h}
+        stream.on(:headers) { |h| recv = h }
       end
 
       @client_stream.headers(headers)
@@ -679,7 +679,7 @@ RSpec.describe HTTP2::Stream do
         end
       end
 
-      @client_stream.headers({"key" => "value"})
+      @client_stream.headers({ "key" => "value" })
       @client_stream.data(payload)
     end
 
@@ -695,30 +695,30 @@ RSpec.describe HTTP2::Stream do
         end
       end
 
-      @client_stream.headers({"key" => "value"})
+      @client_stream.headers({ "key" => "value" })
       @client_stream.reprioritize(weight: new_weight, dependency: new_dependency)
       expect(callback_called).to be
     end
 
     context "push" do
       before(:each) do
-        @srv.on(:frame)  {|bytes| @client << bytes }
+        @srv.on(:frame)  { |bytes| @client << bytes }
         @srv.on(:stream) do |stream|
           @server_stream = stream
         end
 
-        @client_stream.headers({"key" => "value"})
+        @client_stream.headers({ "key" => "value" })
       end
 
       it ".promise should emit server initiated stream" do
         push = nil
-        @server_stream.promise({"key" => "val"}) { |pstream| push = pstream }
+        @server_stream.promise({ "key" => "val" }) { |pstream| push = pstream }
         expect(push.id).to eq 2
       end
 
       it ".promise push stream should have parent stream" do
         push = nil
-        @server_stream.promise({"key" => "val"}) { |pstream| push = pstream }
+        @server_stream.promise({ "key" => "val" }) { |pstream| push = pstream }
 
         expect(push.state).to eq :reserved_local
         expect(push.parent.id).to eq @server_stream.id
@@ -727,18 +727,18 @@ RSpec.describe HTTP2::Stream do
       context "stream states" do
         it "server: active > half close > close" do
           order = []
-          @server_stream.promise({"key" => "val"}) do |push|
+          @server_stream.promise({ "key" => "val" }) do |push|
             stream = push
 
             expect(push.state).to eq :reserved_local
             order << :reserved
 
             push.on(:active)    { order << :active }
-            push.on(:half_close){ order << :half_close }
+            push.on(:half_close) { order << :half_close }
             push.on(:close)     { order << :close }
 
-            push.headers({"key2" => "val2"})
-            push.send DATA.merge({stream: stream.id})
+            push.headers({ "key2" => "val2" })
+            push.send DATA.merge({ stream: stream.id })
           end
 
           expect(order).to eq [:reserved, :active, :half_close, :close]
@@ -751,7 +751,7 @@ RSpec.describe HTTP2::Stream do
 
             push.on(:active)    { order << :active }
             push.on(:data)      { order << :data }
-            push.on(:half_close){ order << :half_close }
+            push.on(:half_close) { order << :half_close }
             push.on(:close)     { order << :close }
 
             push.on(:headers) do |h|
@@ -762,7 +762,7 @@ RSpec.describe HTTP2::Stream do
             expect(push.id).to be_even
           end
 
-          @server_stream.promise({"key" => "val"}) do |push|
+          @server_stream.promise({ "key" => "val" }) do |push|
             push.headers("key2" => "val2")
             push.data("somedata")
           end

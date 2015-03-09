@@ -31,7 +31,7 @@ module HTTP2
       altsvc:        0xa,
     }
 
-    FRAME_TYPES_WITH_PADDING = [ :data, :headers, :push_promise ]
+    FRAME_TYPES_WITH_PADDING = [:data, :headers, :push_promise]
 
     # Per frame flags as defined by the spec
     FRAME_FLAGS = {
@@ -52,7 +52,7 @@ module HTTP2
       },
       ping:         { ack: 0 },
       goaway:       {},
-      window_update:{},
+      window_update: {},
       continuation: { end_headers: 2 },
       altsvc: {},
     }
@@ -154,10 +154,10 @@ module HTTP2
     # @param buf [Buffer]
     def readCommonHeader(buf)
       frame = {}
-      len_hi, len_lo, type, flags, stream = buf.slice(0,9).unpack(HEADERPACK)
+      len_hi, len_lo, type, flags, stream = buf.slice(0, 9).unpack(HEADERPACK)
 
       frame[:length] = (len_hi << FRAME_LENGTH_HISHIFT) | len_lo
-      frame[:type], _ = FRAME_TYPES.select { |t,pos| type == pos }.first
+      frame[:type], _ = FRAME_TYPES.select { |t, pos| type == pos }.first
       if frame[:type]
         frame[:flags] = FRAME_FLAGS[frame[:type]].reduce([]) do |acc, (name, pos)|
           acc << name if (flags & (1 << pos)) > 0
@@ -221,7 +221,7 @@ module HTTP2
           raise CompressionError, "Invalid stream ID (#{frame[:stream]})"
         end
 
-        frame[:payload].each do |(k,v)|
+        frame[:payload].each do |(k, v)|
           if k.is_a? Integer
             DEFINED_SETTINGS.has_value?(k) or next
           else
@@ -345,7 +345,7 @@ module HTTP2
           padlen = payload.read(1).unpack(UINT8).first
           frame[:padding] = padlen + 1
           padlen > payload.bytesize and raise ProtocolError, "padding too long"
-          padlen > 0 and payload.slice!(-padlen,padlen)
+          padlen > 0 and payload.slice!(-padlen, padlen)
           frame[:length] -= frame[:padding]
           frame[:flags].delete(:padded)
         end

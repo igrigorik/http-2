@@ -96,7 +96,7 @@ module HuffmanTable
       id_state[0] = @root
       max_final = 0
       id = 1
-      (@states - [@root]).sort_by{|s|s.final ? 0 : 1}.each do |s|
+      (@states - [@root]).sort_by { |s| s.final ? 0 : 1 }.each do |s|
         state_id[s] = id
         id_state[id] = s
         max_final = id if s.final
@@ -145,14 +145,14 @@ TAILER
     def self.decode(input)
       emit = ''
       n = root
-      nibbles = input.unpack("C*").flat_map{|b| [((b & 0xf0) >> 4), b & 0xf]}
+      nibbles = input.unpack("C*").flat_map { |b| [((b & 0xf0) >> 4), b & 0xf] }
       until nibbles.empty?
         nb = nibbles.shift
         t = n.transitions[nb]
         emit << t.emit
         n = t.node
       end
-      unless n.final && nibbles.all?{|x| x == 0xf}
+      unless n.final && nibbles.all? { |x| x == 0xf }
         puts "len = #{emit.size} n.final = #{n.final} nibbles = #{nibbles}"
       end
       emit

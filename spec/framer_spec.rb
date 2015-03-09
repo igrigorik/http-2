@@ -13,7 +13,7 @@ RSpec.describe HTTP2::Framer do
       }
     }
 
-    let(:bytes) { [0,0x04, 0x01, 0x5, 0x0000000F].pack("CnCCN") }
+    let(:bytes) { [0, 0x04, 0x01, 0x5, 0x0000000F].pack("CnCCN") }
 
     it "should generate common 9 byte header" do
       expect(f.commonHeader(frame)).to eq bytes
@@ -25,7 +25,7 @@ RSpec.describe HTTP2::Framer do
 
     it "should generate a large frame" do
       f = Framer.new
-      f.max_frame_size = 2**24-1
+      f.max_frame_size = 2**24 - 1
       frame = {
         length: 2**18 + 2**16 + 17,
         type: :headers,
@@ -77,7 +77,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0x4,0x0,0x1,0x1,*'text'.bytes].pack("CnCCNC*")
+      expect(bytes).to eq [0, 0x4, 0x0, 0x1, 0x1, *'text'.bytes].pack("CnCCNC*")
 
       expect(f.parse(bytes)).to eq frame
     end
@@ -94,7 +94,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0xc,0x1,0x5,0x1,*'header-block'.bytes].pack("CnCCNC*")
+      expect(bytes).to eq [0, 0xc, 0x1, 0x5, 0x1, *'header-block'.bytes].pack("CnCCNC*")
       expect(f.parse(bytes)).to eq frame
     end
 
@@ -111,7 +111,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0x11,0x1,0x24,0x1,0xf,0xb,*'header-block'.bytes].pack("CnCCNNCC*")
+      expect(bytes).to eq [0, 0x11, 0x1, 0x24, 0x1, 0xf, 0xb, *'header-block'.bytes].pack("CnCCNNCC*")
       expect(f.parse(bytes)).to eq frame
     end
   end
@@ -128,7 +128,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0x5,0x2,0x0,0x1,0x8000000f,0xb].pack("CnCCNNC")
+      expect(bytes).to eq [0, 0x5, 0x2, 0x0, 0x1, 0x8000000f, 0xb].pack("CnCCNNC")
       expect(f.parse(bytes)).to eq frame
     end
   end
@@ -143,7 +143,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0x4,0x3,0x0,0x1,0x5].pack("CnCCNN")
+      expect(bytes).to eq [0, 0x4, 0x3, 0x0, 0x1, 0x5].pack("CnCCNN")
       expect(f.parse(bytes)).to eq frame
     end
   end
@@ -163,7 +163,7 @@ RSpec.describe HTTP2::Framer do
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,12,0x4,0x0,0x0,3,10,1,2048].pack("CnCCNnNnN")
+      expect(bytes).to eq [0, 12, 0x4, 0x0, 0x0, 3, 10, 1, 2048].pack("CnCCNnNnN")
       parsed = f.parse(bytes)
       parsed.delete(:length)
       frame.delete(:length)
@@ -173,7 +173,7 @@ RSpec.describe HTTP2::Framer do
     it "should generate settings when id is given as an integer" do
       frame[:payload][1][0] = 1
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,12,0x4,0x0,0x0,3,10,1,2048].pack("CnCCNnNnN")
+      expect(bytes).to eq [0, 12, 0x4, 0x0, 0x0, 3, 10, 1, 2048].pack("CnCCNnNnN")
     end
 
     it "should ignore custom settings when sending" do
@@ -247,7 +247,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0xb,0x5,0x4,0x1,0x2,*'headers'.bytes].pack("CnCCNNC*")
+      expect(bytes).to eq [0, 0xb, 0x5, 0x4, 0x1, 0x2, *'headers'.bytes].pack("CnCCNNC*")
       expect(f.parse(bytes)).to eq frame
     end
   end
@@ -265,7 +265,7 @@ RSpec.describe HTTP2::Framer do
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0x8,0x6,0x1,0x1,*'12345678'.bytes].pack("CnCCNC*")
+      expect(bytes).to eq [0, 0x8, 0x6, 0x1, 0x1, *'12345678'.bytes].pack("CnCCNC*")
       expect(f.parse(bytes)).to eq frame
     end
 
@@ -291,7 +291,7 @@ RSpec.describe HTTP2::Framer do
 
     it "should generate and parse bytes" do
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0xd,0x7,0x0,0x1,0x2,0x0,*'debug'.bytes].pack("CnCCNNNC*")
+      expect(bytes).to eq [0, 0xd, 0x7, 0x0, 0x1, 0x2, 0x0, *'debug'.bytes].pack("CnCCNNNC*")
       expect(f.parse(bytes)).to eq frame
     end
 
@@ -300,7 +300,7 @@ RSpec.describe HTTP2::Framer do
       frame[:length] = 0x8
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0x8,0x7,0x0,0x1,0x2,0x0].pack("CnCCNNN")
+      expect(bytes).to eq [0, 0x8, 0x7, 0x0, 0x1, 0x2, 0x0].pack("CnCCNNN")
       expect(f.parse(bytes)).to eq frame
     end
   end
@@ -314,7 +314,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0x4,0x8,0x0,0x0,0xa].pack("CnCCNN")
+      expect(bytes).to eq [0, 0x4, 0x8, 0x0, 0x0, 0xa].pack("CnCCNN")
       expect(f.parse(bytes)).to eq frame
     end
   end
@@ -330,7 +330,7 @@ RSpec.describe HTTP2::Framer do
       }
 
       bytes = f.generate(frame)
-      expect(bytes).to eq [0,0xc,0x9,0x4,0x1,*'header-block'.bytes].pack("CnCCNC*")
+      expect(bytes).to eq [0, 0xc, 0x9, 0x4, 0x1, *'header-block'.bytes].pack("CnCCNC*")
       expect(f.parse(bytes)).to eq frame
     end
   end
@@ -359,7 +359,7 @@ RSpec.describe HTTP2::Framer do
 
   context "Padding" do
     [:data, :headers, :push_promise].each do |type|
-      [1,256].each do |padlen|
+      [1, 256].each do |padlen|
         context "generating #{type} frame padded #{padlen}" do
           before do
             @frame = {
@@ -398,7 +398,7 @@ RSpec.describe HTTP2::Framer do
           payload: 'example data',
         }
       end
-      [0, 257,1334].each do |padlen|
+      [0, 257, 1334].each do |padlen|
         it "should raise error on trying to generate data frame padded with invalid #{padlen}" do
           expect {
             f.generate(@frame.merge(:padding => padlen))
@@ -426,7 +426,7 @@ RSpec.describe HTTP2::Framer do
         @padded = f.generate(@frame.merge(:padding => @padlen))
       end
       it "should raise exception when the given padding is longer than the payload" do
-        @padded.setbyte(9,240)
+        @padded.setbyte(9, 240)
         expect { f.parse(Buffer.new(@padded)) }.to raise_error(ProtocolError, /padding/)
       end
     end
@@ -434,29 +434,29 @@ RSpec.describe HTTP2::Framer do
 
   it "should determine frame length" do
     frames = [
-      [{type: :data, stream: 1, flags: [:end_stream], payload: "abc"}, 3],
-      [{type: :headers, stream: 1, payload: "abc"}, 3],
-      [{type: :priority, stream: 3, stream_dependency: 30, exclusive: false, weight: 1}, 5],
-      [{type: :rst_stream, stream: 3, error: 100}, 4],
-      [{type: :settings, payload: [[:settings_max_concurrent_streams, 10]]}, 6],
-      [{type: :push_promise, promise_stream: 5, payload: "abc"}, 7],
-      [{type: :ping, payload: "blob"*2}, 8],
-      [{type: :goaway, last_stream: 5, error: 20, payload: "blob"}, 12],
-      [{type: :window_update, stream: 1, increment: 1024}, 4],
-      [{type: :continuation, stream: 1, payload: "abc"}, 3]
+      [{ type: :data, stream: 1, flags: [:end_stream], payload: "abc" }, 3],
+      [{ type: :headers, stream: 1, payload: "abc" }, 3],
+      [{ type: :priority, stream: 3, stream_dependency: 30, exclusive: false, weight: 1 }, 5],
+      [{ type: :rst_stream, stream: 3, error: 100 }, 4],
+      [{ type: :settings, payload: [[:settings_max_concurrent_streams, 10]] }, 6],
+      [{ type: :push_promise, promise_stream: 5, payload: "abc" }, 7],
+      [{ type: :ping, payload: "blob" * 2 }, 8],
+      [{ type: :goaway, last_stream: 5, error: 20, payload: "blob" }, 12],
+      [{ type: :window_update, stream: 1, increment: 1024 }, 4],
+      [{ type: :continuation, stream: 1, payload: "abc" }, 3]
     ]
 
     frames.each do |(frame, size)|
       bytes = f.generate(frame)
-      expect(bytes.slice(1,2).unpack("n").first).to eq size
+      expect(bytes.slice(1, 2).unpack("n").first).to eq size
       expect(bytes.readbyte(0)).to eq 0
     end
   end
 
   it "should parse single frame at a time" do
     frames = [
-      {type: :headers, stream: 1, payload: "headers"},
-      {type: :data, stream: 1, flags: [:end_stream], payload: "abc"}
+      { type: :headers, stream: 1, payload: "headers" },
+      { type: :data, stream: 1, flags: [:end_stream], payload: "abc" }
     ]
 
     buf = f.generate(frames[0]) << f.generate(frames[1])
@@ -466,7 +466,7 @@ RSpec.describe HTTP2::Framer do
   end
 
   it "should process full frames only" do
-    frame = {type: :headers, stream: 1, payload: "headers"}
+    frame = { type: :headers, stream: 1, payload: "headers" }
     bytes = f.generate(frame)
 
     expect(f.parse(bytes[0...-1])).to be_nil
@@ -475,7 +475,7 @@ RSpec.describe HTTP2::Framer do
   end
 
   it "should ignore unknown extension frames" do
-    frame = {type: :headers, stream: 1, payload: "headers"}
+    frame = { type: :headers, stream: 1, payload: "headers" }
     bytes = f.generate(frame)
     bytes = Buffer.new(bytes + bytes) # Two HEADERS frames in bytes
     bytes.setbyte(3, 42) # Make the first unknown type 42

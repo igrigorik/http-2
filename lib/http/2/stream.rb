@@ -76,7 +76,7 @@ module HTTP2
       @id = id                 or raise ArgumentError, "missing mandatory argument id"
       @weight = weight
       @dependency = dependency
-      process_priority({weight: weight, stream_dependency: dependency, exclusive: exclusive})
+      process_priority({ weight: weight, stream_dependency: dependency, exclusive: exclusive })
       @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
@@ -148,7 +148,7 @@ module HTTP2
       flags << :end_headers if end_headers
       flags << :end_stream  if end_stream
 
-      send({type: :headers, flags: flags, payload: headers.to_a})
+      send({ type: :headers, flags: flags, payload: headers.to_a })
     end
 
     def promise(headers, end_headers: true, &block)
@@ -165,7 +165,7 @@ module HTTP2
     # @param dependency [Integer] new stream dependency stream
     def reprioritize(weight: 16, dependency: 0, exclusive: false)
       stream_error if @id.even?
-      send({type: :priority, weight: weight, stream_dependency: dependency, exclusive: exclusive})
+      send({ type: :priority, weight: weight, stream_dependency: dependency, exclusive: exclusive })
     end
 
     # Sends DATA frame containing response payload.
@@ -181,10 +181,10 @@ module HTTP2
       max_size = @connection.remote_settings[:settings_max_frame_size]
       while payload.bytesize > max_size do
         chunk = payload.slice!(0, max_size)
-        send({type: :data, payload: chunk})
+        send({ type: :data, payload: chunk })
       end
 
-      send({type: :data, flags: flags, payload: payload})
+      send({ type: :data, flags: flags, payload: payload })
     end
 
     # Sends a RST_STREAM frame which closes current stream - this does not
@@ -192,18 +192,18 @@ module HTTP2
     #
     # @param error [:Symbol] optional reason why stream was closed
     def close(error = :stream_closed)
-      send({type: :rst_stream, error: error})
+      send({ type: :rst_stream, error: error })
     end
 
     # Sends a RST_STREAM indicating that the stream is no longer needed.
     def cancel
-      send({type: :rst_stream, error: :cancel})
+      send({ type: :rst_stream, error: :cancel })
     end
 
     # Sends a RST_STREAM indicating that the stream has been refused prior
     # to performing any application processing.
     def refuse
-      send({type: :rst_stream, error: :refused_stream})
+      send({ type: :rst_stream, error: :refused_stream })
     end
 
     private

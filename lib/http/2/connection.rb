@@ -114,7 +114,7 @@ module HTTP2
     # @param payload [String] optional payload must be 8 bytes long
     # @param blk [Proc] callback to execute when PONG is received
     def ping(payload, &blk)
-      send({type: :ping, stream: 0, payload: payload})
+      send({ type: :ping, stream: 0, payload: payload })
       once(:ack, &blk) if blk
     end
 
@@ -145,7 +145,7 @@ module HTTP2
       check = validate_settings(@local_role, payload)
       check and connection_error
       @pending_settings << payload
-      send({type: :settings, stream: 0, payload: payload})
+      send({ type: :settings, stream: 0, payload: payload })
       @pending_settings << payload
     end
 
@@ -177,7 +177,7 @@ module HTTP2
         else
           # MAGIC is OK.  Send our settings
           @state = :waiting_connection_preface
-          payload = @local_settings.select {|k,v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k]}
+          payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
           settings(payload)
         end
       end
@@ -196,7 +196,7 @@ module HTTP2
           @continuation << frame
           return if !frame[:flags].include? :end_headers
 
-          payload = @continuation.map {|f| f[:payload]}.join
+          payload = @continuation.map { |f| f[:payload] }.join
 
           frame = @continuation.shift
           @continuation.clear
@@ -277,7 +277,7 @@ module HTTP2
               if parent.closed == :local_rst
                 # We can either (a) 'resurrect' the parent, or (b) RST_STREAM
                 # ... sticking with (b), might need to revisit later.
-                send({type: :rst_stream, stream: pid, error: :refused_stream})
+                send({ type: :rst_stream, stream: pid, error: :refused_stream })
               else
                 connection_error
               end
@@ -327,7 +327,7 @@ module HTTP2
         else
           # HEADERS and PUSH_PROMISE may generate CONTINUATION
           frames = encode(frame)
-          frames.each {|f| emit(:frame, f) }
+          frames.each { |f| emit(:frame, f) }
         end
       end
     end
@@ -346,7 +346,7 @@ module HTTP2
         frames = [frame]               # otherwise one frame
       end
 
-      frames.map {|f| @framer.generate(f) }
+      frames.map { |f| @framer.generate(f) }
     end
 
     # Check if frame is a connection frame: SETTINGS, PING, GOAWAY, and any
@@ -412,7 +412,7 @@ module HTTP2
     # @param role [Symbol] The sender's role: :client or :server
     # @return nil if no error.  Exception object in case of any error.
     def validate_settings(role, settings)
-      settings.each do |key,v|
+      settings.each do |key, v|
         case key
         when :settings_header_table_size
           # Any value is valid
@@ -482,7 +482,7 @@ module HTTP2
           [frame[:payload], :remote]
         end
 
-      settings.each do |key,v|
+      settings.each do |key, v|
         case side
         when :local
           @local_settings[key] = v
@@ -546,7 +546,7 @@ module HTTP2
       when :remote
         if @state != :closed
           # Send ack to peer
-          send({type: :settings, stream: 0, payload: [], flags: [:ack]})
+          send({ type: :settings, stream: 0, payload: [], flags: [:ack] })
         end
       end
     end
@@ -613,7 +613,7 @@ module HTTP2
         connection_error(msg: 'Stream ID already exists')
       end
 
-      stream = Stream.new({connection: self, id: id}.merge(args))
+      stream = Stream.new({ connection: self, id: id }.merge(args))
 
       # Streams that are in the "open" state, or either of the "half closed"
       # states count toward the maximum number of streams that an endpoint is

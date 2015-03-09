@@ -1,6 +1,6 @@
 require_relative 'helper'
 
-options = {port: 8080}
+options = { port: 8080 }
 OptionParser.new do |opts|
   opts.banner = "Usage: server.rb [options]"
 
@@ -77,7 +77,7 @@ loop do
       }, end_stream: false)
 
       # split response into multiple DATA frames
-      stream.data(response.slice!(0,5), end_stream: false)
+      stream.data(response.slice!(0, 5), end_stream: false)
       stream.data(response)
     end
   end

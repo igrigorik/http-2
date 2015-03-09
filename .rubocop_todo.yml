@@ -54,10 +54,10 @@ Metrics/ClassLength:
 Metrics/CyclomaticComplexity:
   Max: 60
 
-# Offense count: 345
+# Offense count: 353
 # Configuration parameters: AllowURI, URISchemes.
 Metrics/LineLength:
-  Max: 201
+  Max: 232
 
 # Offense count: 28
 # Configuration parameters: CountComments.
@@ -82,7 +82,7 @@ Style/AccessorMethodName:
 Style/Alias:
   Enabled: false
 
-# Offense count: 1
+# Offense count: 5
 # Cop supports --auto-correct.
 Style/AlignArray:
   Enabled: false
@@ -267,55 +267,6 @@ Style/SignalException:
 # Offense count: 2
 # Cop supports --auto-correct.
 Style/SingleSpaceBeforeFirstArg:
-  Enabled: false
-
-# Offense count: 1
-# Cop supports --auto-correct.
-Style/SpaceAfterColon:
-  Enabled: false
-
-# Offense count: 8058
-# Cop supports --auto-correct.
-Style/SpaceAfterComma:
-  Enabled: false
-
-# Offense count: 1
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyleInsidePipes, SupportedStyles.
-Style/SpaceAroundBlockParameters:
-  Enabled: false
-
-# Offense count: 11
-# Cop supports --auto-correct.
-Style/SpaceAroundOperators:
-  Enabled: false
-
-# Offense count: 12
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles.
-Style/SpaceBeforeBlockBraces:
-  Enabled: false
-
-# Offense count: 1
-# Cop supports --auto-correct.
-Style/SpaceBeforeComment:
-  Enabled: false
-
-# Offense count: 46
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles, EnforcedStyleForEmptyBraces, SpaceBeforeBlockParameters.
-Style/SpaceInsideBlockBraces:
-  Enabled: false
-
-# Offense count: 321
-# Cop supports --auto-correct.
-Style/SpaceInsideBrackets:
-  Enabled: false
-
-# Offense count: 135
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, EnforcedStyleForEmptyBraces, SupportedStyles.
-Style/SpaceInsideHashLiteralBraces:
   Enabled: false
 
 # Offense count: 2

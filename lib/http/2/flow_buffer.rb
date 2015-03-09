@@ -8,7 +8,7 @@ module HTTP2
     #
     # @return [Integer]
     def buffered_amount
-      @send_buffer.map {|f| f[:length] }.reduce(:+) || 0
+      @send_buffer.map { |f| f[:length] }.reduce(:+) || 0
     end
 
     private
@@ -55,7 +55,7 @@ module HTTP2
         end
 
         frames = encode ? encode(frame) : [frame]
-        frames.each {|f| emit(:frame, f) }
+        frames.each { |f| emit(:frame, f) }
         @remote_window -= sent
       end
     end
