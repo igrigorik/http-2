@@ -3,5 +3,8 @@ inherit_from: .rubocop_todo.yml
 AllCops:
   DisplayCopNames: true
 
+Lint/EndAlignment:
+  AlignWith: variable
+
 Style/CaseIndentation:
   IndentWhenRelativeTo: end
