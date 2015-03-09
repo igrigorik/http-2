@@ -1,7 +1,6 @@
 require "helper"
 
 RSpec.describe HTTP2::Framer do
-
   let(:f) { Framer.new }
 
   context "common header" do
@@ -485,5 +484,4 @@ RSpec.describe HTTP2::Framer do
     expect(f.parse(bytes)).to eq frame # should generate only one HEADERS
     expect(bytes).to be_empty
   end
-
 end

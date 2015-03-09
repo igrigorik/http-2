@@ -475,7 +475,6 @@ RSpec.describe HTTP2::Stream do
           expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
           expect(@stream.state).to eq :closed
         end
-
       end
 
       context "local closed via RST_STREAM frame" do
@@ -503,7 +502,6 @@ RSpec.describe HTTP2::Stream do
           # We're auto RST'ing PUSH streams in connection class, hence
           # skipping this transition for now.
         #end
-
       end
 
       # FIXME: Isn't this test same as "half closed (local)"?
@@ -519,7 +517,6 @@ RSpec.describe HTTP2::Stream do
       #     end
       #   end
       # end
-
     end
   end # end stream states
 
@@ -775,7 +772,6 @@ RSpec.describe HTTP2::Stream do
                            :half_close, :data, :close]
         end
       end
-
     end
   end
 end

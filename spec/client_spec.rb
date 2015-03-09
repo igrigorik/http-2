@@ -89,5 +89,4 @@ RSpec.describe HTTP2::Client do
       @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
     end
   end
-
 end

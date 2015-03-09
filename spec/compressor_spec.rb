@@ -1,7 +1,6 @@
 require "helper"
 
 RSpec.describe HTTP2::Header do
-
   let(:c) { Compressor.new }
   let(:d) { Decompressor.new }
 
@@ -530,5 +529,4 @@ RSpec.describe HTTP2::Header do
       end
     end
   end
-
 end

@@ -1,5 +1,4 @@
 module HTTP2
-
   # Default connection and stream flow control window (64KB).
   DEFAULT_FLOW_WINDOW = 65535
 
@@ -645,6 +644,5 @@ module HTTP2
       klass = error.to_s.split('_').map(&:capitalize).join
       raise Error.const_get(klass), msg
     end
-
   end
 end

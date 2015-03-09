@@ -1,5 +1,4 @@
 module HTTP2
-
   # Implementation of header compression for HTTP 2.0 (HPACK) format adapted
   # to efficiently represent HTTP headers in the context of HTTP 2.0.
   #
@@ -559,6 +558,5 @@ module HTTP2
         list.compact
       end
     end
-
   end
 end

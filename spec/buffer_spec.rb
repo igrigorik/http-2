@@ -1,7 +1,6 @@
 require "helper"
 
 RSpec.describe HTTP2::Buffer do
-
   let(:b) { Buffer.new("émalgré") }
 
   it "should force 8-bit encoding" do
@@ -19,5 +18,4 @@ RSpec.describe HTTP2::Buffer do
   it "should unpack an unsigned 32-bit int" do
     expect(Buffer.new([256].pack("N")).read_uint32).to eq 256
   end
-
 end

@@ -9,7 +9,6 @@ OptionParser.new do |opts|
   end
 end.parse!
 
-
 uri = URI.parse(ARGV[0] || 'http://localhost:8080/')
 tcp = TCPSocket.new(uri.host, uri.port)
 sock = nil
@@ -80,7 +79,6 @@ stream.on(:headers) do |h|
   log.info "response headers: #{h}"
 end
 
-
 stream.on(:data) do |d|
   log.info "response data chunk: <<#{d}>>"
 end
@@ -88,7 +86,6 @@ end
 stream.on(:altsvc) do |f|
   log.info "received ALTSVC #{f}"
 end
-
 
 head = {
   ":scheme" => uri.scheme,

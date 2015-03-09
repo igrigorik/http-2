@@ -1,10 +1,8 @@
 module HTTP2
-
   # Implementation of stream and connection DATA flow control: frames may
   # be split and / or may be buffered based on current flow control window.
   #
   module FlowBuffer
-
     # Amount of buffered data. Only DATA payloads are subject to flow stream
     # and connection flow control.
     #
@@ -69,5 +67,4 @@ module HTTP2
       end
     end
   end
-
 end

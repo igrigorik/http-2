@@ -175,7 +175,6 @@ RSpec.describe HTTP2::Connection do
       stream.headers(input)
 
       expect(result).to eq expected
-
     end
   end
 
@@ -572,6 +571,5 @@ RSpec.describe HTTP2::Connection do
 
       @conn.goaway(:internal_error, "payload")
     end
-
   end
 end

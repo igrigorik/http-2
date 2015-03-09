@@ -1,8 +1,6 @@
 module HTTP2
-
   # Stream, connection, and compressor exceptions.
   module Error
-
     class Error < StandardError; end
 
     # Raised if connection header is missing or invalid indicating that
