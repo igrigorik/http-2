@@ -416,8 +416,7 @@ module HTTP2
         if payload.size > 0
           frame[:origin] = payload.read(payload.size)
         end
-      else
-        # Unknown frame type is explicitly allowed
+      # else # Unknown frame type is explicitly allowed
       end
 
       frame
