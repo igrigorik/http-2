@@ -11,3 +11,6 @@ Style/CaseIndentation:
 
 Style/IndentHash:
   EnforcedStyle: consistent
+
+Style/TrailingComma:
+  EnforcedStyleForMultiline: comma

@@ -44,15 +44,3 @@ Metrics/PerceivedComplexity:
 # Offense count: 7
 Style/Documentation:
   Enabled: false
-
-# Offense count: 2146
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles.
-Style/StringLiterals:
-  Enabled: false
-
-# Offense count: 331
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyleForMultiline, SupportedStyles.
-Style/TrailingComma:
-  Enabled: false

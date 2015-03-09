@@ -20,8 +20,8 @@ module HTTP2
       # @return [String] binary string
       def encode(str)
         bitstring = str.each_byte.map { |chr| ENCODE_TABLE[chr] }.join
-        bitstring << "1" * ((8 - bitstring.size) % 8)
-        [bitstring].pack("B*")
+        bitstring << '1' * ((8 - bitstring.size) % 8)
+        [bitstring].pack('B*')
       end
 
       # Decodes provided Huffman coded string.

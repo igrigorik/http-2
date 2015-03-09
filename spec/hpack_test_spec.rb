@@ -1,4 +1,4 @@
-require "helper"
+require 'helper'
 require 'json'
 
 RSpec.describe HTTP2::Header do
@@ -19,7 +19,7 @@ RSpec.describe HTTP2::Header do
     node-http2-hpack
   )
 
-  context "Decompressor" do
+  context 'Decompressor' do
     folders.each do |folder|
       next if folder =~ /#/
       path = File.expand_path("hpack-test-case/#{folder}", File.dirname(__FILE__))
@@ -33,7 +33,7 @@ RSpec.describe HTTP2::Header do
             table_size = cases[0]['header_table_size'] || 4096
             @dc = Decompressor.new(table_size: table_size)
             cases.each do |c|
-              wire = [c['wire']].pack("H*").force_encoding(Encoding::BINARY)
+              wire = [c['wire']].pack('H*').force_encoding(Encoding::BINARY)
               @emitted = @dc.decode(HTTP2::Buffer.new(wire))
               headers = c['headers'].flat_map(&:to_a)
               expect(@emitted).to eq headers
@@ -44,7 +44,7 @@ RSpec.describe HTTP2::Header do
     end
   end
 
-  context "Compressor" do
+  context 'Compressor' do
     %w(
       LINEAR
       NAIVE
@@ -55,7 +55,7 @@ RSpec.describe HTTP2::Header do
       ['', 'H'].each do |huffman|
         [4096, 512].each do |table_size|
           context "with #{mode}#{huffman} mode and table_size #{table_size}" do
-            path = File.expand_path("hpack-test-case/raw-data", File.dirname(__FILE__))
+            path = File.expand_path('hpack-test-case/raw-data', File.dirname(__FILE__))
             Dir.foreach(path) do |file|
               next if file !~ /\.json/
               it "should encode #{file}" do
