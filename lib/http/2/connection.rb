@@ -471,15 +471,14 @@ module HTTP2
       #  side =
       #   local: previously sent and pended our settings should be effective
       #   remote: just received peer settings should immediately be effective
-      settings, side = \
-        if frame[:flags].include?(:ack)
-          # Process pending settings we have sent.
-          [@pending_settings.shift, :local]
-        else
-          check = validate_settings(@remote_role, frame[:payload])
-          check and connection_error(check)
-          [frame[:payload], :remote]
-        end
+      settings, side = if frame[:flags].include?(:ack)
+        # Process pending settings we have sent.
+        [@pending_settings.shift, :local]
+      else
+        check = validate_settings(@remote_role, frame[:payload])
+        check and connection_error(check)
+        [frame[:payload], :remote]
+      end
 
       settings.each do |key, v|
         case side
