@@ -141,11 +141,6 @@ Style/IndentationWidth:
 Style/LeadingCommentSpace:
   Enabled: false
 
-# Offense count: 2
-# Configuration parameters: EnforcedStyle, SupportedStyles.
-Style/MethodName:
-  Enabled: false
-
 # Offense count: 1
 # Cop supports --auto-correct.
 Style/MultilineBlockLayout:
