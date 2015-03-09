@@ -31,7 +31,6 @@ RSpec.describe HTTP2::Header do
             story = JSON.parse(File.read("#{path}/#{file}"))
             cases = story['cases']
             table_size = cases[0]['header_table_size'] || 4096
-            context = story['context'] ? story['context'].to_sym : :request
             @dc = Decompressor.new(table_size: table_size)
             cases.each do |c|
               wire = [c['wire']].pack("H*").force_encoding(Encoding::BINARY)
@@ -56,14 +55,12 @@ RSpec.describe HTTP2::Header do
       ['', 'H'].each do |huffman|
         [4096, 512].each do |table_size|
           context "with #{mode}#{huffman} mode and table_size #{table_size}" do
-            options = eval("HTTP2::Header::#{mode}#{huffman}")
             path = File.expand_path("hpack-test-case/raw-data", File.dirname(__FILE__))
             Dir.foreach(path) do |file|
               next if file !~ /\.json/
               it "should encode #{file}" do
                 story = JSON.parse(File.read("#{path}/#{file}"))
                 cases = story['cases']
-                context = story['context'] ? story['context'].to_sym : :request
                 @cc = Compressor  .new(table_size: table_size)
                 @dc = Decompressor.new(table_size: table_size)
                 cases.each do |c|
