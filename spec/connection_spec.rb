@@ -196,8 +196,8 @@ RSpec.describe HTTP2::Connection do
       expect(@conn.remote_window).to  eq (DEFAULT_FLOW_WINDOW - 2048)
 
       @conn << f.generate(settings)
-      expect(@conn.remote_window).to  eq -1024
-      expect(stream.remote_window).to eq -1024
+      expect(@conn.remote_window).to  eq(-1024)
+      expect(stream.remote_window).to eq(-1024)
     end
 
     it "should initialize streams with window specified by peer" do
