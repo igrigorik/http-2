@@ -70,14 +70,13 @@ module HuffmanTable
           (BITS_AT_ONCE - 1).downto(0) do |i|
             bit = (input & (1 << i)) == 0 ? 0 : 1
             n = n.next[bit]
-            if n.emit
-              if n.emit == EOS
-                emit = EOS      # cause error on decoding
-              else
-                emit << n.emit.chr('binary') unless emit == EOS
-              end
-              n = @root
+            next unless n.emit
+            if n.emit == EOS
+              emit = EOS # cause error on decoding
+            else
+              emit << n.emit.chr('binary') unless emit == EOS
             end
+            n = @root
           end
           node.transitions[input] = Transition.new(emit, n)
           togo << n

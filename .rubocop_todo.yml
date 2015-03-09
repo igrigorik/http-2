@@ -168,11 +168,6 @@ Style/NegatedIf:
 Style/NegatedWhile:
   Enabled: false
 
-# Offense count: 1
-# Configuration parameters: EnforcedStyle, MinBodyLength, SupportedStyles.
-Style/Next:
-  Enabled: false
-
 # Offense count: 16
 # Cop supports --auto-correct.
 Style/NumericLiterals:
