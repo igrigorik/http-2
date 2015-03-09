@@ -94,10 +94,6 @@ Style/Blocks:
 Style/BracesAroundHashParameters:
   Enabled: false
 
-# Offense count: 3
-Style/ClassVars:
-  Enabled: false
-
 # Offense count: 2
 # Cop supports --auto-correct.
 Style/CommentIndentation:

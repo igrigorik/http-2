@@ -14,11 +14,11 @@ module HuffmanTable
     attr_accessor :next, :emit, :final, :depth
     attr_accessor :transitions
     attr_accessor :id
-    @@id = 0
+    @@id = 0 # rubocop:disable Style/ClassVars
     def initialize(depth)
       @next = [nil, nil]
       @id = @@id
-      @@id += 1
+      @@id += 1 # rubocop:disable Style/ClassVars
       @final = false
       @depth = depth
     end

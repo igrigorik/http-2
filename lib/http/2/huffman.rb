@@ -13,17 +13,13 @@ module HTTP2
       EOS = 256
       private_constant :EOS
 
-      def initialize
-        @@encode_table ||= CODES.map { |c, l| [c].pack("N").unpack("B*").first[-l..-1] }
-      end
-
       # Encodes provided value via huffman encoding.
       # Length is not encoded in this method.
       #
       # @param str [String]
       # @return [String] binary string
       def encode(str)
-        bitstring = str.each_byte.map { |chr| @@encode_table[chr] }.join
+        bitstring = str.each_byte.map { |chr| ENCODE_TABLE[chr] }.join
         bitstring << "1" * ((8 - bitstring.size) % 8)
         [bitstring].pack("B*")
       end
@@ -321,6 +317,8 @@ module HTTP2
         [0x3ffffee, 26],
         [0x3fffffff, 30],
       ]
+
+      ENCODE_TABLE = CODES.map { |c, l| [c].pack('N').unpack('B*').first[-l..-1] }
     end
   end
 end
