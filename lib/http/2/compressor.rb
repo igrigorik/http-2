@@ -279,9 +279,8 @@ module HTTP2
       #
       # @param cmd [Array] +[name, value]+
       def add_to_table(cmd)
-        if size_check(cmd)
-          @table.unshift(cmd)
-        end
+        return unless size_check(cmd)
+        @table.unshift(cmd)
       end
 
       # To keep the dynamic table size lower than or equal to @limit,

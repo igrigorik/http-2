@@ -40,13 +40,12 @@ module HTTP2
 
     # Emit the connection preface if not yet
     def send_connection_preface
-      if @state == :waiting_connection_preface
-        @state = :connected
-        emit(:frame, CONNECTION_PREFACE_MAGIC)
+      return unless @state == :waiting_connection_preface
+      @state = :connected
+      emit(:frame, CONNECTION_PREFACE_MAGIC)
 
-        payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
-        settings(payload)
-      end
+      payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
+      settings(payload)
     end
   end
 end
