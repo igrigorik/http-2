@@ -269,7 +269,7 @@ module HTTP2
       # Returns current table size in octets
       # @return [Integer]
       def current_table_size
-        @table.inject(0){|r,(k,v)| r += k.bytesize + v.bytesize + 32 }
+        @table.inject(0){|r,(k,v)| r + k.bytesize + v.bytesize + 32 }
       end
 
       private
@@ -297,7 +297,6 @@ module HTTP2
         while cursize + cmdsize > @limit do
           break if @table.empty?
 
-          last_index = @table.size - 1
           e = @table.pop
           cursize -= e[0].bytesize + e[1].bytesize + 32
         end

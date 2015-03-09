@@ -675,7 +675,7 @@ RSpec.describe HTTP2::Stream do
     end
 
     it "should emit received payload via on(:data)" do
-      payload, recv = "some-payload", nil
+      payload = "some-payload"
       @srv.on(:stream) do |stream|
         stream.on(:data) do |recv|
           expect(recv).to eq payload

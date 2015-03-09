@@ -297,7 +297,7 @@ RSpec.describe HTTP2::Connection do
     end
 
     it "should require that split header blocks are a contiguous sequence" do
-      headers, continutation = HEADERS.dup, CONTINUATION.dup
+      headers = HEADERS.dup
       headers[:flags] = []
 
       @conn << f.generate(SETTINGS)
