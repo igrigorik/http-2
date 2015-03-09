@@ -129,8 +129,14 @@ module HTTP2
     # @param error [Symbol]
     # @param payload [String]
     def goaway(error = :no_error, payload = nil)
+      last_stream = if (max = @streams.max)
+        max.first
+      else
+        0
+      end
+
       send({
-        type: :goaway, last_stream: (@streams.max.first rescue 0),
+        type: :goaway, last_stream: last_stream,
         error: error, payload: payload
       })
       @state = :closed

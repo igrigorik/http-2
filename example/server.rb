@@ -82,7 +82,7 @@ loop do
     end
   end
 
-  while !sock.closed? && !(sock.eof? rescue true)
+  while !sock.closed? && !(sock.eof? rescue true) # rubocop:disable Style/RescueModifier
     data = sock.readpartial(1024)
     # puts "Received bytes: #{data.unpack("H*").first}"
 
