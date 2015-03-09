@@ -489,7 +489,7 @@ module HTTP2
         i = !n.zero? ? (buf.getbyte & limit) : 0
 
         m = 0
-        while byte = buf.getbyte do
+        while (byte = buf.getbyte) do
           i += ((byte & 127) << m)
           m += 7
 
