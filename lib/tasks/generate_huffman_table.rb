@@ -22,6 +22,7 @@ module HuffmanTable
       @final = false
       @depth = depth
     end
+
     def add(code, len, chr)
       chr == EOS && @depth <= 7 and self.final = true
       if len == 0

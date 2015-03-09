@@ -1,5 +1,4 @@
 module HTTP2
-
   # Performs encoding, decoding, and validation of binary HTTP/2 frames.
   #
   class Framer
@@ -444,6 +443,5 @@ module HTTP2
       name, _ = DEFINED_ERRORS.select { |name, v| v == e }.first
       name || error
     end
-
   end
 end

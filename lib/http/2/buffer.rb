@@ -1,5 +1,4 @@
 module HTTP2
-
   # Simple binary buffer backed by string.
   #
   class Buffer < String
@@ -32,5 +31,4 @@ module HTTP2
       read(4).unpack(UINT32).first
     end
   end
-
 end

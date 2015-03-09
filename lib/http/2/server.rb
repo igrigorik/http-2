@@ -1,5 +1,4 @@
 module HTTP2
-
   # HTTP 2.0 server connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
   #
@@ -20,7 +19,6 @@ module HTTP2
   #     end
   #
   class Server < Connection
-
     # Initialize new HTTP 2.0 server object.
     def initialize(**settings)
       @stream_id    = 2
@@ -52,5 +50,4 @@ module HTTP2
       callback.call(promise)
     end
   end
-
 end

@@ -1,10 +1,8 @@
 module HTTP2
-
   # Basic event emitter implementation with support for persistent and
   # one-time event callbacks.
   #
   module Emitter
-
     # Subscribe to all future events for specified type.
     #
     # @param event [Symbol]

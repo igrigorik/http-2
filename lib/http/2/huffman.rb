@@ -1,12 +1,10 @@
 require_relative 'error'
 
 module HTTP2
-
   # Implementation of huffman encoding for HPACK
   #
   # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10
   module Header
-
     # Huffman encoder/decoder
     class Huffman
       include Error
@@ -323,9 +321,6 @@ module HTTP2
         [ 0x3ffffee, 26],
         [0x3fffffff, 30],
       ]
-
     end
-
   end
-
 end
