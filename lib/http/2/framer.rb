@@ -109,7 +109,7 @@ module HTTP2
     #
     # @param frame [Hash]
     # @return [String]
-    def commonHeader(frame)
+    def common_header(frame)
       header = []
 
       if !FRAME_TYPES[frame[:type]]
@@ -151,7 +151,7 @@ module HTTP2
     # Decodes common 9-byte header.
     #
     # @param buf [Buffer]
-    def readCommonHeader(buf)
+    def read_common_header(buf)
       frame = {}
       len_hi, len_lo, type, flags, stream = buf.slice(0, 9).unpack(HEADERPACK)
 
@@ -313,7 +313,7 @@ module HTTP2
       end
 
       frame[:length] = length
-      bytes.prepend(commonHeader(frame))
+      bytes.prepend(common_header(frame))
     end
 
     # Decodes complete HTTP/2 frame from provided buffer. If the buffer
@@ -322,7 +322,7 @@ module HTTP2
     # @param buf [Buffer]
     def parse(buf)
       return nil if buf.size < 9
-      frame = readCommonHeader(buf)
+      frame = read_common_header(buf)
       return nil if buf.size < 9 + frame[:length]
 
       buf.read(9)
