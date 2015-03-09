@@ -179,9 +179,7 @@ module HTTP2
 
           emit = [cmd[:name], cmd[:value]]
 
-          if cmd[:type] == :incremental
-            add_to_table(emit)
-          end
+          add_to_table(emit) if cmd[:type] == :incremental
 
         else
           raise CompressionError, "Invalid type: #{cmd[:type]}"
@@ -203,9 +201,7 @@ module HTTP2
         noindex = [:static, :never].include?(@options[:index])
         headers.each do |h|
           cmd = addcmd(h)
-          if noindex && cmd[:type] == :incremental
-            cmd[:type] = :noindex
-          end
+          cmd[:type] = :noindex if noindex && cmd[:type] == :incremental
           commands << cmd
           process(cmd)
         end

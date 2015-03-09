@@ -44,9 +44,7 @@ module HTTP2
           chunk[:payload] = payload
 
           # if no longer last frame in sequence...
-          if frame[:flags].include? :end_stream
-            frame[:flags] -= [:end_stream]
-          end
+          frame[:flags] -= [:end_stream] if frame[:flags].include? :end_stream
 
           @send_buffer.unshift chunk
           sent = @remote_window

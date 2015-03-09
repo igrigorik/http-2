@@ -130,12 +130,6 @@ Style/FirstParameterIndentation:
 Style/HashSyntax:
   Enabled: false
 
-# Offense count: 11
-# Cop supports --auto-correct.
-# Configuration parameters: MaxLineLength.
-Style/IfUnlessModifier:
-  Enabled: false
-
 # Offense count: 20
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
