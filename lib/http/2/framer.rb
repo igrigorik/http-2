@@ -141,8 +141,7 @@ module HTTP2
           raise CompressionError, "Invalid frame flag (#{f}) for #{frame[:type]}"
         end
 
-        acc |= (1 << position)
-        acc
+        acc | (1 << position)
       end
 
       header << frame[:stream]
@@ -159,9 +158,8 @@ module HTTP2
       frame[:length] = (len_hi << FRAME_LENGTH_HISHIFT) | len_lo
       frame[:type], _ = FRAME_TYPES.select { |t, pos| type == pos }.first
       if frame[:type]
-        frame[:flags] = FRAME_FLAGS[frame[:type]].reduce([]) do |acc, (name, pos)|
+        frame[:flags] = FRAME_FLAGS[frame[:type]].each_with_object([]) do |(name, pos), acc|
           acc << name if (flags & (1 << pos)) > 0
-          acc
         end
       end
 
