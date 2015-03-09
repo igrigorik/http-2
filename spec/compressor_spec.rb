@@ -34,7 +34,7 @@ RSpec.describe HTTP2::Header do
     context "string" do
       [['with huffman',    :always, 0x80],
         ['without huffman', :never,  0]].each do |desc, option, msb|
-        let (:trailer) { "trailer" }
+        let(:trailer) { "trailer" }
 
         [
           ['ascii codepoints', 'abcdefghij'],
@@ -62,7 +62,7 @@ RSpec.describe HTTP2::Header do
 
           it "should return #{choice} representation" do
             wire = @c.string(string)
-            expect(wire.getbyte(0) & 0x80).to eq (choice == :plain ? 0 : 0x80)
+            expect(wire.getbyte(0) & 0x80).to eq(choice == :plain ? 0 : 0x80)
           end
         end
       end
