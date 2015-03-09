@@ -182,7 +182,7 @@ module HTTP2
         end
       end
 
-      while frame = @framer.parse(@recv_buffer) do
+      while (frame = @framer.parse(@recv_buffer)) do
         emit(:frame_received, frame)
 
         # Header blocks MUST be transmitted as a contiguous sequence of frames
@@ -287,7 +287,7 @@ module HTTP2
             emit(:promise, stream)
             stream << frame
           else
-            if stream = @streams[frame[:stream]]
+            if (stream = @streams[frame[:stream]])
               stream << frame
             else
               # An endpoint that receives an unexpected stream identifier
