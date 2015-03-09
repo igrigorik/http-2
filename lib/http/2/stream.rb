@@ -272,7 +272,8 @@ module HTTP2
             end
           when :rst_stream then event(:local_rst)
           when :priority then process_priority(frame)
-          else stream_error; end
+          else stream_error
+          end
         else
           case frame[:type]
           when :push_promise then event(:reserved_remote)
@@ -283,7 +284,8 @@ module HTTP2
               event(:open)
             end
           when :priority then process_priority(frame)
-          else stream_error(:protocol_error); end
+          else stream_error(:protocol_error)
+          end
         end
 
       # A stream in the "reserved (local)" state is one that has been
@@ -307,12 +309,14 @@ module HTTP2
           @state = case frame[:type]
           when :headers     then event(:half_closed_remote)
           when :rst_stream  then event(:local_rst)
-          else stream_error; end
+          else stream_error
+          end
         else
           @state = case frame[:type]
           when :rst_stream then event(:remote_rst)
           when :priority, :window_update then @state
-          else stream_error; end
+          else stream_error
+          end
         end
 
       # A stream in the "reserved (remote)" state has been reserved by a
@@ -334,12 +338,14 @@ module HTTP2
           @state = case frame[:type]
           when :rst_stream then event(:local_rst)
           when :priority, :window_update then @state
-          else stream_error; end
+          else stream_error
+          end
         else
           @state = case frame[:type]
           when :headers then event(:half_closed_local)
           when :rst_stream then event(:remote_rst)
-          else stream_error; end
+          else stream_error
+          end
         end
 
       # A stream in the "open" state may be used by both peers to send
@@ -555,7 +561,8 @@ module HTTP2
       case frame[:type]
       when :data, :headers, :continuation
         frame[:flags].include?(:end_stream)
-      else false; end
+      else false
+      end
     end
 
     def stream_error(error = :stream_error, msg: nil)
