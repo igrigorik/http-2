@@ -43,13 +43,13 @@ RSpec.describe HTTP2::Client do
 
     it 'should raise error on PUSH_PROMISE against stream 0' do
       expect do
-        @client << set_stream_id(f.generate(PUSH_PROMISE), 0)
+        @client << set_stream_id(f.generate(PUSH_PROMISE.dup), 0)
       end.to raise_error(ProtocolError)
     end
 
     it 'should raise error on PUSH_PROMISE against bogus stream' do
       expect do
-        @client << set_stream_id(f.generate(PUSH_PROMISE), 31_415)
+        @client << set_stream_id(f.generate(PUSH_PROMISE.dup), 31_415)
       end.to raise_error(ProtocolError)
     end
 
@@ -65,11 +65,11 @@ RSpec.describe HTTP2::Client do
 
     it 'should emit stream object for received PUSH_PROMISE' do
       s = @client.new_stream
-      s.send HEADERS
+      s.send HEADERS.deep_dup
 
       promise = nil
       @client.on(:promise) { |stream| promise = stream }
-      @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
+      @client << set_stream_id(f.generate(PUSH_PROMISE.dup), s.id)
 
       expect(promise.id).to eq 2
       expect(promise.state).to eq :reserved_remote
@@ -77,7 +77,7 @@ RSpec.describe HTTP2::Client do
 
     it 'should auto RST_STREAM promises against locally-RST stream' do
       s = @client.new_stream
-      s.send HEADERS
+      s.send HEADERS.deep_dup
       s.close
 
       allow(@client).to receive(:send)
@@ -86,7 +86,7 @@ RSpec.describe HTTP2::Client do
         expect(frame[:stream]).to eq 2
       end
 
-      @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
+      @client << set_stream_id(f.generate(PUSH_PROMISE.dup), s.id)
     end
   end
 end

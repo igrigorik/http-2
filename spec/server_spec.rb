@@ -46,6 +46,6 @@ RSpec.describe HTTP2::Server do
     end
 
     client.new_stream
-    client.send HEADERS
+    client.send HEADERS.deep_dup
   end
 end
