@@ -2,7 +2,7 @@ module HTTP2
   # Simple binary buffer backed by string.
   #
   class Buffer < String
-    UINT32 = 'N'
+    UINT32 = 'N'.freeze
     private_constant :UINT32
 
     # Forces binary encoding on the string

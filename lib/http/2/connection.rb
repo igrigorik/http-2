@@ -31,7 +31,7 @@ module HTTP2
   DEFAULT_WEIGHT    = 16
 
   # Default connection "fast-fail" preamble string as defined by the spec.
-  CONNECTION_PREFACE_MAGIC = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+  CONNECTION_PREFACE_MAGIC = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n".freeze
 
   # Connection encapsulates all of the connection, stream, flow-control,
   # error management, and other processing logic required for a well-behaved

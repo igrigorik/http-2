@@ -4,6 +4,7 @@ gem 'rake'
 gem 'yard'
 
 group :test do
+  gem 'activesupport'
   gem 'autotest-growl'
   gem 'autotest-standalone'
   gem 'coveralls', require: false

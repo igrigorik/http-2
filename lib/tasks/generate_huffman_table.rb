@@ -9,6 +9,9 @@ require_relative '../http/2/huffman'
 module HuffmanTable
   BITS_AT_ONCE = HTTP2::Header::Huffman::BITS_AT_ONCE
   EOS          = 256
+  CARRIAGE_RETURN = "\r".bytes.freeze
+  SINGLE_QUOTE = "'".bytes.freeze
+  SLASH = '\\'.bytes.freeze
 
   class Node
     attr_accessor :next, :emit, :final, :depth
@@ -120,15 +123,38 @@ HEADER
         id.times do |i|
           n = id_state[i]
           f.print '        ['
-          (1 << BITS_AT_ONCE).times do |t|
-            emit = n.transitions[t].emit
-            emit = emit.dup.force_encoding(Encoding::BINARY) unless emit == EOS
-            f.print %([#{emit == '' ? 'nil' : emit.inspect},#{state_id[n.transitions[t].node]}],)
-          end
+          string = (1 << BITS_AT_ONCE).times.map do |t|
+            transition = n.transitions.fetch(t)
+            emit = transition.emit
+            emit = emit.dup.force_encoding(Encoding::UTF_8) unless emit == EOS
+            emit_literal = case emit
+            when String
+              if emit.empty?
+                'nil'
+              else
+                if emit.valid_encoding?
+                  case emit.bytes
+                  when SINGLE_QUOTE, CARRIAGE_RETURN
+                    emit.inspect
+                  when SLASH
+                    "'\\\\'"
+                  else
+                    "'#{emit}'"
+                  end
+                else
+                  emit.inspect
+                end
+              end
+            else
+              emit
+            end
+            "[#{emit_literal}, #{state_id.fetch(transition.node)}]"
+          end.join(', ')
+          f.print(string)
           f.print "],\n"
         end
         f.print <<TAILER
-      ]
+      ].each { |arr| arr.each { |subarr| subarr.each(&:freeze) }.freeze }.freeze
     end
   end
 end

@@ -29,9 +29,9 @@ module HTTP2
       window_update: 0x8,
       continuation:  0x9,
       altsvc:        0xa,
-    }
+    }.freeze
 
-    FRAME_TYPES_WITH_PADDING = [:data, :headers, :push_promise]
+    FRAME_TYPES_WITH_PADDING = [:data, :headers, :push_promise].freeze
 
     # Per frame flags as defined by the spec
     FRAME_FLAGS = {
@@ -58,7 +58,7 @@ module HTTP2
       window_update: {},
       continuation: { end_headers: 2 },
       altsvc: {},
-    }
+    }.each_value(&:freeze).freeze
 
     # Default settings as defined by the spec
     DEFINED_SETTINGS = {
@@ -68,7 +68,7 @@ module HTTP2
       settings_initial_window_size:    4,
       settings_max_frame_size:         5,
       settings_max_header_list_size:   6,
-    }
+    }.freeze
 
     # Default error types as defined by the spec
     DEFINED_ERRORS = {
@@ -86,7 +86,7 @@ module HTTP2
       enhance_your_calm:  11,
       inadequate_security: 12,
       http_1_1_required:  13,
-    }
+    }.freeze
 
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff

@@ -1,3 +1,4 @@
 autotest
 --color
 --format documentation
+--order rand

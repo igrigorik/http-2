@@ -75,7 +75,7 @@ module HTTP2
         ['vary',                        ''],
         ['via',                         ''],
         ['www-authenticate',            ''],
-      ].freeze
+      ].each { |pair| pair.each(&:freeze).freeze }.freeze
 
       # Current table of header key-value pairs.
       attr_reader :table
@@ -306,7 +306,7 @@ module HTTP2
       noindex:      { prefix: 4, pattern: 0x00 },
       neverindexed: { prefix: 4, pattern: 0x10 },
       changetablesize: { prefix: 5, pattern: 0x20 },
-    }
+    }.each_value(&:freeze).freeze
 
     # Predefined options set for Compressor
     # http://mew.org/~kazu/material/2014-hpack.pdf
