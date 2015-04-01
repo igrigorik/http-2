@@ -368,7 +368,7 @@ RSpec.describe HTTP2::Framer do
               stream: 1,
               payload: 'example data',
             }
-            type == :push_promise && @frame[:promise_stream] = 2
+            @frame[:promise_stream] = 2 if type == :push_promise
             @normal = f.generate(@frame)
             @padded = f.generate(@frame.merge(padding: padlen))
           end

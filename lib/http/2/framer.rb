@@ -268,7 +268,7 @@ module HTTP2
         bytes << [frame[:max_age], frame[:port]].pack(UINT32 + UINT16)
         length += 6
         if frame[:proto]
-          frame[:proto].bytesize > 255 && fail(CompressionError, 'Proto too long')
+          fail CompressionError, 'Proto too long' if frame[:proto].bytesize > 255
           bytes << [frame[:proto].bytesize].pack(UINT8) << frame[:proto].force_encoding(BINARY)
           length += 1 + frame[:proto].bytesize
         else
@@ -276,7 +276,7 @@ module HTTP2
           length += 1
         end
         if frame[:host]
-          frame[:host].bytesize > 255 && fail(CompressionError, 'Host too long')
+          fail CompressionError, 'Host too long' if frame[:host].bytesize > 255
           bytes << [frame[:host].bytesize].pack(UINT8) << frame[:host].force_encoding(BINARY)
           length += 1 + frame[:host].bytesize
         else
@@ -341,8 +341,8 @@ module HTTP2
         if padded
           padlen = payload.read(1).unpack(UINT8).first
           frame[:padding] = padlen + 1
-          padlen > payload.bytesize && fail(ProtocolError, 'padding too long')
-          padlen > 0 && payload.slice!(-padlen, padlen)
+          fail ProtocolError, 'padding too long' if padlen > payload.bytesize
+          payload.slice!(-padlen, padlen) if padlen > 0
           frame[:length] -= frame[:padding]
           frame[:flags].delete(:padded)
         end
@@ -407,10 +407,10 @@ module HTTP2
         frame[:max_age], frame[:port] = payload.read(6).unpack(UINT32 + UINT16)
 
         len = payload.getbyte
-        len > 0 && frame[:proto] = payload.read(len)
+        frame[:proto] = payload.read(len) if len > 0
 
         len = payload.getbyte
-        len > 0 && frame[:host] = payload.read(len)
+        frame[:host] = payload.read(len) if len > 0
 
         frame[:origin] = payload.read(payload.size) if payload.size > 0
         # else # Unknown frame type is explicitly allowed

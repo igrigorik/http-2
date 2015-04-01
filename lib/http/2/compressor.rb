@@ -130,9 +130,9 @@ module HTTP2
       # @return [Array] +[key, value]+
       def dereference(index)
         # NOTE: index is zero-based in this module.
-        STATIC_TABLE[index] ||
-          @table[index - STATIC_TABLE.size] ||
-          fail(CompressionError, 'Index too large')
+        value = STATIC_TABLE[index] || @table[index - STATIC_TABLE.size]
+        fail CompressionError, 'Index too large' unless value
+        value
       end
 
       # Header Block Processing
@@ -503,8 +503,8 @@ module HTTP2
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
-        str.bytesize == len || fail(CompressionError, 'string too short')
-        huffman && str = Huffman.new.decode(Buffer.new(str))
+        fail CompressionError, 'string too short' unless str.bytesize == len
+        str = Huffman.new.decode(Buffer.new(str)) if huffman
         str.force_encoding(Encoding::UTF_8)
       end
 
@@ -521,13 +521,13 @@ module HTTP2
           mask == desc[:pattern]
         end
 
-        header[:type] || fail(CompressionError)
+        fail CompressionError unless header[:type]
 
         header[:name] = integer(buf, type[:prefix])
 
         case header[:type]
         when :indexed
-          header[:name] == 0 && fail(CompressionError)
+          fail CompressionError if header[:name] == 0
           header[:name] -= 1
         when :changetablesize
           header[:value] = header[:name]
