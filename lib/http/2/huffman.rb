@@ -43,9 +43,8 @@ module HTTP2
             #  [emit] character to be emitted on this transition, empty string, or EOS.
             #  [next] next state number.
             trans = MACHINE[state][branch]
-            trans.first == EOS &&
-              fail(CompressionError, 'Huffman decode error (EOS found)')
-            trans.first && emit << trans.first
+            fail CompressionError, 'Huffman decode error (EOS found)' if trans.first == EOS
+            emit << trans.first if trans.first
             state = trans.last
           end
         end

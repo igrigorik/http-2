@@ -140,7 +140,7 @@ RSpec.describe HTTP2::Connection do
       headers = []
       @conn.on(:frame) do |bytes|
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
+        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
       end
 
       stream = @conn.new_stream
@@ -348,7 +348,7 @@ RSpec.describe HTTP2::Connection do
       headers = []
       @conn.on(:frame) do |bytes|
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
+        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
       end
 
       stream = @conn.new_stream
@@ -372,7 +372,7 @@ RSpec.describe HTTP2::Connection do
       headers = []
       @conn.on(:frame) do |bytes|
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
+        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
       end
 
       stream = @conn.new_stream
@@ -394,7 +394,7 @@ RSpec.describe HTTP2::Connection do
       headers = []
       @conn.on(:frame) do |bytes|
         # bytes[3]: frame's type field
-        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
+        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
       end
 
       stream = @conn.new_stream
@@ -415,7 +415,7 @@ RSpec.describe HTTP2::Connection do
     it 'should generate CONTINUATION if HEADERS exceed the max payload by one byte' do
       headers = []
       @conn.on(:frame) do |bytes|
-        [1, 5, 9].include?(bytes[3].ord) && headers << f.parse(bytes)
+        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
       end
 
       stream = @conn.new_stream

@@ -146,8 +146,7 @@ module HTTP2
     # @param settings [Array or Hash]
     def settings(payload)
       payload = payload.to_a
-      check = validate_settings(@local_role, payload)
-      check && connection_error
+      connection_error if validate_settings(@local_role, payload)
       @pending_settings << payload
       send(type: :settings, stream: 0, payload: payload)
       @pending_settings << payload
@@ -471,8 +470,7 @@ module HTTP2
         # Process pending settings we have sent.
         [@pending_settings.shift, :local]
       else
-        check = validate_settings(@remote_role, frame[:payload])
-        check && connection_error(check)
+        connection_error(check) if validate_settings(@remote_role, frame[:payload])
         [frame[:payload], :remote]
       end
 
