@@ -82,7 +82,7 @@ RSpec.describe HTTP2::Header do
     it 'should raise when decoding indexed representation with index zero' do
       h = { name: 10, type: :indexed }
       wire = c.header(h)
-      wire[0] = 0x80.chr('binary')
+      wire[0] = 0x80.chr(Encoding::BINARY)
       expect { d.header(wire) }.to raise_error CompressionError
     end
 
