@@ -77,7 +77,7 @@ module HuffmanTable
             if n.emit == EOS
               emit = EOS # cause error on decoding
             else
-              emit << n.emit.chr('binary') unless emit == EOS
+              emit << n.emit.chr(Encoding::BINARY) unless emit == EOS
             end
             n = @root
           end

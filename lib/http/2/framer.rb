@@ -94,9 +94,8 @@ module HTTP2
     HEADERPACK = (UINT8 + UINT16 + UINT8 + UINT8 + UINT32).freeze
     FRAME_LENGTH_HISHIFT = 16
     FRAME_LENGTH_LOMASK  = 0xFFFF
-    BINARY = 'binary'.freeze
 
-    private_constant :RBIT, :RBYTE, :EBIT, :HEADERPACK, :UINT32, :UINT16, :UINT8, :BINARY
+    private_constant :RBIT, :RBYTE, :EBIT, :HEADERPACK, :UINT32, :UINT16, :UINT8
 
     # Initializes new framer object.
     #
@@ -268,7 +267,7 @@ module HTTP2
         length += 6
         if frame[:proto]
           fail CompressionError, 'Proto too long' if frame[:proto].bytesize > 255
-          bytes << [frame[:proto].bytesize].pack(UINT8) << frame[:proto].force_encoding(BINARY)
+          bytes << [frame[:proto].bytesize].pack(UINT8) << frame[:proto].force_encoding(Encoding::BINARY)
           length += 1 + frame[:proto].bytesize
         else
           bytes << [0].pack(UINT8)
@@ -276,7 +275,7 @@ module HTTP2
         end
         if frame[:host]
           fail CompressionError, 'Host too long' if frame[:host].bytesize > 255
-          bytes << [frame[:host].bytesize].pack(UINT8) << frame[:host].force_encoding(BINARY)
+          bytes << [frame[:host].bytesize].pack(UINT8) << frame[:host].force_encoding(Encoding::BINARY)
           length += 1 + frame[:host].bytesize
         else
           bytes << [0].pack(UINT8)
