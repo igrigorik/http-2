@@ -516,10 +516,10 @@ module HTTP2
         peek = buf.readbyte(0)
 
         header = {}
-        header[:type], type = HEADREP.select do |_t, desc|
+        header[:type], type = HEADREP.find do |_t, desc|
           mask = (peek >> desc[:prefix]) << desc[:prefix]
           mask == desc[:pattern]
-        end.first
+        end
 
         fail CompressionError unless header[:type]
 
