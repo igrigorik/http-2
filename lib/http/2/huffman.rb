@@ -44,7 +44,7 @@ module HTTP2
             #  [next] next state number.
             trans = MACHINE[state][branch]
             fail CompressionError, 'Huffman decode error (EOS found)' if trans.first == EOS
-            emit << trans.first if trans.first
+            emit << trans.first.chr if trans.first
             state = trans.last
           end
         end
