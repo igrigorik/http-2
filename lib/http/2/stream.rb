@@ -71,9 +71,9 @@ module HTTP2
     # @param exclusive [Boolean]
     # @param window [Integer]
     # @param parent [Stream]
-    def initialize(connection: nil, id: nil, weight: 16, dependency: 0, exclusive: false, parent: nil)
-      @connection = connection or raise ArgumentError, "missing mandatory argument connection"
-      @id = id                 or raise ArgumentError, "missing mandatory argument id"
+    def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil)
+      @connection = connection
+      @id = id
       @weight = weight
       @dependency = dependency
       process_priority({weight: weight, stream_dependency: dependency, exclusive: exclusive})
