@@ -1,5 +1,4 @@
 module HTTP2
-
   # A single HTTP 2.0 connection can multiplex multiple streams in parallel:
   # multiple requests and responses can be in flight simultaneously and stream
   # data can be interleaved and prioritized.
@@ -55,7 +54,7 @@ module HTTP2
     # Size of current stream flow control window.
     attr_reader :local_window
     attr_reader :remote_window
-    alias :window :local_window
+    alias_method :window, :local_window
 
     # Reason why connection was closed.
     attr_reader :closed
@@ -72,12 +71,12 @@ module HTTP2
     # @param exclusive [Boolean]
     # @param window [Integer]
     # @param parent [Stream]
-    def initialize(connection: nil, id: nil, weight: 16, dependency: 0, exclusive: false, parent: nil)
-      @connection = connection or raise ArgumentError.new("missing mandatory argument connection")
-      @id = id                 or raise ArgumentError.new("missing mandatory argument id")
+    def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil)
+      @connection = connection
+      @id = id
       @weight = weight
       @dependency = dependency
-      process_priority({weight: weight, stream_dependency: dependency, exclusive: exclusive})
+      process_priority(weight: weight, stream_dependency: dependency, exclusive: exclusive)
       @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
@@ -99,9 +98,9 @@ module HTTP2
       case frame[:type]
       when :data
         @local_window -= frame[:payload].size
-        emit(:data, frame[:payload]) if !frame[:ignore]
+        emit(:data, frame[:payload]) unless frame[:ignore]
       when :headers, :push_promise
-        emit(:headers, frame[:payload]) if !frame[:ignore]
+        emit(:headers, frame[:payload]) unless frame[:ignore]
       when :priority
         process_priority(frame)
       when :window_update
@@ -112,7 +111,7 @@ module HTTP2
 
       complete_transition(frame)
     end
-    alias :<< :receive
+    alias_method :<<, :receive
 
     # Processes outgoing HTTP 2.0 frames. Data frames may be automatically
     # split and buffered based on maximum frame size and current stream flow
@@ -149,11 +148,11 @@ module HTTP2
       flags << :end_headers if end_headers
       flags << :end_stream  if end_stream
 
-      send({type: :headers, flags: flags, payload: headers.to_a})
+      send(type: :headers, flags: flags, payload: headers.to_a)
     end
 
     def promise(headers, end_headers: true, &block)
-      raise Exception.new("must provide callback") if !block_given?
+      fail ArgumentError, 'must provide callback' unless block_given?
 
       flags = end_headers ? [:end_headers] : []
       emit(:promise, self, headers, flags, &block)
@@ -166,7 +165,7 @@ module HTTP2
     # @param dependency [Integer] new stream dependency stream
     def reprioritize(weight: 16, dependency: 0, exclusive: false)
       stream_error if @id.even?
-      send({type: :priority, weight: weight, stream_dependency: dependency, exclusive: exclusive})
+      send(type: :priority, weight: weight, stream_dependency: dependency, exclusive: exclusive)
     end
 
     # Sends DATA frame containing response payload.
@@ -180,12 +179,12 @@ module HTTP2
       # Split data according to each frame is smaller enough
       # TODO: consider padding?
       max_size = @connection.remote_settings[:settings_max_frame_size]
-      while payload.bytesize > max_size do
+      while payload.bytesize > max_size
         chunk = payload.slice!(0, max_size)
-        send({type: :data, payload: chunk})
+        send(type: :data, payload: chunk)
       end
 
-      send({type: :data, flags: flags, payload: payload})
+      send(type: :data, flags: flags, payload: payload)
     end
 
     # Sends a RST_STREAM frame which closes current stream - this does not
@@ -193,18 +192,18 @@ module HTTP2
     #
     # @param error [:Symbol] optional reason why stream was closed
     def close(error = :stream_closed)
-      send({type: :rst_stream, error: error})
+      send(type: :rst_stream, error: error)
     end
 
     # Sends a RST_STREAM indicating that the stream is no longer needed.
     def cancel
-      send({type: :rst_stream, error: :cancel})
+      send(type: :rst_stream, error: :cancel)
     end
 
     # Sends a RST_STREAM indicating that the stream has been refused prior
     # to performing any application processing.
     def refuse
-      send({type: :rst_stream, error: :refused_stream})
+      send(type: :rst_stream, error: :refused_stream)
     end
 
     private
@@ -273,7 +272,8 @@ module HTTP2
             end
           when :rst_stream then event(:local_rst)
           when :priority then process_priority(frame)
-          else stream_error; end
+          else stream_error
+          end
         else
           case frame[:type]
           when :push_promise then event(:reserved_remote)
@@ -284,7 +284,8 @@ module HTTP2
               event(:open)
             end
           when :priority then process_priority(frame)
-          else stream_error(:protocol_error); end
+          else stream_error(:protocol_error)
+          end
         end
 
       # A stream in the "reserved (local)" state is one that has been
@@ -308,12 +309,14 @@ module HTTP2
           @state = case frame[:type]
           when :headers     then event(:half_closed_remote)
           when :rst_stream  then event(:local_rst)
-          else stream_error; end
+          else stream_error
+          end
         else
           @state = case frame[:type]
           when :rst_stream then event(:remote_rst)
           when :priority, :window_update then @state
-          else stream_error; end
+          else stream_error
+          end
         end
 
       # A stream in the "reserved (remote)" state has been reserved by a
@@ -335,12 +338,14 @@ module HTTP2
           @state = case frame[:type]
           when :rst_stream then event(:local_rst)
           when :priority, :window_update then @state
-          else stream_error; end
+          else stream_error
+          end
         else
           @state = case frame[:type]
           when :headers then event(:half_closed_local)
           when :rst_stream then event(:remote_rst)
-          else stream_error; end
+          else stream_error
+          end
         end
 
       # A stream in the "open" state may be used by both peers to send
@@ -483,7 +488,7 @@ module HTTP2
           when :priority   then
             process_priority(frame)
           else
-            stream_error(:stream_closed) if !(frame[:type] == :rst_stream)
+            stream_error(:stream_closed) unless (frame[:type] == :rst_stream)
           end
         else
           if frame[:type] == :priority
@@ -556,7 +561,8 @@ module HTTP2
       case frame[:type]
       when :data, :headers, :continuation
         frame[:flags].include?(:end_stream)
-      else false; end
+      else false
+      end
     end
 
     def stream_error(error = :stream_error, msg: nil)
@@ -564,7 +570,7 @@ module HTTP2
       close(error) if @state != :closed
 
       klass = error.to_s.split('_').map(&:capitalize).join
-      raise Error.const_get(klass).new(msg)
+      fail Error.const_get(klass), msg
     end
   end
 end

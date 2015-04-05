@@ -1,19 +1,17 @@
 module HTTP2
-
   # Basic event emitter implementation with support for persistent and
   # one-time event callbacks.
   #
   module Emitter
-
     # Subscribe to all future events for specified type.
     #
     # @param event [Symbol]
     # @param block [Proc] callback function
     def add_listener(event, &block)
-      raise Exception.new("must provide callback") if !block_given?
+      fail ArgumentError, 'must provide callback' unless block_given?
       listeners(event.to_sym).push block
     end
-    alias :on :add_listener
+    alias_method :on, :add_listener
 
     # Subscribe to next event (at most once) for specified type.
     #

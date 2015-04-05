@@ -1,5 +1,4 @@
 module HTTP2
-
   # HTTP 2.0 client connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
   #
@@ -18,7 +17,6 @@ module HTTP2
   #     end
   #
   class Client < Connection
-
     # Initialize new HTTP 2.0 client object.
     def initialize(**settings)
       @stream_id    = 1
@@ -42,15 +40,12 @@ module HTTP2
 
     # Emit the connection preface if not yet
     def send_connection_preface
-      if @state == :waiting_connection_preface
-        @state = :connected
-        emit(:frame, CONNECTION_PREFACE_MAGIC)
+      return unless @state == :waiting_connection_preface
+      @state = :connected
+      emit(:frame, CONNECTION_PREFACE_MAGIC)
 
-        payload = @local_settings.select {|k,v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k]}
-        settings(payload)
-      end
+      payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
+      settings(payload)
     end
-
   end
-
 end

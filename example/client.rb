@@ -2,13 +2,12 @@ require_relative 'helper'
 
 options = {}
 OptionParser.new do |opts|
-  opts.banner = "Usage: client.rb [options]"
+  opts.banner = 'Usage: client.rb [options]'
 
-  opts.on("-d", "--data [String]", "HTTP payload") do |v|
+  opts.on('-d', '--data [String]', 'HTTP payload') do |v|
     options[:payload] = v
   end
 end.parse!
-
 
 uri = URI.parse(ARGV[0] || 'http://localhost:8080/')
 tcp = TCPSocket.new(uri.host, uri.port)
@@ -68,18 +67,17 @@ conn.on(:altsvc) do |f|
 end
 
 stream.on(:close) do
-  log.info "stream closed"
+  log.info 'stream closed'
   sock.close
 end
 
 stream.on(:half_close) do
-  log.info "closing client-end of the stream"
+  log.info 'closing client-end of the stream'
 end
 
 stream.on(:headers) do |h|
   log.info "response headers: #{h}"
 end
-
 
 stream.on(:data) do |d|
   log.info "response data chunk: <<#{d}>>"
@@ -89,17 +87,16 @@ stream.on(:altsvc) do |f|
   log.info "received ALTSVC #{f}"
 end
 
-
 head = {
-  ":scheme" => uri.scheme,
-  ":method" => (options[:payload].nil? ? "GET" : "POST"),
-  ":authority" => [uri.host, uri.port].join(':'),
-  ":path" => uri.path,
-  "accept" => "*/*"
+  ':scheme' => uri.scheme,
+  ':method' => (options[:payload].nil? ? 'GET' : 'POST'),
+  ':authority' => [uri.host, uri.port].join(':'),
+  ':path' => uri.path,
+  'accept' => '*/*',
 }
 
-puts "Sending HTTP 2.0 request"
-if head[":method"] == "GET"
+puts 'Sending HTTP 2.0 request'
+if head[':method'] == 'GET'
   stream.headers(head, end_stream: true)
 else
   stream.headers(head, end_stream: false)
@@ -112,7 +109,7 @@ while !sock.closed? && !sock.eof?
 
   begin
     conn << data
-  rescue Exception => e
+  rescue => e
     puts "Exception: #{e}, #{e.message} - closing socket."
     sock.close
   end

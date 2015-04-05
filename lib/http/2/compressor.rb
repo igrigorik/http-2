@@ -1,13 +1,9 @@
 module HTTP2
-
   # Implementation of header compression for HTTP 2.0 (HPACK) format adapted
   # to efficiently represent HTTP headers in the context of HTTP 2.0.
   #
   # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10
   module Header
-
-    BINARY = 'binary'
-
     # To decompress header blocks, a decoder only needs to maintain a
     # dynamic table as a decoding context.
     # No other state information is needed.
@@ -18,68 +14,68 @@ module HTTP2
       # Static table
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#appendix-A
       STATIC_TABLE = [
-        [':authority',                  ''            ],
-        [':method',                     'GET'         ],
-        [':method',                     'POST'        ],
-        [':path',                       '/'           ],
-        [':path',                       '/index.html' ],
-        [':scheme',                     'http'        ],
-        [':scheme',                     'https'       ],
-        [':status',                     '200'         ],
-        [':status',                     '204'         ],
-        [':status',                     '206'         ],
-        [':status',                     '304'         ],
-        [':status',                     '400'         ],
-        [':status',                     '404'         ],
-        [':status',                     '500'         ],
-        ['accept-charset',              ''            ],
-        ['accept-encoding',             'gzip, deflate' ],
-        ['accept-language',             ''            ],
-        ['accept-ranges',               ''            ],
-        ['accept',                      ''            ],
-        ['access-control-allow-origin', ''            ],
-        ['age',                         ''            ],
-        ['allow',                       ''            ],
-        ['authorization',               ''            ],
-        ['cache-control',               ''            ],
-        ['content-disposition',         ''            ],
-        ['content-encoding',            ''            ],
-        ['content-language',            ''            ],
-        ['content-length',              ''            ],
-        ['content-location',            ''            ],
-        ['content-range',               ''            ],
-        ['content-type',                ''            ],
-        ['cookie',                      ''            ],
-        ['date',                        ''            ],
-        ['etag',                        ''            ],
-        ['expect',                      ''            ],
-        ['expires',                     ''            ],
-        ['from',                        ''            ],
-        ['host',                        ''            ],
-        ['if-match',                    ''            ],
-        ['if-modified-since',           ''            ],
-        ['if-none-match',               ''            ],
-        ['if-range',                    ''            ],
-        ['if-unmodified-since',         ''            ],
-        ['last-modified',               ''            ],
-        ['link',                        ''            ],
-        ['location',                    ''            ],
-        ['max-forwards',                ''            ],
-        ['proxy-authenticate',          ''            ],
-        ['proxy-authorization',         ''            ],
-        ['range',                       ''            ],
-        ['referer',                     ''            ],
-        ['refresh',                     ''            ],
-        ['retry-after',                 ''            ],
-        ['server',                      ''            ],
-        ['set-cookie',                  ''            ],
-        ['strict-transport-security',   ''            ],
-        ['transfer-encoding',           ''            ],
-        ['user-agent',                  ''            ],
-        ['vary',                        ''            ],
-        ['via',                         ''            ],
-        ['www-authenticate',            ''            ],
-      ].freeze
+        [':authority',                  ''],
+        [':method',                     'GET'],
+        [':method',                     'POST'],
+        [':path',                       '/'],
+        [':path',                       '/index.html'],
+        [':scheme',                     'http'],
+        [':scheme',                     'https'],
+        [':status',                     '200'],
+        [':status',                     '204'],
+        [':status',                     '206'],
+        [':status',                     '304'],
+        [':status',                     '400'],
+        [':status',                     '404'],
+        [':status',                     '500'],
+        ['accept-charset',              ''],
+        ['accept-encoding',             'gzip, deflate'],
+        ['accept-language',             ''],
+        ['accept-ranges',               ''],
+        ['accept',                      ''],
+        ['access-control-allow-origin', ''],
+        ['age',                         ''],
+        ['allow',                       ''],
+        ['authorization',               ''],
+        ['cache-control',               ''],
+        ['content-disposition',         ''],
+        ['content-encoding',            ''],
+        ['content-language',            ''],
+        ['content-length',              ''],
+        ['content-location',            ''],
+        ['content-range',               ''],
+        ['content-type',                ''],
+        ['cookie',                      ''],
+        ['date',                        ''],
+        ['etag',                        ''],
+        ['expect',                      ''],
+        ['expires',                     ''],
+        ['from',                        ''],
+        ['host',                        ''],
+        ['if-match',                    ''],
+        ['if-modified-since',           ''],
+        ['if-none-match',               ''],
+        ['if-range',                    ''],
+        ['if-unmodified-since',         ''],
+        ['last-modified',               ''],
+        ['link',                        ''],
+        ['location',                    ''],
+        ['max-forwards',                ''],
+        ['proxy-authenticate',          ''],
+        ['proxy-authorization',         ''],
+        ['range',                       ''],
+        ['referer',                     ''],
+        ['refresh',                     ''],
+        ['retry-after',                 ''],
+        ['server',                      ''],
+        ['set-cookie',                  ''],
+        ['strict-transport-security',   ''],
+        ['transfer-encoding',           ''],
+        ['user-agent',                  ''],
+        ['vary',                        ''],
+        ['via',                         ''],
+        ['www-authenticate',            ''],
+      ].each { |pair| pair.each(&:freeze).freeze }.freeze
 
       # Current table of header key-value pairs.
       attr_reader :table
@@ -115,10 +111,10 @@ module HTTP2
         other = EncodingContext.new(@options)
         t = @table
         l = @limit
-        other.instance_eval {
+        other.instance_eval do
           @table = t.dup              # shallow copy
           @limit = l
-        }
+        end
         other
       end
 
@@ -134,9 +130,9 @@ module HTTP2
       # @return [Array] +[key, value]+
       def dereference(index)
         # NOTE: index is zero-based in this module.
-        STATIC_TABLE[index] or
-          @table[index - STATIC_TABLE.size] or
-          raise CompressionError.new("Index too large")
+        value = STATIC_TABLE[index] || @table[index - STATIC_TABLE.size]
+        fail CompressionError, 'Index too large' unless value
+        value
       end
 
       # Header Block Processing
@@ -149,7 +145,7 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
-          set_table_size(cmd[:value])
+          self.table_size = cmd[:value]
 
         when :indexed
           # Indexed Representation
@@ -183,12 +179,10 @@ module HTTP2
 
           emit = [cmd[:name], cmd[:value]]
 
-          if cmd[:type] == :incremental
-            add_to_table(emit)
-          end
+          add_to_table(emit) if cmd[:type] == :incremental
 
         else
-          raise CompressionError.new("Invalid type: #{cmd[:type]}")
+          fail CompressionError, "Invalid type: #{cmd[:type]}"
         end
 
         emit
@@ -207,9 +201,7 @@ module HTTP2
         noindex = [:static, :never].include?(@options[:index])
         headers.each do |h|
           cmd = addcmd(h)
-          if noindex && cmd[:type] == :incremental
-            cmd[:type] = :noindex
-          end
+          cmd[:type] = :noindex if noindex && cmd[:type] == :incremental
           commands << cmd
           process(cmd)
         end
@@ -264,7 +256,7 @@ module HTTP2
 
       # Alter dynamic table size.
       #  When the size is reduced, some headers might be evicted.
-      def set_table_size(size)
+      def table_size=(size)
         @limit = size
         size_check(nil)
       end
@@ -272,7 +264,7 @@ module HTTP2
       # Returns current table size in octets
       # @return [Integer]
       def current_table_size
-        @table.inject(0){|r,(k,v)| r += k.bytesize + v.bytesize + 32 }
+        @table.inject(0) { |r, (k, v)| r + k.bytesize + v.bytesize + 32 }
       end
 
       private
@@ -283,9 +275,8 @@ module HTTP2
       #
       # @param cmd [Array] +[name, value]+
       def add_to_table(cmd)
-        if size_check(cmd)
-          @table.unshift(cmd)
-        end
+        return unless size_check(cmd)
+        @table.unshift(cmd)
       end
 
       # To keep the dynamic table size lower than or equal to @limit,
@@ -297,26 +288,25 @@ module HTTP2
         cursize = current_table_size
         cmdsize = cmd.nil? ? 0 : cmd[0].bytesize + cmd[1].bytesize + 32
 
-        while cursize + cmdsize > @limit do
+        while cursize + cmdsize > @limit
           break if @table.empty?
 
-          last_index = @table.size - 1
           e = @table.pop
           cursize -= e[0].bytesize + e[1].bytesize + 32
         end
 
-        return cmdsize <= @limit
+        cmdsize <= @limit
       end
     end
 
     # Header representation as defined by the spec.
     HEADREP = {
-      indexed:      {prefix: 7, pattern: 0x80},
-      incremental:  {prefix: 6, pattern: 0x40},
-      noindex:      {prefix: 4, pattern: 0x00},
-      neverindexed: {prefix: 4, pattern: 0x10},
-      changetablesize: {prefix: 5, pattern: 0x20},
-    }
+      indexed:      { prefix: 7, pattern: 0x80 },
+      incremental:  { prefix: 6, pattern: 0x40 },
+      noindex:      { prefix: 4, pattern: 0x00 },
+      neverindexed: { prefix: 4, pattern: 0x10 },
+      changetablesize: { prefix: 5, pattern: 0x20 },
+    }.each_value(&:freeze).freeze
 
     # Predefined options set for Compressor
     # http://mew.org/~kazu/material/2014-hpack.pdf
@@ -338,8 +328,8 @@ module HTTP2
 
       # Set dynamic table size in EncodingContext
       # @param size [Integer] new dynamic table size
-      def set_table_size(size)
-        @cc.set_table_size(size)
+      def table_size=(size)
+        @cc.table_size = size
       end
 
       # Encodes provided value via integer representation.
@@ -359,15 +349,15 @@ module HTTP2
       # @return [String] binary string
       def integer(i, n)
         limit = 2**n - 1
-        return [i].pack('C') if (i < limit)
+        return [i].pack('C') if i < limit
 
         bytes = []
-        bytes.push limit if !n.zero?
+        bytes.push limit unless n.zero?
 
         i -= limit
-        while (i >= 128) do
+        while (i >= 128)
           bytes.push((i % 128) + 128)
-          i = i / 128
+          i /= 128
         end
 
         bytes.push i
@@ -397,7 +387,7 @@ module HTTP2
       def string(str)
         plain, huffman = nil, nil
         unless @cc.options[:huffman] == :always
-          plain = integer(str.bytesize, 7) << str.dup.force_encoding(BINARY)
+          plain = integer(str.bytesize, 7) << str.dup.force_encoding(Encoding::BINARY)
         end
         unless @cc.options[:huffman] == :never
           huffman = Huffman.new.encode(str)
@@ -424,12 +414,12 @@ module HTTP2
 
         case h[:type]
         when :indexed
-          buffer << integer(h[:name]+1, rep[:prefix])
+          buffer << integer(h[:name] + 1, rep[:prefix])
         when :changetablesize
           buffer << integer(h[:value], rep[:prefix])
         else
           if h[:name].is_a? Integer
-            buffer << integer(h[:name]+1, rep[:prefix])
+            buffer << integer(h[:name] + 1, rep[:prefix])
           else
             buffer << integer(0, rep[:prefix])
             buffer << string(h[:name])
@@ -454,7 +444,7 @@ module HTTP2
 
         # Literal header names MUST be translated to lowercase before
         # encoding and transmission.
-        headers.map! {|hk,hv| [hk.downcase, hv] }
+        headers.map! { |hk, hv| [hk.downcase, hv] }
 
         commands = @cc.encode(headers)
         commands.each do |cmd|
@@ -480,8 +470,8 @@ module HTTP2
 
       # Set dynamic table size in EncodingContext
       # @param size [Integer] new dynamic table size
-      def set_table_size(size)
-        @cc.set_table_size(size)
+      def table_size=(size)
+        @cc.table_size = size
       end
 
       # Decodes integer value from provided buffer.
@@ -494,7 +484,7 @@ module HTTP2
         i = !n.zero? ? (buf.getbyte & limit) : 0
 
         m = 0
-        while byte = buf.getbyte do
+        while (byte = buf.getbyte)
           i += ((byte & 127) << m)
           m += 7
 
@@ -513,10 +503,9 @@ module HTTP2
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
-        str.bytesize == len or raise CompressionError.new("string too short")
-        huffman and str = Huffman.new.decode(Buffer.new(str))
-        str = str.force_encoding('utf-8')
-        str
+        fail CompressionError, 'string too short' unless str.bytesize == len
+        str = Huffman.new.decode(Buffer.new(str)) if huffman
+        str.force_encoding(Encoding::UTF_8)
       end
 
       # Decodes header command from provided buffer.
@@ -527,18 +516,18 @@ module HTTP2
         peek = buf.readbyte(0)
 
         header = {}
-        header[:type], type = HEADREP.select do |t, desc|
+        header[:type], type = HEADREP.find do |_t, desc|
           mask = (peek >> desc[:prefix]) << desc[:prefix]
           mask == desc[:pattern]
-        end.first
+        end
 
-        header[:type] or raise CompressionError
+        fail CompressionError unless header[:type]
 
         header[:name] = integer(buf, type[:prefix])
 
         case header[:type]
         when :indexed
-          header[:name] == 0 and raise CompressionError.new
+          fail CompressionError if header[:name] == 0
           header[:name] -= 1
         when :changetablesize
           header[:value] = header[:name]
@@ -560,10 +549,9 @@ module HTTP2
       # @return [Array] +[[name, value], ...]+
       def decode(buf)
         list = []
-        list << @cc.process(header(buf)) while !buf.empty?
+        list << @cc.process(header(buf)) until buf.empty?
         list.compact
       end
     end
-
   end
 end

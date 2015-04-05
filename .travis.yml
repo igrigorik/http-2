@@ -1,4 +1,16 @@
+sudo: false
 language: ruby
 rvm:
   - 2.0.0
-script: bundle exec rake test
+  - 2.1
+  - 2.2
+  - jruby
+  - rbx-2
+matrix:
+  allow_failures:
+    - rvm: 2.0.0 # need required keyword arguments
+    - rvm: jruby
+    - rvm: rbx-2
+env:
+  global:
+    - JRUBY_OPTS=--2.0
