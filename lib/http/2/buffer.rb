@@ -14,7 +14,7 @@ module HTTP2
     #
     # @param n [Integer] number of bytes to slice from the buffer
     def read(n)
-      Buffer.new(slice!(0,n))
+      Buffer.new(slice!(0, n))
     end
 
     # Alias getbyte to readbyte

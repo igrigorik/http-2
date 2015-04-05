@@ -114,7 +114,7 @@ module HTTP2
     # @param payload [String] optional payload must be 8 bytes long
     # @param blk [Proc] callback to execute when PONG is received
     def ping(payload, &blk)
-      send({type: :ping, stream: 0, payload: payload})
+      send({ type: :ping, stream: 0, payload: payload })
       once(:ack, &blk) if blk
     end
 
@@ -145,7 +145,7 @@ module HTTP2
       check = validate_settings(@local_role, payload)
       check and connection_error
       @pending_settings << payload
-      send({type: :settings, stream: 0, payload: payload})
+      send({ type: :settings, stream: 0, payload: payload })
       @pending_settings << payload
     end
 
@@ -171,14 +171,13 @@ module HTTP2
           else
             return # maybe next time
           end
-
-        elsif @recv_buffer.read(24) != CONNECTION_PREFACE_MAGIC
-          raise HandshakeError
-        else
+        elsif @recv_buffer.read(24) == CONNECTION_PREFACE_MAGIC
           # MAGIC is OK.  Send our settings
           @state = :waiting_connection_preface
-          payload = @local_settings.select {|k,v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k]}
+          payload = @local_settings.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
           settings(payload)
+        else
+          fail HandshakeError
         end
       end
 
@@ -187,16 +186,15 @@ module HTTP2
 
         # Header blocks MUST be transmitted as a contiguous sequence of frames
         # with no interleaved frames of any other type, or from any other stream.
-        if !@continuation.empty?
-          if frame[:type]  != :continuation ||
-             frame[:stream] != @continuation.first[:stream]
+        unless @continuation.empty?
+          unless frame[:type] == :continuation && frame[:stream] == @continuation.first[:stream]
             connection_error
           end
 
           @continuation << frame
           return if !frame[:flags].include? :end_headers
 
-          payload = @continuation.map {|f| f[:payload]}.join
+          payload = @continuation.map { |f| f[:payload] }.join
 
           frame = @continuation.shift
           @continuation.clear
@@ -233,10 +231,12 @@ module HTTP2
 
             stream = @streams[frame[:stream]]
             if stream.nil?
-              stream = activate_stream(id:         frame[:stream],
-                                       weight:     frame[:weight]     || DEFAULT_WEIGHT,
-                                       dependency: frame[:dependency] || 0,
-                                       exclusive:  frame[:exclusive]  || false)
+              stream = activate_stream(
+                id:         frame[:stream],
+                weight:     frame[:weight] || DEFAULT_WEIGHT,
+                dependency: frame[:dependency] || 0,
+                exclusive:  frame[:exclusive] || false,
+              )
               emit(:stream, stream)
             end
 
@@ -277,7 +277,7 @@ module HTTP2
               if parent.closed == :local_rst
                 # We can either (a) 'resurrect' the parent, or (b) RST_STREAM
                 # ... sticking with (b), might need to revisit later.
-                send({type: :rst_stream, stream: pid, error: :refused_stream})
+                send({ type: :rst_stream, stream: pid, error: :refused_stream })
               else
                 connection_error
               end
@@ -327,7 +327,7 @@ module HTTP2
         else
           # HEADERS and PUSH_PROMISE may generate CONTINUATION
           frames = encode(frame)
-          frames.each {|f| emit(:frame, f) }
+          frames.each { |f| emit(:frame, f) }
         end
       end
     end
@@ -339,14 +339,13 @@ module HTTP2
     def encode(frame)
       frames = []
 
-      if frame[:type] == :headers ||
-         frame[:type] == :push_promise
+      if frame[:type] == :headers || frame[:type] == :push_promise
         frames = encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
       else
         frames = [frame]               # otherwise one frame
       end
 
-      frames.map {|f| @framer.generate(f) }
+      frames.map { |f| @framer.generate(f) }
     end
 
     # Check if frame is a connection frame: SETTINGS, PING, GOAWAY, and any
@@ -412,7 +411,7 @@ module HTTP2
     # @param role [Symbol] The sender's role: :client or :server
     # @return nil if no error.  Exception object in case of any error.
     def validate_settings(role, settings)
-      settings.each do |key,v|
+      settings.each do |key, v|
         case key
         when :settings_header_table_size
           # Any value is valid
@@ -482,7 +481,7 @@ module HTTP2
           [frame[:payload], :remote]
         end
 
-      settings.each do |key,v|
+      settings.each do |key, v|
         case side
         when :local
           @local_settings[key] = v
@@ -544,9 +543,9 @@ module HTTP2
         # Received a settings_ack.  Notify application layer.
         emit(:settings_ack, frame, @pending_settings.size)
       when :remote
-        if @state != :closed
+        unless @state == :closed
           # Send ack to peer
-          send({type: :settings, stream: 0, payload: [], flags: [:ack]})
+          send({ type: :settings, stream: 0, payload: [], flags: [:ack] })
         end
       end
     end
@@ -592,7 +591,7 @@ module HTTP2
       else
         frames.first[:type]  = frame[:type]
         frames.first[:flags] = frame[:flags] - [:end_headers]
-        frames.last[:flags]  << :end_headers
+        frames.last[:flags] << :end_headers
       end
 
       frames
@@ -613,7 +612,7 @@ module HTTP2
         connection_error(msg: 'Stream ID already exists')
       end
 
-      stream = Stream.new({connection: self, id: id}.merge(args))
+      stream = Stream.new({ connection: self, id: id }.merge(args))
 
       # Streams that are in the "open" state, or either of the "half closed"
       # states count toward the maximum number of streams that an endpoint is
@@ -638,7 +637,7 @@ module HTTP2
     # @option error [Symbol] :compression_error
     # @param msg [String]
     def connection_error(error = :protocol_error, msg: nil)
-      goaway(error) if @state != :closed && @state != :new
+      goaway(error) unless @state == :closed || @state == :new
 
       @state, @error = :closed, error
       klass = error.to_s.split('_').map(&:capitalize).join

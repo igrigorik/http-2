@@ -1,7 +1,7 @@
 require "helper"
 
 RSpec.describe HTTP2::Header::Huffman do
-  huffman_examples = [# plain, encoded
+  huffman_examples = [ # plain, encoded
     ["www.example.com", "f1e3c2e5f23a6ba0ab90f4ff"],
     ["no-cache",        "a8eb10649cbf"],
     ["Mon, 21 Oct 2013 20:13:21 GMT", "d07abe941054d444a8200595040b8166e082a62d1bff"],
@@ -40,7 +40,7 @@ RSpec.describe HTTP2::Header::Huffman do
 
     it "should encode/decode all_possible 2-byte sequences" do
       (2**16).times do |n|
-        str = [n].pack("V")[0,2].force_encoding(Encoding::BINARY)
+        str = [n].pack("V")[0, 2].force_encoding(Encoding::BINARY)
         expect(@encoder.decode(HTTP2::Buffer.new(@encoder.encode(str)))).to eq str
       end
     end

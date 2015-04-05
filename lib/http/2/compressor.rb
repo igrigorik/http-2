@@ -14,67 +14,67 @@ module HTTP2
       # Static table
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#appendix-A
       STATIC_TABLE = [
-        [':authority',                  ''            ],
-        [':method',                     'GET'         ],
-        [':method',                     'POST'        ],
-        [':path',                       '/'           ],
-        [':path',                       '/index.html' ],
-        [':scheme',                     'http'        ],
-        [':scheme',                     'https'       ],
-        [':status',                     '200'         ],
-        [':status',                     '204'         ],
-        [':status',                     '206'         ],
-        [':status',                     '304'         ],
-        [':status',                     '400'         ],
-        [':status',                     '404'         ],
-        [':status',                     '500'         ],
-        ['accept-charset',              ''            ],
-        ['accept-encoding',             'gzip, deflate' ],
-        ['accept-language',             ''            ],
-        ['accept-ranges',               ''            ],
-        ['accept',                      ''            ],
-        ['access-control-allow-origin', ''            ],
-        ['age',                         ''            ],
-        ['allow',                       ''            ],
-        ['authorization',               ''            ],
-        ['cache-control',               ''            ],
-        ['content-disposition',         ''            ],
-        ['content-encoding',            ''            ],
-        ['content-language',            ''            ],
-        ['content-length',              ''            ],
-        ['content-location',            ''            ],
-        ['content-range',               ''            ],
-        ['content-type',                ''            ],
-        ['cookie',                      ''            ],
-        ['date',                        ''            ],
-        ['etag',                        ''            ],
-        ['expect',                      ''            ],
-        ['expires',                     ''            ],
-        ['from',                        ''            ],
-        ['host',                        ''            ],
-        ['if-match',                    ''            ],
-        ['if-modified-since',           ''            ],
-        ['if-none-match',               ''            ],
-        ['if-range',                    ''            ],
-        ['if-unmodified-since',         ''            ],
-        ['last-modified',               ''            ],
-        ['link',                        ''            ],
-        ['location',                    ''            ],
-        ['max-forwards',                ''            ],
-        ['proxy-authenticate',          ''            ],
-        ['proxy-authorization',         ''            ],
-        ['range',                       ''            ],
-        ['referer',                     ''            ],
-        ['refresh',                     ''            ],
-        ['retry-after',                 ''            ],
-        ['server',                      ''            ],
-        ['set-cookie',                  ''            ],
-        ['strict-transport-security',   ''            ],
-        ['transfer-encoding',           ''            ],
-        ['user-agent',                  ''            ],
-        ['vary',                        ''            ],
-        ['via',                         ''            ],
-        ['www-authenticate',            ''            ],
+        [':authority',                  ''],
+        [':method',                     'GET'],
+        [':method',                     'POST'],
+        [':path',                       '/'],
+        [':path',                       '/index.html'],
+        [':scheme',                     'http'],
+        [':scheme',                     'https'],
+        [':status',                     '200'],
+        [':status',                     '204'],
+        [':status',                     '206'],
+        [':status',                     '304'],
+        [':status',                     '400'],
+        [':status',                     '404'],
+        [':status',                     '500'],
+        ['accept-charset',              ''],
+        ['accept-encoding',             'gzip, deflate'],
+        ['accept-language',             ''],
+        ['accept-ranges',               ''],
+        ['accept',                      ''],
+        ['access-control-allow-origin', ''],
+        ['age',                         ''],
+        ['allow',                       ''],
+        ['authorization',               ''],
+        ['cache-control',               ''],
+        ['content-disposition',         ''],
+        ['content-encoding',            ''],
+        ['content-language',            ''],
+        ['content-length',              ''],
+        ['content-location',            ''],
+        ['content-range',               ''],
+        ['content-type',                ''],
+        ['cookie',                      ''],
+        ['date',                        ''],
+        ['etag',                        ''],
+        ['expect',                      ''],
+        ['expires',                     ''],
+        ['from',                        ''],
+        ['host',                        ''],
+        ['if-match',                    ''],
+        ['if-modified-since',           ''],
+        ['if-none-match',               ''],
+        ['if-range',                    ''],
+        ['if-unmodified-since',         ''],
+        ['last-modified',               ''],
+        ['link',                        ''],
+        ['location',                    ''],
+        ['max-forwards',                ''],
+        ['proxy-authenticate',          ''],
+        ['proxy-authorization',         ''],
+        ['range',                       ''],
+        ['referer',                     ''],
+        ['refresh',                     ''],
+        ['retry-after',                 ''],
+        ['server',                      ''],
+        ['set-cookie',                  ''],
+        ['strict-transport-security',   ''],
+        ['transfer-encoding',           ''],
+        ['user-agent',                  ''],
+        ['vary',                        ''],
+        ['via',                         ''],
+        ['www-authenticate',            ''],
       ].freeze
 
       # Current table of header key-value pairs.
@@ -268,7 +268,7 @@ module HTTP2
       # Returns current table size in octets
       # @return [Integer]
       def current_table_size
-        @table.inject(0){|r,(k,v)| r + k.bytesize + v.bytesize + 32 }
+        @table.inject(0) { |r, (k, v)| r + k.bytesize + v.bytesize + 32 }
       end
 
       private
@@ -306,11 +306,11 @@ module HTTP2
 
     # Header representation as defined by the spec.
     HEADREP = {
-      indexed:      {prefix: 7, pattern: 0x80},
-      incremental:  {prefix: 6, pattern: 0x40},
-      noindex:      {prefix: 4, pattern: 0x00},
-      neverindexed: {prefix: 4, pattern: 0x10},
-      changetablesize: {prefix: 5, pattern: 0x20},
+      indexed:      { prefix: 7, pattern: 0x80 },
+      incremental:  { prefix: 6, pattern: 0x40 },
+      noindex:      { prefix: 4, pattern: 0x00 },
+      neverindexed: { prefix: 4, pattern: 0x10 },
+      changetablesize: { prefix: 5, pattern: 0x20 },
     }
 
     # Predefined options set for Compressor
@@ -419,12 +419,12 @@ module HTTP2
 
         case h[:type]
         when :indexed
-          buffer << integer(h[:name]+1, rep[:prefix])
+          buffer << integer(h[:name] + 1, rep[:prefix])
         when :changetablesize
           buffer << integer(h[:value], rep[:prefix])
         else
           if h[:name].is_a? Integer
-            buffer << integer(h[:name]+1, rep[:prefix])
+            buffer << integer(h[:name] + 1, rep[:prefix])
           else
             buffer << integer(0, rep[:prefix])
             buffer << string(h[:name])
@@ -449,7 +449,7 @@ module HTTP2
 
         # Literal header names MUST be translated to lowercase before
         # encoding and transmission.
-        headers.map! {|hk,hv| [hk.downcase, hv] }
+        headers.map! { |hk, hv| [hk.downcase, hv] }
 
         commands = @cc.encode(headers)
         commands.each do |cmd|

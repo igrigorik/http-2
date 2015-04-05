@@ -20,26 +20,26 @@ RSpec.describe HTTP2::Header do
 
       it "should encode 1337 using a 5-bit prefix" do
         buf = c.integer(1337, 5)
-        expect(buf).to eq [31,128+26,10].pack('C*')
+        expect(buf).to eq [31, 128 + 26, 10].pack('C*')
         expect(d.integer(Buffer.new(buf), 5)).to eq 1337
       end
 
       it "should encode 1337 using a 0-bit prefix" do
-        buf = c.integer(1337,0)
-        expect(buf).to eq [128+57,10].pack('C*')
+        buf = c.integer(1337, 0)
+        expect(buf).to eq [128 + 57, 10].pack('C*')
         expect(d.integer(Buffer.new(buf), 0)).to eq 1337
       end
     end
 
     context "string" do
-      [ ['with huffman',    :always, 0x80 ],
-        ['without huffman', :never,  0] ].each do |desc, option, msb|
+      [['with huffman',    :always, 0x80],
+        ['without huffman', :never,  0]].each do |desc, option, msb|
         let (:trailer) { "trailer" }
 
         [
           ['ascii codepoints', 'abcdefghij'],
           ['utf-8 codepoints', 'éáűőúöüó€'],
-          ['long utf-8 strings', 'éáűőúöüó€'*100],
+          ['long utf-8 strings', 'éáűőúöüó€' * 100],
         ].each do |datatype, plain|
           it "should handle #{datatype} #{desc}" do
             # NOTE: don't put this new in before{} because of test case shuffling
@@ -54,7 +54,7 @@ RSpec.describe HTTP2::Header do
         end
       end
       context "choosing shorter representation" do
-        [ ['日本語', :plain],
+        [['日本語', :plain],
           ['200', :huffman],
           ['xq', :plain],   # prefer plain if equal size
         ].each do |string, choice|
@@ -71,14 +71,14 @@ RSpec.describe HTTP2::Header do
 
   context "header representation" do
     it "should handle indexed representation" do
-      h = {name: 10, type: :indexed}
+      h = { name: 10, type: :indexed }
       wire = c.header(h)
       expect(wire.readbyte(0) & 0x80).to eq 0x80
       expect(wire.readbyte(0) & 0x7f).to eq h[:name] + 1
       expect(d.header(wire)).to eq h
     end
     it "should raise when decoding indexed representation with index zero" do
-      h = {name: 10, type: :indexed}
+      h = { name: 10, type: :indexed }
       wire = c.header(h)
       wire[0] = 0x80.chr('binary')
       expect { d.header(wire) }.to raise_error CompressionError
@@ -86,7 +86,7 @@ RSpec.describe HTTP2::Header do
 
     context "literal w/o indexing representation" do
       it "should handle indexed header" do
-        h = {name: 10, value: "my-value", type: :noindex}
+        h = { name: 10, value: "my-value", type: :noindex }
         wire = c.header(h)
         expect(wire.readbyte(0) & 0xf0).to eq 0x0
         expect(wire.readbyte(0) & 0x0f).to eq h[:name] + 1
@@ -94,7 +94,7 @@ RSpec.describe HTTP2::Header do
       end
 
       it "should handle literal header" do
-        h = {name: "x-custom", value: "my-value", type: :noindex}
+        h = { name: "x-custom", value: "my-value", type: :noindex }
         wire = c.header(h)
         expect(wire.readbyte(0) & 0xf0).to eq 0x0
         expect(wire.readbyte(0) & 0x0f).to eq 0
@@ -104,7 +104,7 @@ RSpec.describe HTTP2::Header do
 
     context "literal w/ incremental indexing" do
       it "should handle indexed header" do
-        h = {name: 10, value: "my-value", type: :incremental}
+        h = { name: 10, value: "my-value", type: :incremental }
         wire = c.header(h)
         expect(wire.readbyte(0) & 0xc0).to eq 0x40
         expect(wire.readbyte(0) & 0x3f).to eq h[:name] + 1
@@ -112,7 +112,7 @@ RSpec.describe HTTP2::Header do
       end
 
       it "should handle literal header" do
-        h = {name: "x-custom", value: "my-value", type: :incremental}
+        h = { name: "x-custom", value: "my-value", type: :incremental }
         wire = c.header(h)
         expect(wire.readbyte(0) & 0xc0).to eq 0x40
         expect(wire.readbyte(0) & 0x3f).to eq 0
@@ -122,7 +122,7 @@ RSpec.describe HTTP2::Header do
 
     context "literal never indexed" do
       it "should handle indexed header" do
-        h = {name: 10, value: "my-value", type: :neverindexed}
+        h = { name: 10, value: "my-value", type: :neverindexed }
         wire = c.header(h)
         expect(wire.readbyte(0) & 0xf0).to eq 0x10
         expect(wire.readbyte(0) & 0x0f).to eq h[:name] + 1
@@ -130,7 +130,7 @@ RSpec.describe HTTP2::Header do
       end
 
       it "should handle literal header" do
-        h = {name: "x-custom", value: "my-value", type: :neverindexed}
+        h = { name: "x-custom", value: "my-value", type: :neverindexed }
         wire = c.header(h)
         expect(wire.readbyte(0) & 0xf0).to eq 0x10
         expect(wire.readbyte(0) & 0x0f).to eq 0
@@ -148,13 +148,13 @@ RSpec.describe HTTP2::Header do
     end
 
     context "processing" do
-      [ ["no indexing", :noindex],
+      [["no indexing", :noindex],
         ["never indexed", :neverindexed]].each do |desc, type|
         context "#{desc}" do
           it "should process indexed header with literal value" do
             original_table = @cc.table.dup
 
-            emit = @cc.process({name: 4, value: "/path", type: type})
+            emit = @cc.process({ name: 4, value: "/path", type: type })
             expect(emit).to eq [":path", "/path"]
             expect(@cc.table).to eq original_table
           end
@@ -162,7 +162,7 @@ RSpec.describe HTTP2::Header do
           it "should process literal header with literal value" do
             original_table = @cc.table.dup
 
-            emit = @cc.process({name: "x-custom", value: "random", type: type})
+            emit = @cc.process({ name: "x-custom", value: "random", type: type })
             expect(emit).to eq ["x-custom", "random"]
             expect(@cc.table).to eq original_table
           end
@@ -173,7 +173,7 @@ RSpec.describe HTTP2::Header do
         it "should process indexed header with literal value" do
           original_table = @cc.table.dup
 
-          emit = @cc.process({name: 4, value: "/path", type: :incremental})
+          emit = @cc.process({ name: 4, value: "/path", type: :incremental })
           expect(emit).to eq [":path", "/path"]
           expect(@cc.table - original_table).to eq [[":path", "/path"]]
         end
@@ -181,7 +181,7 @@ RSpec.describe HTTP2::Header do
         it "should process literal header with literal value" do
           original_table = @cc.table.dup
 
-          @cc.process({name: "x-custom", value: "random", type: :incremental})
+          @cc.process({ name: "x-custom", value: "random", type: :incremental })
           expect(@cc.table - original_table).to eq [["x-custom", "random"]]
         end
       end
@@ -217,10 +217,10 @@ RSpec.describe HTTP2::Header do
         end
 
         h = { name: "x-custom", value: "a", index: 0, type: :incremental }
-        e = { name: "large", value: "a" * 2048, index: 0}
+        e = { name: "large", value: "a" * 2048, index: 0 }
 
         cc.process(h)
-        cc.process(e.merge({type: :incremental}))
+        cc.process(e.merge({ type: :incremental }))
         expect(cc.table).to be_empty
       end
 
@@ -231,7 +231,7 @@ RSpec.describe HTTP2::Header do
           add_to_table(["test2", "2" * 500])
         end
 
-        cc.process({type: :changetablesize, value: 1500})
+        cc.process({ type: :changetablesize, value: 1500 })
         expect(cc.table.size).to be 1
         expect(cc.table.first[0]).to eq 'test2'
       end
@@ -467,7 +467,7 @@ RSpec.describe HTTP2::Header do
     spec_examples.each do |ex|
       context "spec example #{ex[:title]}" do
         ex[:streams].size.times do |nth|
-          context "request #{nth+1}" do
+          context "request #{nth + 1}" do
             before { @dc = Decompressor.new(table_size: ex[:table_size]) }
             before do
               (0...nth).each do |i|
@@ -486,11 +486,11 @@ RSpec.describe HTTP2::Header do
             end
             it "should update header table" do
               subject
-              expect(@dc.instance_eval{@cc.table}).to eq ex[:streams][nth][:table]
+              expect(@dc.instance_eval { @cc.table }).to eq ex[:streams][nth][:table]
             end
             it "should compute header table size" do
               subject
-              expect(@dc.instance_eval{@cc.current_table_size}).to eq ex[:streams][nth][:table_size]
+              expect(@dc.instance_eval { @cc.current_table_size }).to eq ex[:streams][nth][:table_size]
             end
           end
         end
@@ -502,7 +502,7 @@ RSpec.describe HTTP2::Header do
     spec_examples.each do |ex|
       context "spec example #{ex[:title]}" do
         ex[:streams].size.times do |nth|
-          context "request #{nth+1}" do
+          context "request #{nth + 1}" do
             before { @cc = Compressor.new(table_size: ex[:table_size],
                                           huffman: ex[:huffman]) }
             before do
@@ -518,11 +518,11 @@ RSpec.describe HTTP2::Header do
             end
             it "should update header table" do
               subject
-              expect(@cc.instance_eval{@cc.table}).to eq ex[:streams][nth][:table]
+              expect(@cc.instance_eval { @cc.table }).to eq ex[:streams][nth][:table]
             end
             it "should compute header table size" do
               subject
-              expect(@cc.instance_eval{@cc.current_table_size}).to eq ex[:streams][nth][:table_size]
+              expect(@cc.instance_eval { @cc.current_table_size }).to eq ex[:streams][nth][:table_size]
             end
           end
         end
