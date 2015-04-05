@@ -175,13 +175,13 @@ module HTTP2
             return # maybe next time
           end
 
-        elsif @recv_buffer.read(24) != CONNECTION_PREFACE_MAGIC
-          fail HandshakeError
-        else
+        elsif @recv_buffer.read(24) == CONNECTION_PREFACE_MAGIC
           # MAGIC is OK.  Send our settings
           @state = :waiting_connection_preface
-          payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
+          payload = @local_settings.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
           settings(payload)
+        else
+          fail HandshakeError
         end
       end
 
@@ -191,8 +191,7 @@ module HTTP2
         # Header blocks MUST be transmitted as a contiguous sequence of frames
         # with no interleaved frames of any other type, or from any other stream.
         unless @continuation.empty?
-          if frame[:type]  != :continuation ||
-             frame[:stream] != @continuation.first[:stream]
+          unless frame[:type] == :continuation && frame[:stream] == @continuation.first[:stream]
             connection_error
           end
 
@@ -236,10 +235,12 @@ module HTTP2
 
             stream = @streams[frame[:stream]]
             if stream.nil?
-              stream = activate_stream(id:         frame[:stream],
-                                       weight:     frame[:weight]     || DEFAULT_WEIGHT,
-                                       dependency: frame[:dependency] || 0,
-                                       exclusive:  frame[:exclusive]  || false)
+              stream = activate_stream(
+                id:         frame[:stream],
+                weight:     frame[:weight] || DEFAULT_WEIGHT,
+                dependency: frame[:dependency] || 0,
+                exclusive:  frame[:exclusive] || false,
+              )
               emit(:stream, stream)
             end
 
@@ -340,8 +341,7 @@ module HTTP2
     def encode(frame)
       frames = []
 
-      if frame[:type] == :headers ||
-         frame[:type] == :push_promise
+      if frame[:type] == :headers || frame[:type] == :push_promise
         frames = encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
       else
         frames = [frame]               # otherwise one frame
@@ -535,7 +535,7 @@ module HTTP2
         # Received a settings_ack.  Notify application layer.
         emit(:settings_ack, frame, @pending_settings.size)
       when :remote
-        if @state != :closed
+        unless @state == :closed
           # Send ack to peer
           send(type: :settings, stream: 0, payload: [], flags: [:ack])
         end
@@ -581,7 +581,7 @@ module HTTP2
       else
         frames.first[:type]  = frame[:type]
         frames.first[:flags] = frame[:flags] - [:end_headers]
-        frames.last[:flags]  << :end_headers
+        frames.last[:flags] << :end_headers
       end
 
       frames
@@ -625,7 +625,7 @@ module HTTP2
     # @option error [Symbol] :compression_error
     # @param msg [String]
     def connection_error(error = :protocol_error, msg: nil)
-      goaway(error) if @state != :closed && @state != :new
+      goaway(error) unless @state == :closed || @state == :new
 
       @state, @error = :closed, error
       klass = error.to_s.split('_').map(&:capitalize).join

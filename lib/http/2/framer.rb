@@ -174,12 +174,12 @@ module HTTP2
       bytes  = Buffer.new
       length = 0
 
-      frame[:flags]  ||= []
+      frame[:flags] ||= []
       frame[:stream] ||= 0
 
       case frame[:type]
       when :data
-        bytes  << frame[:payload]
+        bytes << frame[:payload]
         length += frame[:payload].bytesize
 
       when :headers
@@ -197,7 +197,7 @@ module HTTP2
           length += 5
         end
 
-        bytes  << frame[:payload]
+        bytes << frame[:payload]
         length += frame[:payload].bytesize
 
       when :priority
@@ -210,7 +210,7 @@ module HTTP2
         length += 5
 
       when :rst_stream
-        bytes  << pack_error(frame[:error])
+        bytes << pack_error(frame[:error])
         length += 4
 
       when :settings
@@ -227,39 +227,39 @@ module HTTP2
             fail CompressionError, "Unknown settings ID for #{k}" if k.nil?
           end
 
-          bytes  << [k].pack(UINT16)
-          bytes  << [v].pack(UINT32)
+          bytes << [k].pack(UINT16)
+          bytes << [v].pack(UINT32)
           length += 6
         end
 
       when :push_promise
-        bytes  << [frame[:promise_stream] & RBIT].pack(UINT32)
-        bytes  << frame[:payload]
+        bytes << [frame[:promise_stream] & RBIT].pack(UINT32)
+        bytes << frame[:payload]
         length += 4 + frame[:payload].bytesize
 
       when :ping
         if frame[:payload].bytesize != 8
           fail CompressionError, "Invalid payload size (#{frame[:payload].size} != 8 bytes)"
         end
-        bytes  << frame[:payload]
+        bytes << frame[:payload]
         length += 8
 
       when :goaway
-        bytes  << [frame[:last_stream] & RBIT].pack(UINT32)
-        bytes  << pack_error(frame[:error])
+        bytes << [frame[:last_stream] & RBIT].pack(UINT32)
+        bytes << pack_error(frame[:error])
         length += 8
 
         if frame[:payload]
-          bytes  << frame[:payload]
+          bytes << frame[:payload]
           length += frame[:payload].bytesize
         end
 
       when :window_update
-        bytes  << [frame[:increment] & RBIT].pack(UINT32)
+        bytes << [frame[:increment] & RBIT].pack(UINT32)
         length += 4
 
       when :continuation
-        bytes  << frame[:payload]
+        bytes << frame[:payload]
         length += frame[:payload].bytesize
 
       when :altsvc
