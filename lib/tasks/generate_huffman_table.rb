@@ -9,9 +9,6 @@ require_relative '../http/2/huffman'
 module HuffmanTable
   BITS_AT_ONCE = HTTP2::Header::Huffman::BITS_AT_ONCE
   EOS          = 256
-  CARRIAGE_RETURN = "\r".bytes.freeze
-  SINGLE_QUOTE = "'".bytes.freeze
-  SLASH = '\\'.bytes.freeze
 
   class Node
     attr_accessor :next, :emit, :final, :depth
@@ -126,28 +123,14 @@ HEADER
           string = (1 << BITS_AT_ONCE).times.map do |t|
             transition = n.transitions.fetch(t)
             emit = transition.emit
-            emit = emit.dup.force_encoding(Encoding::UTF_8) unless emit == EOS
             emit_literal = case emit
             when String
-              if emit.empty?
-                'nil'
-              else
-                if emit.valid_encoding?
-                  case emit.bytes
-                  when SINGLE_QUOTE, CARRIAGE_RETURN
-                    emit.inspect
-                  when SLASH
-                    "'\\\\'"
-                  else
-                    "'#{emit}'"
-                  end
-                else
-                  emit.inspect
-                end
-              end
+              bytes = emit.bytes
+              fail ArgumentError if bytes.size > 1
+              bytes.first
             else
               emit
-            end
+            end.inspect
             "[#{emit_literal}, #{state_id.fetch(transition.node)}]"
           end.join(', ')
           f.print(string)
