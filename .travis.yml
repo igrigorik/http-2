@@ -1,14 +1,12 @@
 sudo: false
 language: ruby
 rvm:
-  - 2.0.0
   - 2.1
   - 2.2
   - jruby
   - rbx-2
 matrix:
   allow_failures:
-    - rvm: 2.0.0 # need required keyword arguments
     - rvm: jruby
     - rvm: rbx-2
 env:
