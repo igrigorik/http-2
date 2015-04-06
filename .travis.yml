@@ -3,12 +3,10 @@ language: ruby
 rvm:
   - 2.1
   - 2.2
-  - jruby
+  - jruby-9.0.0.0.pre1
+  - jruby-head
   - rbx-2
 matrix:
   allow_failures:
-    - rvm: jruby
+    - rvm: jruby-head
     - rvm: rbx-2
-env:
-  global:
-    - JRUBY_OPTS=--2.0
