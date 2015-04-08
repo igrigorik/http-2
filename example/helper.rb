@@ -1,4 +1,4 @@
-$: << 'lib' << '../lib'
+$LOAD_PATH << 'lib' << '../lib'
 
 require 'optparse'
 require 'socket'

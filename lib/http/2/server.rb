@@ -1,5 +1,4 @@
 module HTTP2
-
   # HTTP 2.0 server connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
   #
@@ -20,7 +19,6 @@ module HTTP2
   #     end
   #
   class Server < Connection
-
     # Initialize new HTTP 2.0 server object.
     def initialize(**settings)
       @stream_id    = 2
@@ -41,16 +39,15 @@ module HTTP2
     def promise(*args, &callback)
       parent, headers, flags = *args
       promise = new_stream(parent: parent)
-      promise.send({
+      promise.send(
         type: :push_promise,
         flags: flags,
         stream: parent.id,
         promise_stream: promise.id,
-        payload: headers.to_a
-      })
+        payload: headers.to_a,
+      )
 
       callback.call(promise)
     end
   end
-
 end
