@@ -293,9 +293,25 @@ module HTTP2
             if (stream = @streams[frame[:stream]])
               stream << frame
             else
-              # An endpoint that receives an unexpected stream identifier
-              # MUST respond with a connection error of type PROTOCOL_ERROR.
-              connection_error
+              # The PRIORITY frame can be sent for a stream in the "idle" or
+              # "closed" state. This allows for the reprioritization of a
+              # group of dependent streams by altering the priority of an
+              # unused or closed parent stream.
+              if frame[:type] == :priority
+                stream = activate_stream(
+                  id:         frame[:stream],
+                  weight:     frame[:weight] || DEFAULT_WEIGHT,
+                  dependency: frame[:dependency] || 0,
+                  exclusive:  frame[:exclusive] || false,
+                )
+
+                emit(:stream, stream)
+                stream << frame
+              else
+                # An endpoint that receives an unexpected stream identifier
+                # MUST respond with a connection error of type PROTOCOL_ERROR.
+                connection_error
+              end
             end
           end
         end

@@ -123,6 +123,16 @@ RSpec.describe HTTP2::Connection do
 
       expect(stream.weight).to eq 20
     end
+
+    it 'should initialize idle stream on PRIORITY frame' do
+      @conn << f.generate(SETTINGS.dup)
+
+      stream = nil
+      @conn.on(:stream) { |s| stream = s }
+      @conn << f.generate(PRIORITY.dup)
+
+      expect(stream.state).to eq :idle
+    end
   end
 
   context 'Headers pre/post processing' do
