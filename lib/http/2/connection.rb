@@ -342,7 +342,12 @@ module HTTP2
         # An endpoint can end a connection at any time. In particular, an
         # endpoint MAY choose to treat a stream error as a connection error.
         if frame[:type] == :rst_stream
-          goaway(frame[:error]) if frame[:error] == :protocol_error
+          if frame[:error] == :protocol_error
+            goaway(frame[:error])
+          else
+            frames = encode(frame)
+            frames.each {|f| emit(:frame, f) }
+          end
         else
           # HEADERS and PUSH_PROMISE may generate CONTINUATION
           frames = encode(frame)

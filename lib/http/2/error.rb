@@ -25,7 +25,7 @@ module HTTP2
 
     # Raised on invalid stream processing: invalid frame type received or
     # sent, or invalid command issued.
-    class StreamError < ProtocolError; end
+    class InternalError < ProtocolError; end
 
     #
     # -- Recoverable errors -------------------------------------------------

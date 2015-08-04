@@ -566,7 +566,7 @@ module HTTP2
       end
     end
 
-    def stream_error(error = :stream_error, msg: nil)
+    def stream_error(error = :internal_error, msg: nil)
       @error = error
       close(error) if @state != :closed
 
