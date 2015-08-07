@@ -561,7 +561,7 @@ module HTTP2
     def end_stream?(frame)
       case frame[:type]
       when :data, :headers, :continuation
-        frame[:flags].include?(:end_stream)
+        frame[:flags] && frame[:flags].include?(:end_stream)
       else false
       end
     end
