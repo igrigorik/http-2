@@ -56,13 +56,15 @@ RSpec.describe HTTP2::Stream do
 
       it 'should raise error if sending invalid frames' do
         (FRAME_TYPES - [HEADERS, RST_STREAM]).each do |type|
-          expect { @stream.dup.send type }.to raise_error StreamError
+          expect { @stream.dup.send type }.to raise_error InternalError
         end
       end
 
       it 'should raise error on receipt of invalid frames' do
-        (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |type|
-          expect { @stream.dup.receive type }.to raise_error StreamError
+        what_types = (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE])
+        what_types.each do |type|
+          p "test type #{type}"
+          expect { @stream.dup.receive type }.to raise_error InternalError
         end
       end
 
@@ -101,13 +103,13 @@ RSpec.describe HTTP2::Stream do
 
       it 'should raise error if sending invalid frames' do
         (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |type|
-          expect { @stream.dup.send type }.to raise_error StreamError
+          expect { @stream.dup.send type }.to raise_error InternalError
         end
       end
 
       it 'should raise error on receipt of invalid frames' do
         (FRAME_TYPES - [HEADERS, RST_STREAM]).each do |type|
-          expect { @stream.dup.receive type }.to raise_error StreamError
+          expect { @stream.dup.receive type }.to raise_error InternalError
         end
       end
 
@@ -283,7 +285,7 @@ RSpec.describe HTTP2::Stream do
 
       it 'should raise error on attempt to send invalid frames' do
         (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |frame|
-          expect { @stream.dup.send frame }.to raise_error StreamError
+          expect { @stream.dup.send frame }.to raise_error InternalError
         end
       end
 
@@ -303,7 +305,7 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to closed if RST_STREAM frame is sent' do
-        @stream.send RST_STREAM
+        @stream.send RST_STREAM.deep_dup
         expect(@stream.state).to eq :closed
       end
 
@@ -454,7 +456,7 @@ RSpec.describe HTTP2::Stream do
 
         it 'should allow PRIORITY, RST_STREAM to be sent' do
           expect { @stream.send PRIORITY.dup }.to_not raise_error
-          expect { @stream.send RST_STREAM }.to_not raise_error
+          expect { @stream.send RST_STREAM.dup }.to_not raise_error
         end
 
         it 'should allow PRIORITY, RST_STREAM to be received' do
@@ -480,7 +482,7 @@ RSpec.describe HTTP2::Stream do
       context 'local closed via RST_STREAM frame' do
         before(:each) do
           @stream.send HEADERS.deep_dup     # open
-          @stream.send RST_STREAM  # closed by local
+          @stream.send RST_STREAM.deep_dup  # closed by local
         end
 
         it 'should ignore received frames' do
@@ -588,7 +590,7 @@ RSpec.describe HTTP2::Stream do
       srv = Server.new
       stream = srv.new_stream
 
-      expect { stream.reprioritize(weight: 10) }.to raise_error(StreamError)
+      expect { stream.reprioritize(weight: 10) }.to raise_error(InternalError)
     end
 
     it '.headers should emit HEADERS frames' do
