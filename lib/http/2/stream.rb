@@ -174,16 +174,16 @@ module HTTP2
     # @param end_stream [Boolean] indicates last response DATA frame
     def data(payload, end_stream: true)
       flags = []
-      flags << :end_stream if end_stream
 
       # Split data according to each frame is smaller enough
       # TODO: consider padding?
       max_size = @connection.remote_settings[:settings_max_frame_size]
       while payload.bytesize > max_size
         chunk = payload.slice!(0, max_size)
-        send(type: :data, payload: chunk)
+        send(type: :data, flags: flags, payload: chunk)
       end
 
+      flags << :end_stream if end_stream
       send(type: :data, flags: flags, payload: payload)
     end
 
