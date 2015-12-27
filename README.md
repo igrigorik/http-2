@@ -16,8 +16,8 @@ Pure Ruby, framework and transport agnostic, implementation of HTTP/2 protocol a
 
 Protocol specifications:
 
-* [draft-ietf-httpbis-http2](https://tools.ietf.org/html/draft-ietf-httpbis-http2/)
-* [draft-ietf-httpbis-header-compression](https://tools.ietf.org/html/draft-ietf-httpbis-header-compression/)
+* [Hypertext Transfer Protocol Version 2 (RFC 7540)](https://httpwg.github.io/specs/rfc7540.html)
+* [HPACK: Header Compression for HTTP/2 (RFC 7541)](https://httpwg.github.io/specs/rfc7541.html)
 
 
 ## Getting started
