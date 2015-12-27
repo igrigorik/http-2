@@ -553,7 +553,7 @@ module HTTP2
         # Received a settings_ack.  Notify application layer.
         emit(:settings_ack, frame, @pending_settings.size)
       when :remote
-        unless @state == :closed
+        unless @state == :closed || @h2c_upgrade == :start
           # Send ack to peer
           send(type: :settings, stream: 0, payload: [], flags: [:ack])
         end
