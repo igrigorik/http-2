@@ -1,7 +1,6 @@
 require_relative 'helper'
 require 'http_parser'
 require 'base64'
-require 'pry'
 
 options = { port: 8080 }
 OptionParser.new do |opts|
@@ -51,7 +50,7 @@ class UpgradeHandler
 
       @sock.write UPGRADE_RESPONSE
 
-      settings = headers['HTTP2-Settings']
+      settings = headers['http2-settings']
       request = {
         ':scheme'    => 'http',
         ':method'    => @parser.http_method,

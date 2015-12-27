@@ -370,10 +370,9 @@ module HTTP2
         # NOTE: frame[:length] might not match the number of frame[:payload]
         # because unknown extensions are ignored.
         frame[:payload] = []
-        # TODO: is this a valid check? It fails on HTTP2-Upgrade data
-        # unless frame[:length] % 6 == 0
-        #   fail ProtocolError, 'Invalid settings payload length'
-        # end
+        unless frame[:length] % 6 == 0
+          fail ProtocolError, 'Invalid settings payload length'
+        end
 
         if frame[:stream] != 0
           fail ProtocolError, "Invalid stream ID (#{frame[:stream]})"

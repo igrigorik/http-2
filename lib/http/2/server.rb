@@ -71,9 +71,9 @@ module HTTP2
       receive(CONNECTION_PREFACE_MAGIC)
 
       # Process received HTTP2-Settings payload
-      buf = HTTP2::Buffer.new Base64.decode64(settings)
+      buf = HTTP2::Buffer.new Base64.urlsafe_decode64(settings)
       buf.prepend(@framer.common_header(
-        length: buf.length,
+        length: buf.bytesize,
         type: :settings,
         stream: 0,
         flags: []
