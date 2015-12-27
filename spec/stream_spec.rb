@@ -63,7 +63,6 @@ RSpec.describe HTTP2::Stream do
       it 'should raise error on receipt of invalid frames' do
         what_types = (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE])
         what_types.each do |type|
-          p "test type #{type}"
           expect { @stream.dup.receive type }.to raise_error InternalError
         end
       end
