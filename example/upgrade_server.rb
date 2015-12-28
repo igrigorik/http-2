@@ -28,15 +28,17 @@ if options[:secure]
 end
 
 class UpgradeHandler
+  VALID_UPGRADE_METHODS = %w(GET OPTIONS)
+  UPGRADE_RESPONSE = <<-RESP
+HTTP/1.1 101 Switching Protocols
+Connection: Upgrade
+Upgrade: h2c
 
-  VALID_UPGRADE_METHODS = %w[GET OPTIONS]
-  UPGRADE_RESPONSE = ("HTTP/1.1 101 Switching Protocols\n" +
-                      "Connection: Upgrade\n" +
-                      "Upgrade: h2c\n\n").freeze
+RESP
 
   attr_reader :complete, :headers, :body, :parsing
 
-  def initialize conn, sock
+  def initialize(conn, sock)
     @conn, @sock = conn, sock
     @complete, @parsing = false, false
     @body = ''
@@ -46,23 +48,24 @@ class UpgradeHandler
   def <<(data)
     @parsing ||= true
     @parser << data
-    if complete
+    return unless complete
 
-      @sock.write UPGRADE_RESPONSE
+    @sock.write UPGRADE_RESPONSE
 
-      settings = headers['http2-settings']
-      request = {
-        ':scheme'    => 'http',
-        ':method'    => @parser.http_method,
-        ':authority' => headers['Host'],
-        ':path'      => @parser.request_url
-      }.merge(headers)
+    settings = headers['http2-settings']
+    request = {
+      ':scheme'    => 'http',
+      ':method'    => @parser.http_method,
+      ':authority' => headers['Host'],
+      ':path'      => @parser.request_url,
+    }.merge(headers)
 
-      @conn.upgrade(settings, request, @body)
-    end
+    @conn.upgrade(settings, request, @body)
   end
 
-  def complete!; @complete = true; end
+  def complete!
+    @complete = true
+  end
 
   def on_headers_complete(headers)
     @headers = headers
@@ -73,11 +76,10 @@ class UpgradeHandler
   end
 
   def on_message_complete
-    raise unless VALID_UPGRADE_METHODS.include?(@parser.http_method)
+    fail unless VALID_UPGRADE_METHODS.include?(@parser.http_method)
     @parsing = false
     complete!
   end
-
 end
 
 loop do
@@ -122,7 +124,7 @@ loop do
         log.info "Processing h2c Upgrade request: #{req}"
 
         # Don't respond to OPTIONS...
-        if req[':method'] != "OPTIONS"
+        if req[':method'] != 'OPTIONS'
           response = 'Hello h2c world!'
           stream.headers({
             ':status' => '200',

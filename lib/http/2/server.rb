@@ -72,12 +72,13 @@ module HTTP2
 
       # Process received HTTP2-Settings payload
       buf = HTTP2::Buffer.new Base64.urlsafe_decode64(settings)
-      buf.prepend(@framer.common_header(
+      header = @framer.common_header(
         length: buf.bytesize,
         type: :settings,
         stream: 0,
-        flags: []
-      ))
+        flags: [],
+      )
+      buf.prepend(header)
       receive(buf)
 
       # Activate stream (id: 1) with on HTTP/1.1 request parameters
@@ -98,7 +99,7 @@ module HTTP2
         stream << headers_frame
       else
         stream << headers_frame
-        stream << {type: :data, stream: 1, payload: body, flags: [:end_stream]}
+        stream << { type: :data, stream: 1, payload: body, flags: [:end_stream] }
       end
 
       # Mark h2c upgrade as finished
