@@ -34,13 +34,23 @@ module HTTP2
     # @see Connection
     # @param frame [Hash]
     def send(frame)
-      send_connection_preface
+      if @state == :waiting_connection_preface
+        send_connection_preface
+      end
       super(frame)
+    end
+
+    def connection_management(frame)
+      if @state == :waiting_connection_preface
+        send_connection_preface
+        connection_settings(frame)
+      else
+        super(frame)
+      end
     end
 
     # Emit the connection preface if not yet
     def send_connection_preface
-      return unless @state == :waiting_connection_preface
       @state = :connected
       emit(:frame, CONNECTION_PREFACE_MAGIC)
 
