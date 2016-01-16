@@ -7,6 +7,13 @@ RSpec.describe HTTP2::Buffer do
     expect(b.encoding.to_s).to eq 'ASCII-8BIT'
   end
 
+  it 'should force 8-bit encoding when adding data' do
+    b << 'émalgré'
+    expect(b.encoding.to_s).to eq 'ASCII-8BIT'
+    b.prepend('émalgré')
+    expect(b.encoding.to_s).to eq 'ASCII-8BIT'
+  end
+
   it 'should return bytesize of the buffer' do
     expect(b.size).to eq 9
   end
