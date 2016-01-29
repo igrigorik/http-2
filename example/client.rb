@@ -110,7 +110,8 @@ while !sock.closed? && !sock.eof?
   begin
     conn << data
   rescue => e
-    puts "Exception: #{e}, #{e.message} - closing socket."
+    puts "#{e.class} exception: #{e.message} - closing socket."
+    e.backtrace.each { |l| puts "\t" + l }
     sock.close
   end
 end

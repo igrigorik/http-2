@@ -321,7 +321,7 @@ module HTTP2
 
     rescue => e
       raise if e.is_a?(Error::Error)
-      connection_error
+      connection_error(e: e)
     end
     alias_method :<<, :receive
 
@@ -574,7 +574,7 @@ module HTTP2
       end
 
     rescue => e
-      connection_error(:compression_error, msg: e.message)
+      connection_error(:compression_error, e: e)
     end
 
     # Encode headers payload and update connection compressor state.
@@ -605,7 +605,8 @@ module HTTP2
       frames
 
     rescue => e
-      [connection_error(:compression_error, msg: e.message)]
+      connection_error(:compression_error, e: e)
+      nil
     end
 
     # Activates new incoming or outgoing stream and registers appropriate
@@ -642,12 +643,12 @@ module HTTP2
     # @option error [Symbol] :frame_too_large
     # @option error [Symbol] :compression_error
     # @param msg [String]
-    def connection_error(error = :protocol_error, msg: nil)
+    def connection_error(error = :protocol_error, msg: nil, e: nil)
       goaway(error) unless @state == :closed || @state == :new
 
       @state, @error = :closed, error
       klass = error.to_s.split('_').map(&:capitalize).join
-      fail Error.const_get(klass), msg
+      fail Error.const_get(klass), msg || e.message, e.backtrace || []
     end
   end
 end
