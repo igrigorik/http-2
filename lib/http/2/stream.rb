@@ -71,7 +71,7 @@ module HTTP2
     # @param exclusive [Boolean]
     # @param window [Integer]
     # @param parent [Stream]
-    def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil)
+    def initialize(connection:nil, id:nil, weight: 16, dependency: 0, exclusive: false, parent: nil)
       @connection = connection
       @id = id
       @weight = weight
