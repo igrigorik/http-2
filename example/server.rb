@@ -45,7 +45,7 @@ loop do
     log = Logger.new(stream.id)
     req, buffer = {}, ''
 
-    stream.on(:active) { log.info 'cliend opened new stream' }
+    stream.on(:active) { log.info 'client opened new stream' }
     stream.on(:close)  { log.info 'stream closed' }
 
     stream.on(:headers) do |h|
