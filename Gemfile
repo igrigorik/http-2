@@ -10,7 +10,7 @@ group :test do
   gem 'coveralls', require: false
   gem 'pry'
   gem 'pry-byebug', platform: :mri
-  gem 'rspec'
+  gem 'rspec', '~> 3.4.0'
   gem 'rspec-autotest'
   gem 'rubocop', '~> 0.30.0'
 end
