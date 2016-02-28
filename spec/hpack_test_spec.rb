@@ -53,7 +53,12 @@ RSpec.describe HTTP2::Header do
     ).each do |mode|
       next if mode =~ /#/
       ['', 'H'].each do |huffman|
+        encoding_mode = "#{mode}#{huffman}".to_sym
+        encoding_options = HTTP2::Header::EncodingContext.const_get(encoding_mode)
         [4096, 512].each do |table_size|
+          options = { table_size: table_size }
+          options.update(encoding_options)
+
           context "with #{mode}#{huffman} mode and table_size #{table_size}" do
             path = File.expand_path('hpack-test-case/raw-data', File.dirname(__FILE__))
             Dir.foreach(path) do |file|
@@ -61,8 +66,8 @@ RSpec.describe HTTP2::Header do
               it "should encode #{file}" do
                 story = JSON.parse(File.read("#{path}/#{file}"))
                 cases = story['cases']
-                @cc = Compressor  .new(table_size: table_size)
-                @dc = Decompressor.new(table_size: table_size)
+                @cc = Compressor  .new(options)
+                @dc = Decompressor.new(options)
                 cases.each do |c|
                   headers = c['headers'].flat_map(&:to_a)
                   wire = @cc.encode(headers)
