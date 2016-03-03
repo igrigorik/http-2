@@ -30,5 +30,13 @@ module HTTP2
     def read_uint32
       read(4).unpack(UINT32).first
     end
+
+    # Ensures that data that is added is binary encoded as well,
+    # otherwise this could lead to the Buffer instance changing its encoding.
+    [:<<, :prepend].each do |mutating_method|
+      define_method(mutating_method) do |string|
+        super(string.force_encoding(Encoding::BINARY))
+      end
+    end
   end
 end
