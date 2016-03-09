@@ -147,8 +147,6 @@ module HTTP2
       end
 
       header << frame[:stream]
-      pp "************* common_header function ********************"
-      pp header
       header.pack(HEADERPACK) # 8+16,8,8,32
     end
 
