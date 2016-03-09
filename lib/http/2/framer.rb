@@ -147,6 +147,8 @@ module HTTP2
       end
 
       header << frame[:stream]
+      pp "************* common_header function ********************"
+      pp header
       header.pack(HEADERPACK) # 8+16,8,8,32
     end
 
@@ -313,7 +315,7 @@ module HTTP2
       end
 
       frame[:length] = length
-      bytes.prepend(common_header(frame))
+      bytes.prepend(common_header(frame).force_encoding("UTF-8"))
     end
 
     # Decodes complete HTTP/2 frame from provided buffer. If the buffer
