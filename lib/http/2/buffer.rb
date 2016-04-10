@@ -35,6 +35,7 @@ module HTTP2
     # otherwise this could lead to the Buffer instance changing its encoding.
     [:<<, :prepend].each do |mutating_method|
       define_method(mutating_method) do |string|
+        string = string.dup if string.frozen?
         super(string.force_encoding(Encoding::BINARY))
       end
     end
