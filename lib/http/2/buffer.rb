@@ -1,6 +1,11 @@
 module HTTP2
   # Simple binary buffer backed by string.
   #
+  # TODO: Refactor, it would be better if Buffer were not a String subclass,
+  # but rather wrap a string and only expose the mutating API needed so that
+  # the possible surface for things to go wrong stays controllable.
+  # - https://github.com/igrigorik/http-2/pull/46
+  #
   class Buffer < String
     UINT32 = 'N'.freeze
     private_constant :UINT32
