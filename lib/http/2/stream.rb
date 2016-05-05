@@ -101,10 +101,10 @@ module HTTP2
         window_size += frame[:padding] || 0
         @local_window -= window_size
         emit(:data, frame[:payload]) unless frame[:ignore]
+
         # Automatically send WINDOW_UPDATE,
         # assuming that emit(:data) can now receive next data
-        @state == :closed or window_update(window_size)
-        @connection.window_update(window_size)
+        window_update(window_size) if window_size > 0
       when :headers, :push_promise
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :priority
@@ -215,6 +215,10 @@ module HTTP2
     #
     # @param increment [Integer]
     def window_update(increment)
+      # always emit connection-level WINDOW_UPDATE
+      emit(:window_update, increment)
+      # emit stream-level WINDOW_UPDATE unless stream is closed
+      return if @state == :closed || @state == :remote_closed
       send(type: :window_update, increment: increment)
     end
 

@@ -146,7 +146,6 @@ module HTTP2
     #
     # @param increment [Integer]
     def window_update(increment)
-      # TODO: need to check state?
       send(type: :window_update, stream: 0, increment: increment)
     end
 
@@ -636,6 +635,7 @@ module HTTP2
       stream.once(:close)  { @active_stream_count -= 1 }
       stream.on(:promise, &method(:promise)) if self.is_a? Server
       stream.on(:frame,   &method(:send))
+      stream.on(:window_update, &method(:window_update))
 
       @streams[id] = stream
     end
