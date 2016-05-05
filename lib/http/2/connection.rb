@@ -142,6 +142,14 @@ module HTTP2
       @state = :closed
     end
 
+    # Sends a WINDOW_UPDATE frame to the peer.
+    #
+    # @param increment [Integer]
+    def window_update(increment)
+      # TODO: need to check state?
+      send(type: :window_update, stream: 0, increment: increment)
+    end
+
     # Sends a connection SETTINGS frame to the peer.
     # The values are reflected when the corresponding ACK is received.
     #

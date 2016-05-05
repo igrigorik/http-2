@@ -573,6 +573,21 @@ RSpec.describe HTTP2::Stream do
       expect(s1.buffered_amount).to eq 0
       expect(s1.remote_window).to eq 900
     end
+
+    it 'should keep track of incoming flow control' do
+      data = DATA.deep_dup
+      datalen = data[:payload].bytesize
+      expect(@stream).to receive(:send) do |frame|
+        expect(frame[:type]).to eq :window_update
+        expect(frame[:increment]).to eq datalen
+      end
+      expect(@client).to receive(:send) do |frame|
+        expect(frame[:type]).to eq :window_update
+        expect(frame[:increment]).to eq datalen
+      end
+      @stream.receive HEADERS.deep_dup
+      @stream.receive data
+    end
   end
 
   context 'client API' do
@@ -659,6 +674,14 @@ RSpec.describe HTTP2::Stream do
       end
 
       @stream.refuse
+    end
+
+    it '.window_update should emit WINDOW_UPDATE frames' do
+      expect(@stream).to receive(:send) do |frame|
+        expect(frame[:type]).to eq :window_update
+        expect(frame[:increment]).to eq 20
+      end
+      @stream.window_update(20)
     end
   end
 

@@ -97,8 +97,14 @@ module HTTP2
 
       case frame[:type]
       when :data
-        @local_window -= frame[:payload].size
+        window_size = frame[:payload].bytesize
+        window_size += frame[:padding] || 0
+        @local_window -= window_size
         emit(:data, frame[:payload]) unless frame[:ignore]
+        # Automatically send WINDOW_UPDATE,
+        # assuming that emit(:data) can now receive next data
+        @state == :closed or window_update(window_size)
+        @connection.window_update(window_size)
       when :headers, :push_promise
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :priority
@@ -203,6 +209,13 @@ module HTTP2
     # to performing any application processing.
     def refuse
       send(type: :rst_stream, error: :refused_stream)
+    end
+
+    # Sends a WINDOW_UPDATE frame to the peer.
+    #
+    # @param increment [Integer]
+    def window_update(increment)
+      send(type: :window_update, increment: increment)
     end
 
     private

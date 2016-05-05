@@ -577,5 +577,13 @@ RSpec.describe HTTP2::Connection do
 
       @conn.goaway(:internal_error, 'payload')
     end
+    it '.window_update should emit WINDOW_UPDATE frames' do
+      expect(@conn).to receive(:send) do |frame|
+        expect(frame[:type]).to eq :window_update
+        expect(frame[:increment]).to eq 20
+        expect(frame[:stream]).to eq 0
+      end
+      @conn.window_update(20)
+    end
   end
 end
