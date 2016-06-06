@@ -21,17 +21,17 @@ if options[:secure]
   ctx.cert = OpenSSL::X509::Certificate.new(File.open('keys/server.crt'))
   ctx.key = OpenSSL::PKey::RSA.new(File.open('keys/server.key'))
 
-  ctx.ssl_version= :TLSv1_2
+  ctx.ssl_version = :TLSv1_2
   ctx.options = OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:options]
   ctx.ciphers = OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:ciphers]
 
   ctx.alpn_select_cb = lambda do |protocols|
-    raise RuntimeError.new("Protocol #{DRAFT} is required") if protocols.index(DRAFT)==nil
+    raise "Protocol #{DRAFT} is required" if protocols.index(DRAFT).nil?
     DRAFT
   end
 
-  ctx.tmp_ecdh_callback = lambda do |*args|
-    OpenSSL::PKey::EC.new "prime256v1"
+  ctx.tmp_ecdh_callback = lambda do |_args|
+    OpenSSL::PKey::EC.new 'prime256v1'
   end
 
   server = OpenSSL::SSL::SSLServer.new(server, ctx)

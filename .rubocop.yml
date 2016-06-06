@@ -14,5 +14,5 @@ Style/CaseIndentation:
 Style/IndentHash:
   EnforcedStyle: consistent
 
-Style/TrailingComma:
+Style/TrailingCommaInLiteral:
   EnforcedStyleForMultiline: comma
