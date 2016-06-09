@@ -54,7 +54,7 @@ module HTTP2
     # Size of current stream flow control window.
     attr_reader :local_window
     attr_reader :remote_window
-    alias_method :window, :local_window
+    alias window local_window
 
     # Reason why connection was closed.
     attr_reader :closed
@@ -117,7 +117,7 @@ module HTTP2
 
       complete_transition(frame)
     end
-    alias_method :<<, :receive
+    alias << receive
 
     # Processes outgoing HTTP 2.0 frames. Data frames may be automatically
     # split and buffered based on maximum frame size and current stream flow
@@ -320,14 +320,14 @@ module HTTP2
       # WINDOW_UPDATE on a stream in this state MUST be treated as a
       # connection error (Section 5.4.1) of type PROTOCOL_ERROR.
       when :reserved_local
-        if sending
-          @state = case frame[:type]
+        @state = if sending
+          case frame[:type]
           when :headers     then event(:half_closed_remote)
           when :rst_stream  then event(:local_rst)
           else stream_error
           end
         else
-          @state = case frame[:type]
+          case frame[:type]
           when :rst_stream then event(:remote_rst)
           when :priority, :window_update then @state
           else stream_error
@@ -349,14 +349,14 @@ module HTTP2
       # PRIORITY on a stream in this state MUST be treated as a connection
       # error (Section 5.4.1) of type PROTOCOL_ERROR.
       when :reserved_remote
-        if sending
-          @state = case frame[:type]
+        @state = if sending
+          case frame[:type]
           when :rst_stream then event(:local_rst)
           when :priority, :window_update then @state
           else stream_error
           end
         else
-          @state = case frame[:type]
+          case frame[:type]
           when :headers then event(:half_closed_local)
           when :rst_stream then event(:remote_rst)
           else stream_error

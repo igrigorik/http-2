@@ -56,7 +56,7 @@ module HTTP2
     # infinity, but is automatically updated on receipt of peer settings).
     attr_reader :local_window
     attr_reader :remote_window
-    alias_method :window, :local_window
+    alias window local_window
 
     # Current settings value for local and peer
     attr_reader :local_settings
@@ -330,7 +330,7 @@ module HTTP2
       raise if e.is_a?(Error::Error)
       connection_error(e: e)
     end
-    alias_method :<<, :receive
+    alias << receive
 
     private
 
@@ -364,12 +364,10 @@ module HTTP2
     # @param frame [Hash]
     # @return [Array of Buffer] encoded frame
     def encode(frame)
-      frames = []
-
-      if frame[:type] == :headers || frame[:type] == :push_promise
-        frames = encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
+      frames = if frame[:type] == :headers || frame[:type] == :push_promise
+        encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
       else
-        frames = [frame]               # otherwise one frame
+        [frame]               # otherwise one frame
       end
 
       frames.map { |f| @framer.generate(f) }
@@ -594,7 +592,7 @@ module HTTP2
 
       frames = []
 
-      while payload.size > 0
+      while payload.bytesize > 0
         cont = frame.dup
         cont[:type] = :continuation
         cont[:flags] = []

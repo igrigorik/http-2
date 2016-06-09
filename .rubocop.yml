@@ -1,9 +1,15 @@
 inherit_from: .rubocop_todo.yml
 
 AllCops:
+  TargetRubyVersion: 2.1
   DisplayCopNames: true
   Exclude:
-    - 'bin/*'
+    - 'bin/**'
+    - 'vendor/**/*'
+    - '**/huffman_statemachine.rb'
+
+Metrics/LineLength:
+  Max: 120
 
 Lint/EndAlignment:
   AlignWith: variable
@@ -16,3 +22,36 @@ Style/IndentHash:
 
 Style/TrailingCommaInLiteral:
   EnforcedStyleForMultiline: comma
+
+Style/SpaceAroundOperators:
+  Enabled: false
+
+Style/ExtraSpacing:
+  Enabled: false
+
+Style/SignalException:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
+
+Style/ParenthesesAroundCondition:
+  Enabled: false
+
+Style/IfInsideElse:
+  Enabled: false
+
+Style/TrailingCommaInArguments:
+  Enabled: false
+
+Style/TrailingUnderscoreVariable:
+  Enabled: false
+
+Performance/TimesMap:
+  Enabled: false
+
+Performance/RedundantBlockCall:
+  Enabled: false

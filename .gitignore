@@ -4,11 +4,13 @@
 .config
 .yardoc
 .DS_Store
+.idea
 Gemfile.lock
 InstalledFiles
 _yardoc
 coverage
 doc/
+vendor/
 lib/bundler/man
 pkg
 rdoc

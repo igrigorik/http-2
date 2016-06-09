@@ -11,7 +11,7 @@ module HTTP2
       fail ArgumentError, 'must provide callback' unless block_given?
       listeners(event.to_sym).push block
     end
-    alias_method :on, :add_listener
+    alias on add_listener
 
     # Subscribe to next event (at most once) for specified type.
     #

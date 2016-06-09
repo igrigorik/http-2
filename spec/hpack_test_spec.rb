@@ -24,7 +24,7 @@ RSpec.describe HTTP2::Header do
       next if folder =~ /#/
       path = File.expand_path("hpack-test-case/#{folder}", File.dirname(__FILE__))
       next unless Dir.exist?(path)
-      context "#{folder}" do
+      context folder.to_s do
         Dir.foreach(path) do |file|
           next if file !~ /\.json/
           it "should decode #{file}" do

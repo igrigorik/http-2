@@ -28,7 +28,7 @@ if options[:secure]
 end
 
 class UpgradeHandler
-  VALID_UPGRADE_METHODS = %w(GET OPTIONS)
+  VALID_UPGRADE_METHODS = %w(GET OPTIONS).freeze
   UPGRADE_RESPONSE = <<-RESP
 HTTP/1.1 101 Switching Protocols
 Connection: Upgrade
