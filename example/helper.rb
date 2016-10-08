@@ -17,3 +17,25 @@ class Logger
     puts "[Stream #{@id}]: #{msg}"
   end
 end
+
+def send_promises(stream)
+  push_streams = []
+
+  # send 10 promises
+  10.times do |i|
+    sleep 1
+    puts 'sending push'
+
+    head = {
+      ':status' => '200',
+      ':path'   => "/other_resource/#{i}",
+      'content-type' => 'text/plain',
+    }
+
+    stream.promise(head) do |push|
+      push.headers(head)
+      push_streams << push
+    end
+  end
+  push_streams
+end
