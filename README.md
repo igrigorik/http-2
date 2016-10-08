@@ -246,9 +246,10 @@ conn.on(:stream) do |stream|
     }
 
     # initiate server push stream
+    push_stream = nil
     stream.promise(head) do |push|
-      push.headers({ ... })
-      push.data(...)
+      push.headers(head)
+      push_stream = push
     end
 
     # send response
@@ -259,8 +260,10 @@ conn.on(:stream) do |stream|
 
     # split response between multiple DATA frames
     stream.data(response_chunk, end_stream: false)
-    promise.data(payload)
     stream.data(last_chunk)
+    
+    # now send the previously promised data
+    push_stream.data(push_data)
   end
 end
 ```
