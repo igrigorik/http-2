@@ -248,7 +248,7 @@ conn.on(:stream) do |stream|
     # initiate server push stream
     push_stream = nil
     stream.promise(head) do |push|
-      push.headers(head)
+      push.headers({...})
       push_stream = push
     end
 
