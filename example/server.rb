@@ -11,6 +11,10 @@ OptionParser.new do |opts|
   opts.on('-p', '--port [Integer]', 'listen port') do |v|
     options[:port] = v
   end
+
+  opts.on('-pu', '--push', 'Push message') do |_v|
+    options[:push] = true
+  end
 end.parse!
 
 puts "Starting server on port #{options[:port]}"
@@ -88,9 +92,35 @@ loop do
         'content-type' => 'text/plain',
       }, end_stream: false)
 
+      if options[:push]
+        push_streams = []
+
+        # send 10 promises
+        10.times do |i|
+          sleep 1
+          puts 'sending push'
+
+          head = { ':method' => 'GET',
+                   ':authority' => 'localhost',
+                   ':path' => "/other_resource/#{i}" }
+
+          stream.promise(head) do |push|
+            push.headers(':status' => '200', 'content-type' => 'text/plain', 'content-length' => '11')
+            push_streams << push
+          end
+        end
+      end
+
       # split response into multiple DATA frames
       stream.data(response.slice!(0, 5), end_stream: false)
       stream.data(response)
+
+      if options[:push]
+        push_streams.each_with_index do |push, i|
+          sleep 1
+          push.data("push_data #{i}")
+        end
+      end
     end
   end
 

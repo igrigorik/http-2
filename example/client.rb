@@ -37,6 +37,9 @@ else
 end
 
 conn = HTTP2::Client.new
+stream = conn.new_stream
+log = Logger.new(stream.id)
+
 conn.on(:frame) do |bytes|
   # puts "Sending bytes: #{bytes.unpack("H*").first}"
   sock.print bytes
@@ -48,9 +51,6 @@ end
 conn.on(:frame_received) do |frame|
   puts "Received frame: #{frame.inspect}"
 end
-
-stream = conn.new_stream
-log = Logger.new(stream.id)
 
 conn.on(:promise) do |promise|
   promise.on(:headers) do |h|
@@ -68,7 +68,6 @@ end
 
 stream.on(:close) do
   log.info 'stream closed'
-  sock.close
 end
 
 stream.on(:half_close) do

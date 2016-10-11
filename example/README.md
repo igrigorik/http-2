@@ -8,6 +8,10 @@ $> ruby server.rb
 $> ruby client.rb http://localhost:8080/                 # GET
 $> ruby client.rb http://localhost:8080/ -d 'some data'  # POST
 
+# Server push
+$> ruby server.rb -push
+$> ruby client.rb http://localhost:8080/                 # GET
+
 # TLS + NPN negotiation
 $> ruby server.rb --secure
 $> ruby client.rb https://localhost:8080/                # GET
