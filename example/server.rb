@@ -94,7 +94,7 @@ loop do
 
       if options[:push]
         push_streams = []
-        
+
         # send 10 promises
         10.times do |i|
           sleep 1
@@ -106,7 +106,7 @@ loop do
                    'content-type' => 'text/plain' }
 
           stream.promise(head) do |push|
-            push.headers({ ':status' => '200', 'content-length' => '11' })
+            push.headers(':status' => '200', 'content-length' => '11')
             push_streams << push
           end
         end

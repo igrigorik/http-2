@@ -17,4 +17,3 @@ class Logger
     puts "[Stream #{@id}]: #{msg}"
   end
 end
-
