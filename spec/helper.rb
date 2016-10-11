@@ -1,4 +1,4 @@
-require 'active_support/core_ext/object/deep_dup'
+require './spec/support/deep_dup'
 
 RSpec.configure(&:disable_monkey_patching!)
 RSpec::Expectations.configuration.warn_about_potential_false_positives = false
