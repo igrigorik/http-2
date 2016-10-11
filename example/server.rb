@@ -92,7 +92,25 @@ loop do
         'content-type' => 'text/plain',
       }, end_stream: false)
 
-      push_streams = send_promises(stream) if options[:push]
+      if options[:push]
+        push_streams = []
+        
+        # send 10 promises
+        10.times do |i|
+          sleep 1
+          puts 'sending push'
+
+          head = { ':method' => 'GET',
+                   ':authority' => 'localhost',
+                   ':path' => "/other_resource/#{i}",
+                   'content-type' => 'text/plain' }
+
+          stream.promise(head) do |push|
+            push.headers({ ':status' => '200', 'content-length' => '11' })
+            push_streams << push
+          end
+        end
+      end
 
       # split response into multiple DATA frames
       stream.data(response.slice!(0, 5), end_stream: false)
