@@ -68,9 +68,6 @@ end
 
 stream.on(:close) do
   log.info 'stream closed'
-
-  # keep connection open to handle push messages
-  # sock.close
 end
 
 stream.on(:half_close) do

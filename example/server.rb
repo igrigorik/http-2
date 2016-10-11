@@ -102,11 +102,10 @@ loop do
 
           head = { ':method' => 'GET',
                    ':authority' => 'localhost',
-                   ':path' => "/other_resource/#{i}",
-                   'content-type' => 'text/plain' }
+                   ':path' => "/other_resource/#{i}" }
 
           stream.promise(head) do |push|
-            push.headers(':status' => '200', 'content-length' => '11')
+            push.headers(':status' => '200', 'content-type' => 'text/plain', 'content-length' => '11')
             push_streams << push
           end
         end
