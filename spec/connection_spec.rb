@@ -149,8 +149,9 @@ RSpec.describe HTTP2::Connection do
       ]
       headers = []
       @conn.on(:frame) do |bytes|
-        # bytes[3]: frame's type field
-        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
+        # buf[3]: frame's type field
+        buf = Buffer.new(bytes)
+        headers << f.parse(buf) if [1, 5, 9].include?(buf[3].ord)
       end
 
       stream = @conn.new_stream
@@ -342,9 +343,10 @@ RSpec.describe HTTP2::Connection do
 
     it 'should compress stream headers' do
       @conn.on(:frame) do |bytes|
-        expect(bytes).not_to include('get')
-        expect(bytes).not_to include('http')
-        expect(bytes).not_to include('www.example.org') # should be huffman encoded
+        buf = Buffer.new(bytes)
+        expect(buf).not_to include('get')
+        expect(buf).not_to include('http')
+        expect(buf).not_to include('www.example.org') # should be huffman encoded
       end
 
       stream = @conn.new_stream
@@ -357,8 +359,9 @@ RSpec.describe HTTP2::Connection do
     it 'should generate CONTINUATION if HEADERS is too long' do
       headers = []
       @conn.on(:frame) do |bytes|
-        # bytes[3]: frame's type field
-        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
+        buf = Buffer.new(bytes)
+        # buf[3]: frame's type field
+        headers << f.parse(buf) if [1, 5, 9].include?(buf[3].ord)
       end
 
       stream = @conn.new_stream
@@ -381,8 +384,9 @@ RSpec.describe HTTP2::Connection do
     it 'should not generate CONTINUATION if HEADERS fits exactly in a frame' do
       headers = []
       @conn.on(:frame) do |bytes|
-        # bytes[3]: frame's type field
-        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
+        # buf[3]: frame's type field
+        buf = Buffer.new(bytes)
+        headers << f.parse(buf) if [1, 5, 9].include?(buf[3].ord)
       end
 
       stream = @conn.new_stream
@@ -403,8 +407,9 @@ RSpec.describe HTTP2::Connection do
     it 'should not generate CONTINUATION if HEADERS fits exactly in a frame' do
       headers = []
       @conn.on(:frame) do |bytes|
-        # bytes[3]: frame's type field
-        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
+        buf = Buffer.new(bytes)
+        # buf[3]: frame's type field
+        headers << f.parse(buf) if [1, 5, 9].include?(buf[3].ord)
       end
 
       stream = @conn.new_stream
@@ -425,7 +430,8 @@ RSpec.describe HTTP2::Connection do
     it 'should generate CONTINUATION if HEADERS exceed the max payload by one byte' do
       headers = []
       @conn.on(:frame) do |bytes|
-        headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
+        buf = Buffer.new(bytes)
+        headers << f.parse(buf) if [1, 5, 9].include?(buf[3].ord)
       end
 
       stream = @conn.new_stream

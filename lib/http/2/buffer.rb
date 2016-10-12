@@ -1,33 +1,59 @@
+require 'forwardable'
+
 module HTTP2
-  # Simple binary buffer backed by string.
+  # Binary buffer wraps String.
   #
-  # TODO: Refactor, it would be better if Buffer were not a String subclass,
-  # but rather wrap a string and only expose the mutating API needed so that
-  # the possible surface for things to go wrong stays controllable.
-  # - https://github.com/igrigorik/http-2/pull/46
-  #
-  class Buffer < String
+  class Buffer
+    extend Forwardable
+
+    def_delegators :@buffer, :ord, :encoding, :setbyte, :unpack,
+                   :size, :each_byte,  :to_str, :length, :inspect,
+                   :[], :[]=, :empty?, :bytesize, :include?
+
     UINT32 = 'N'.freeze
     private_constant :UINT32
 
     # Forces binary encoding on the string
-    def initialize(*)
-      super.force_encoding(Encoding::BINARY)
+    def initialize(str = '')
+      str = str.dup if str.frozen?
+      @buffer = str.force_encoding(Encoding::BINARY)
     end
 
     # Emulate StringIO#read: slice first n bytes from the buffer.
     #
     # @param n [Integer] number of bytes to slice from the buffer
     def read(n)
-      Buffer.new(slice!(0, n))
+      Buffer.new(@buffer.slice!(0, n))
     end
-
-    # Alias getbyte to readbyte
-    alias readbyte getbyte
 
     # Emulate StringIO#getbyte: slice first byte from buffer.
     def getbyte
       read(1).ord
+    end
+
+    def slice!(*args)
+      Buffer.new(@buffer.slice!(*args))
+    end
+
+    def slice(*args)
+      Buffer.new(@buffer.slice(*args))
+    end
+
+    def force_encoding(*args)
+      @buffer = @buffer.force_encoding(*args)
+    end
+
+    def ==(other)
+      @buffer == other
+    end
+
+    def +(other)
+      @buffer += other
+    end
+
+    # Emulate String#getbyte: return nth byte from buffer.
+    def readbyte(n)
+      @buffer[n].ord
     end
 
     # Slice unsigned 32-bit integer from buffer.
@@ -41,7 +67,9 @@ module HTTP2
     [:<<, :prepend].each do |mutating_method|
       define_method(mutating_method) do |string|
         string = string.dup if string.frozen?
-        super(string.force_encoding(Encoding::BINARY))
+        @buffer.send mutating_method, string.force_encoding(Encoding::BINARY)
+
+        self
       end
     end
   end
