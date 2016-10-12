@@ -216,7 +216,7 @@ module HTTP2
         length += 4
 
       when :settings
-        if frame[:stream] != 0
+        if (frame[:stream]).nonzero?
           fail CompressionError, "Invalid stream ID (#{frame[:stream]})"
         end
 
@@ -357,14 +357,14 @@ module HTTP2
         if frame[:flags].include? :priority
           e_sd = payload.read_uint32
           frame[:stream_dependency] = e_sd & RBIT
-          frame[:exclusive] = (e_sd & EBIT) != 0
+          frame[:exclusive] = (e_sd & EBIT) != 0 # rubocop:disable Style/NumericPredicate
           frame[:weight] = payload.getbyte + 1
         end
         frame[:payload] = payload.read(frame[:length])
       when :priority
         e_sd = payload.read_uint32
         frame[:stream_dependency] = e_sd & RBIT
-        frame[:exclusive] = (e_sd & EBIT) != 0
+        frame[:exclusive] = (e_sd & EBIT) != 0 # rubocop:disable Style/NumericPredicate
         frame[:weight] = payload.getbyte + 1
       when :rst_stream
         frame[:error] = unpack_error payload.read_uint32
@@ -373,11 +373,11 @@ module HTTP2
         # NOTE: frame[:length] might not match the number of frame[:payload]
         # because unknown extensions are ignored.
         frame[:payload] = []
-        unless frame[:length] % 6 == 0
+        unless (frame[:length] % 6).zero?
           fail ProtocolError, 'Invalid settings payload length'
         end
 
-        if frame[:stream] != 0
+        if (frame[:stream]).nonzero?
           fail ProtocolError, "Invalid stream ID (#{frame[:stream]})"
         end
 

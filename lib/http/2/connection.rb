@@ -379,7 +379,7 @@ module HTTP2
     # @param frame [Hash]
     # @return [Boolean]
     def connection_frame?(frame)
-      frame[:stream] == 0 ||
+      (frame[:stream]).zero? ||
         frame[:type] == :settings ||
         frame[:type] == :ping ||
         frame[:type] == :goaway
@@ -445,11 +445,11 @@ module HTTP2
             # Clients MUST reject any attempt to change the
             # SETTINGS_ENABLE_PUSH setting to a value other than 0 by treating the
             # message as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
-            return ProtocolError.new("invalid #{key} value") unless v == 0
+            return ProtocolError.new("invalid #{key} value") unless v.zero?
           when :client
             # Any value other than 0 or 1 MUST be treated as a
             # connection error (Section 5.4.1) of type PROTOCOL_ERROR.
-            unless v == 0 || v == 1
+            unless v.zero? || v == 1
               return ProtocolError.new("invalid #{key} value")
             end
           end
@@ -483,7 +483,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def connection_settings(frame)
-      connection_error unless frame[:type] == :settings && frame[:stream] == 0
+      connection_error unless frame[:type] == :settings && (frame[:stream]).zero?
 
       # Apply settings.
       #  side =
