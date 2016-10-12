@@ -282,6 +282,13 @@ The client can cancel any given push stream (via `.close`), or disable server pu
 ```ruby
 client.settings(streams: 0) # setting max limit to 0 disables server push
 ```
+### Specs
+
+To run specs:
+
+```ruby
+rake
+```
 
 ### License
 
