@@ -56,10 +56,10 @@ RSpec.describe HTTP2::Client do
     it 'should raise error on PUSH_PROMISE against non-idle stream' do
       expect do
         s = @client.new_stream
-        s.send HEADERS
+        s.send HEADERS.dup
 
-        @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
-        @client << set_stream_id(f.generate(PUSH_PROMISE), s.id)
+        @client << set_stream_id(f.generate(PUSH_PROMISE.dup), s.id)
+        @client << set_stream_id(f.generate(PUSH_PROMISE.dup), s.id)
       end.to raise_error(ProtocolError)
     end
 

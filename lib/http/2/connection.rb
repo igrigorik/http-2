@@ -574,7 +574,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def decode_headers(frame)
-      if frame[:payload].is_a? String
+      if frame[:payload].is_a? Buffer
         frame[:payload] = @decompressor.decode(frame[:payload])
       end
 
@@ -588,7 +588,7 @@ module HTTP2
     # @return [Array of Frame]
     def encode_headers(frame)
       payload = frame[:payload]
-      payload = @compressor.encode(payload) unless payload.is_a? String
+      payload = @compressor.encode(payload) unless payload.is_a? Buffer
 
       frames = []
 

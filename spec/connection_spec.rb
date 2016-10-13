@@ -149,7 +149,6 @@ RSpec.describe HTTP2::Connection do
       ]
       headers = []
       @conn.on(:frame) do |bytes|
-        # bytes[3]: frame's type field
         headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
       end
 
