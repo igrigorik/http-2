@@ -654,14 +654,9 @@ module HTTP2
 
       @state, @error = :closed, error
       klass = error.to_s.split('_').map(&:capitalize).join
-
-      message = msg
-      message = e.message if message.nil? && e.respond_to?(:message)
-
-      backtrace = []
-      backtrace = e.backtrace if e.respond_to?(:backtrace)
-
-      fail Error.const_get(klass), message, backtrace
+      msg ||= e && e.message
+      backtrace = (e && e.backtrace) || []
+      fail Error.const_get(klass), msg, backtrace
     end
   end
 end
