@@ -29,12 +29,14 @@ if options[:secure]
   ctx.options = OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:options]
   ctx.ciphers = OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:ciphers]
 
+  ctx.alpn_protocols = ['h2']
+
   ctx.alpn_select_cb = lambda do |protocols|
     raise "Protocol #{DRAFT} is required" if protocols.index(DRAFT).nil?
     DRAFT
   end
 
-  ctx.tmp_ecdh_callback = lambda do |_args|
+  ctx.tmp_ecdh_callback = lambda do |*_args|
     OpenSSL::PKey::EC.new 'prime256v1'
   end
 
