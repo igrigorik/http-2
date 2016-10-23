@@ -20,8 +20,8 @@ server = TCPServer.new(options[:port])
 
 if options[:secure]
   ctx = OpenSSL::SSL::SSLContext.new
-  ctx.cert = OpenSSL::X509::Certificate.new(File.open('keys/mycert.pem'))
-  ctx.key = OpenSSL::PKey::RSA.new(File.open('keys/mykey.pem'))
+  ctx.cert = OpenSSL::X509::Certificate.new(File.open('keys/server.crt'))
+  ctx.key = OpenSSL::PKey::RSA.new(File.open('keys/server.key'))
   ctx.npn_protocols = [DRAFT]
 
   server = OpenSSL::SSL::SSLServer.new(server, ctx)
