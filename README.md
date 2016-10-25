@@ -239,15 +239,14 @@ conn.on(:stream) do |stream|
 
   # fires when client terminates its request (i.e. request finished)
   stream.on(:half_close) do
-    head = {
-     ":status" => 200,
-     ":path"   => "/other_resource",
-     "content-type" => "text/plain"
-    }
+    promise_header = { ':method' => 'GET',
+                       ':authority' => 'localhost',
+                       ':scheme' => 'https',
+                       ':path' => "/other_resource" }
 
     # initiate server push stream
     push_stream = nil
-    stream.promise(head) do |push|
+    stream.promise(promise_header) do |push|
       push.headers({...})
       push_stream = push
     end
