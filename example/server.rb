@@ -99,11 +99,11 @@ loop do
 
         # send 10 promises
         10.times do |i|
-          sleep 1
           puts 'sending push'
 
           head = { ':method' => 'GET',
                    ':authority' => 'localhost',
+                   ':scheme' => 'https',
                    ':path' => "/other_resource/#{i}" }
 
           stream.promise(head) do |push|
