@@ -1,3 +1,5 @@
+# frozen_string_literals: true
+
 require_relative 'helper'
 require 'http_parser'
 require 'base64'
@@ -27,6 +29,15 @@ if options[:secure]
   server = OpenSSL::SSL::SSLServer.new(server, ctx)
 end
 
+def request_header_hash
+  Hash.new do |hash, key|
+    k = key.to_s.downcase
+    k.tr! '_', '-'
+    _, value = hash.find { |header_key, _| header_key.downcase == k }
+    hash[key] = value if value
+  end
+end
+
 class UpgradeHandler
   VALID_UPGRADE_METHODS = %w(GET OPTIONS).freeze
   UPGRADE_RESPONSE = <<-RESP
@@ -41,6 +52,7 @@ RESP
   def initialize(conn, sock)
     @conn, @sock = conn, sock
     @complete, @parsing = false, false
+    @headers = request_header_hash
     @body = ''
     @parser = ::HTTP::Parser.new(self)
   end
@@ -68,7 +80,7 @@ RESP
   end
 
   def on_headers_complete(headers)
-    @headers = headers
+    @headers.merge! headers
   end
 
   def on_body(chunk)
@@ -100,7 +112,8 @@ loop do
 
   conn.on(:stream) do |stream|
     log = Logger.new(stream.id)
-    req, buffer = {}, ''
+    req = request_header_hash
+    buffer = ''
 
     stream.on(:active) { log.info 'client opened new stream' }
     stream.on(:close) do
@@ -108,7 +121,7 @@ loop do
     end
 
     stream.on(:headers) do |h|
-      req = Hash[*h.flatten]
+      req.merge! Hash[*h.flatten]
       log.info "request headers: #{h}"
     end
 
@@ -122,9 +135,7 @@ loop do
 
       if req['Upgrade']
         log.info "Processing h2c Upgrade request: #{req}"
-
-        # Don't respond to OPTIONS...
-        if req[':method'] != 'OPTIONS'
+        if req[':method'] != 'OPTIONS' # Don't respond to OPTIONS...
           response = 'Hello h2c world!'
           stream.headers({
             ':status' => '200',
