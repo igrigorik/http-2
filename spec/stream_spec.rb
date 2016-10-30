@@ -666,7 +666,7 @@ RSpec.describe HTTP2::Stream do
         { type: :data, flags: [], length: 16_384 },
         { type: :data, flags: [], length: 16_384 },
         { type: :data, flags: [], length: 16_384 },
-        { type: :data, flags: [:end_stream], length: 1 }
+        { type: :data, flags: [:end_stream], length: 1 },
       ]
       want.each do |w|
         expect(@stream).to receive(:send) do |frame|
