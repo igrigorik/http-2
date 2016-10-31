@@ -651,7 +651,28 @@ RSpec.describe HTTP2::Stream do
         expect(@stream).to receive(:send) do |frame|
           expect(frame[:type]).to eq w[:type]
           expect(frame[:flags]).to eq w[:flags]
-          expect(frame[:payload].length).to eq w[:length]
+          expect(frame[:payload].bytesize).to eq w[:length]
+        end
+      end
+
+      @stream.data(data + 'x')
+    end
+
+    it '.data should split large multibyte DATA frames' do
+      data = '🐼' * 16_384
+
+      want = [
+        { type: :data, flags: [], length: 16_384 },
+        { type: :data, flags: [], length: 16_384 },
+        { type: :data, flags: [], length: 16_384 },
+        { type: :data, flags: [], length: 16_384 },
+        { type: :data, flags: [:end_stream], length: 1 },
+      ]
+      want.each do |w|
+        expect(@stream).to receive(:send) do |frame|
+          expect(frame[:type]).to eq w[:type]
+          expect(frame[:flags]).to eq w[:flags]
+          expect(frame[:payload].bytesize).to eq w[:length]
         end
       end
 

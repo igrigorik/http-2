@@ -182,14 +182,28 @@ module HTTP2
       # Split data according to each frame is smaller enough
       # TODO: consider padding?
       max_size = @connection.remote_settings[:settings_max_frame_size]
-      while payload.bytesize > max_size
-        chunk = payload.slice!(0, max_size)
-        send(type: :data, flags: [], payload: chunk)
+
+      if payload.bytesize > max_size
+        payload = chunk_data(payload, max_size) do |chunk|
+          send(type: :data, flags: [], payload: chunk)
+        end
       end
 
       flags = []
       flags << :end_stream if end_stream
       send(type: :data, flags: flags, payload: payload)
+    end
+
+    # Chunk data into max_size, yield each chunk, then return final chunk
+    #
+    def chunk_data(payload, max_size)
+      total = payload.bytesize
+      cursor = 0
+      while (total - cursor) > max_size
+        yield payload.byteslice(cursor, max_size)
+        cursor += max_size
+      end
+      payload.byteslice(cursor, total - cursor)
     end
 
     # Sends a RST_STREAM frame which closes current stream - this does not
