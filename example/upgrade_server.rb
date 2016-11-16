@@ -2,7 +2,6 @@
 
 require_relative 'helper'
 require 'http_parser'
-require 'base64'
 
 options = { port: 8080 }
 OptionParser.new do |opts|
