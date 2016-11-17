@@ -328,6 +328,8 @@ module HTTP2
       frame = read_common_header(buf)
       return nil if buf.size < 9 + frame[:length]
 
+      fail ProtocolError, 'payload too large' if frame[:length] > DEFAULT_MAX_FRAME_SIZE
+
       buf.read(9)
       payload = buf.read(frame[:length])
 
