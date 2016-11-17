@@ -50,7 +50,7 @@ loop do
   conn = HTTP2::Server.new
   conn.on(:frame) do |bytes|
     # puts "Writing bytes: #{bytes.unpack("H*").first}"
-    sock.write bytes
+    sock.is_a?(TCPSocket) ? sock.sendmsg(bytes) : sock.write(bytes)
   end
   conn.on(:frame_sent) do |frame|
     puts "Sent frame: #{frame.inspect}"
