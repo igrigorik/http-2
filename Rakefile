@@ -12,6 +12,15 @@ RSpec::Core::RakeTask.new(:hpack) do |t|
   t.pattern = './spec/hpack_test_spec.rb'
 end
 
+task :h2spec do
+  system 'ruby example/server.rb -p 9000 &', out: File::NULL
+  sleep 1
+
+  system 'spec/h2spec/h2spec.darwin -p 9000'
+
+  system 'kill `pgrep -f example/server.rb`'
+end
+
 RuboCop::RakeTask.new
 YARD::Rake::YardocTask.new
 
