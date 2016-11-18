@@ -12,7 +12,7 @@ OptionParser.new do |opts|
     options[:port] = v
   end
 
-  opts.on('-pu', '--push', 'Push message') do |_v|
+  opts.on('-u', '--push', 'Push message') do |_v|
     options[:push] = true
   end
 end.parse!
