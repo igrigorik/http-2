@@ -13,6 +13,10 @@ RSpec::Core::RakeTask.new(:hpack) do |t|
 end
 
 task :h2spec do
+  if /darwin/ !~ RUBY_PLATFORM
+    abort "h2spec rake task currently only works on OSX. \nDownload other binaries from https://github.com/summerwind/h2spec/releases"
+  end
+
   system 'ruby example/server.rb -p 9000 &', out: File::NULL
   sleep 1
 
