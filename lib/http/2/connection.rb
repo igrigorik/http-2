@@ -228,7 +228,7 @@ module HTTP2
           when :headers
             # When server receives even-numbered stream identifier,
             # the endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
-            connection_error if frame[:stream].even? && is_a?(Server)
+            connection_error if frame[:stream].even? && self.is_a?(Server)
 
             # The last frame in a sequence of HEADERS/CONTINUATION
             # frames MUST have the END_HEADERS flag set.
