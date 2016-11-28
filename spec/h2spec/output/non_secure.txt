@@ -48,11 +48,7 @@
           Actual: Test timeout
 
     5.1.1. Stream Identifiers
-        Sends even-numbered stream identifier      × Sends even-numbered stream identifier
-        - The endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
-          Expected: GOAWAY frame (ErrorCode: PROTOCOL_ERROR)
-                    Connection close
-            Actual: DATA frame (Length: 22, Flags: 1)
+        Sends even-numbered stream identifier      ✓ Sends even-numbered stream identifier
 
     5.1.2. Stream Concurrency
         Sends HEADERS frames that causes their advertised concurrent stream limit to be exceeded      × Sends HEADERS frames that causes their advertised concurrent stream limit to be exceeded
@@ -80,10 +76,7 @@
             Actual: Test timeout
 
   5.5. Extending HTTP/2
-      Sends an unknown extension frame    × Sends an unknown extension frame
-      - The endpoint MUST discard frames that have unknown or unsupported types
-        Expected: PING frame (Flags: 1)
-          Actual: Test timeout
+      Sends an unknown extension frame    ✓ Sends an unknown extension frame
       Sends an unknown extension frame in the middle of a header block    × Sends an unknown extension frame in the middle of a header block
       - The endpoint MUST treat as a connection error of type PROTOCOL_ERROR.
         Expected: GOAWAY frame (ErrorCode: PROTOCOL_ERROR)
@@ -102,7 +95,11 @@
 
   6.2. HEADERS
       Sends a HEADERS frame followed by any frame other than CONTINUATION    ✓ Sends a HEADERS frame followed by any frame other than CONTINUATION
-      Sends a HEADERS frame followed by a frame on a different stream    ✓ Sends a HEADERS frame followed by a frame on a different stream
+      Sends a HEADERS frame followed by a frame on a different stream    × Sends a HEADERS frame followed by a frame on a different stream
+      - The endpoint MUST treat the receipt of a frame on a different stream as a connection error of type PROTOCOL_ERROR.
+        Expected: GOAWAY frame (ErrorCode: PROTOCOL_ERROR)
+                  Connection close
+          Actual: Test timeout
       Sends a HEADERS frame with 0x0 stream identifier    ✓ Sends a HEADERS frame with 0x0 stream identifier
       Sends a HEADERS frame with invalid pad length    ✓ Sends a HEADERS frame with invalid pad length
 
@@ -317,4 +314,4 @@
   8.2. Server Push
       Sends a PUSH_PROMISE frame    ✓ Sends a PUSH_PROMISE frame
 
-73 tests, 32 passed, 0 skipped, 41 failed
+73 tests, 33 passed, 0 skipped, 40 failed
