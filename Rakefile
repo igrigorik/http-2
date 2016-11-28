@@ -2,6 +2,7 @@ require 'bundler/gem_tasks'
 require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
 require 'yard'
+require 'open3'
 require_relative 'lib/tasks/generate_huffman_table'
 
 RSpec::Core::RakeTask.new(:spec) do |t|
@@ -21,7 +22,22 @@ task :h2spec do
   system 'ruby example/server.rb -p 9000 &', out: File::NULL
   sleep 1
 
-  system 'spec/h2spec/h2spec.darwin -p 9000 -o 1'
+  output = ''
+  Open3.popen2e('spec/h2spec/h2spec.darwin -p 9000 -o 1') do |_i, oe, _t|
+    oe.each do |l|
+      l.gsub!(/\e\[(\d+)(;\d+)*m/, '')
+
+      output << l
+      if l =~ /passed.*failed/
+        puts "\n#{l}"
+        break # suppress post-summary failure output
+      else
+        print '.'
+      end
+    end
+  end
+
+  File.write 'spec/h2spec/output/non_secure.txt', output
 
   system 'kill `pgrep -f example/server.rb`'
 end
