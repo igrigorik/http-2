@@ -7,7 +7,7 @@ module HTTP2
     extend Forwardable
 
     def_delegators :@buffer, :ord, :encoding, :setbyte, :unpack,
-                   :size, :each_byte,  :to_str, :length, :inspect,
+                   :size, :each_byte, :to_str, :to_s, :length, :inspect,
                    :[], :[]=, :empty?, :bytesize, :include?
 
     UINT32 = 'N'.freeze
