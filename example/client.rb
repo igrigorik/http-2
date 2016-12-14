@@ -17,9 +17,11 @@ if uri.scheme == 'https'
   ctx = OpenSSL::SSL::SSLContext.new
   ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-  ctx.npn_protocols = [DRAFT]
-  ctx.npn_select_cb = lambda do |protocols|
-    puts "NPN protocols supported by server: #{protocols}"
+  # For ALPN support, Ruby >= 2.3 and OpenSSL >= 1.0.2 are required
+
+  ctx.alpn_protocols = [DRAFT]
+  ctx.alpn_select_cb = lambda do |protocols|
+    puts "ALPN protocols supported by server: #{protocols}"
     DRAFT if protocols.include? DRAFT
   end
 
@@ -28,8 +30,8 @@ if uri.scheme == 'https'
   sock.hostname = uri.hostname
   sock.connect
 
-  if sock.npn_protocol != DRAFT
-    puts "Failed to negotiate #{DRAFT} via NPN"
+  if sock.alpn_protocol != DRAFT
+    puts "Failed to negotiate #{DRAFT} via ALPN"
     exit
   end
 else
