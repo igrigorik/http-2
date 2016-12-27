@@ -81,6 +81,7 @@ module HTTP2
 
       @active_stream_count = 0
       @streams = {}
+      @streams_recently_closed = {}
       @pending_settings = []
 
       @framer = Framer.new
@@ -281,6 +282,12 @@ module HTTP2
             # recently sent a RST_STREAM frame to cancel the associated stream.
             parent = @streams[frame[:stream]]
             pid = frame[:promise_stream]
+
+            # if PUSH parent is recently closed, RST_STREAM the push
+            if @streams_recently_closed[frame[:stream]]
+              send(type: :rst_stream, stream: pid, error: :refused_stream)
+              return
+            end
 
             connection_error(msg: 'missing parent ID') if parent.nil?
 
@@ -634,7 +641,18 @@ module HTTP2
       # states count toward the maximum number of streams that an endpoint is
       # permitted to open.
       stream.once(:active) { @active_stream_count += 1 }
-      stream.once(:close)  { @active_stream_count -= 1 }
+      stream.once(:close) do
+        @streams.delete id
+        @active_stream_count -= 1
+
+        # Store a reference to the closed stream, such that we can respond
+        # to any in-flight frames while close is registered on both sides.
+        # References to such streams will be purged whenever another stream
+        # is closed, with a minimum of 15s RTT time window.
+        @streams_recently_closed.delete_if { |_, v| (Time.now - v) > 15 }
+        @streams_recently_closed[id] = Time.now
+      end
+
       stream.on(:promise, &method(:promise)) if self.is_a? Server
       stream.on(:frame,   &method(:send))
       stream.on(:window_update, &method(:window_update))
