@@ -378,6 +378,30 @@ RSpec.describe HTTP2::Stream do
         end
       end
 
+      it 'should not transition to closed if END_STREAM flag is sent when overflowing window' do
+        @stream.on(:close) { fail 'should not have closed' }
+        data = { type: :data, flags: [], stream: @stream.id }
+        4.times do
+          data = data.merge(flags: [:end_stream]) if @stream.remote_window < 16_384
+          @stream.send data.merge(payload: 'x' * 16_384)
+        end
+      end
+
+      it 'should transition to closed when send buffer is emptied' do
+        o = Object.new
+        expect(o).to receive(:tap).once
+        @stream.on(:close) do
+          expect(@stream.buffered_amount).to eq 0
+          o.tap
+        end
+        data = { type: :data, flags: [], stream: @stream.id }
+        4.times do
+          data = data.merge(flags: [:end_stream]) if @stream.remote_window < 16_384
+          @stream.send data.merge(payload: 'x' * 16_384)
+        end
+        @client << Framer.new.generate(type: :window_update, stream: @stream.id, increment: 16_384)
+      end
+
       it 'should transition to closed if RST_STREAM is sent' do
         @stream.close
         expect(@stream.state).to eq :closed
