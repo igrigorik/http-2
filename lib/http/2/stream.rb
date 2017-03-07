@@ -125,9 +125,6 @@ module HTTP2
     #
     # @param frame [Hash]
     def send(frame)
-      transition(frame, true)
-      frame[:stream] ||= @id
-
       process_priority(frame) if frame[:type] == :priority
 
       case frame[:type]
@@ -135,13 +132,15 @@ module HTTP2
         # @remote_window is maintained in send_data
         send_data(frame)
       when :window_update
-        @local_window += frame[:increment]
-        emit(:frame, frame)
+        manage_state(frame) do
+          @local_window += frame[:increment]
+          emit(:frame, frame)
+        end
       else
-        emit(:frame, frame)
+        manage_state(frame) do
+          emit(:frame, frame)
+        end
       end
-
-      complete_transition(frame)
     end
 
     # Sends a HEADERS frame containing HTTP response headers.
@@ -602,6 +601,13 @@ module HTTP2
 
       klass = error.to_s.split('_').map(&:capitalize).join
       fail Error.const_get(klass), msg
+    end
+
+    def manage_state(frame)
+      transition(frame, true)
+      frame[:stream] ||= @id
+      yield
+      complete_transition(frame)
     end
   end
 end

@@ -689,5 +689,9 @@ module HTTP2
       backtrace = (e && e.backtrace) || []
       fail Error.const_get(klass), msg, backtrace
     end
+
+    def manage_state(_)
+      yield
+    end
   end
 end
