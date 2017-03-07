@@ -52,9 +52,11 @@ module HTTP2
           sent = frame_size
         end
 
-        frames = encode ? encode(frame) : [frame]
-        frames.each { |f| emit(:frame, f) }
-        @remote_window -= sent
+        manage_state(frame) do
+          frames = encode ? encode(frame) : [frame]
+          frames.each { |f| emit(:frame, f) }
+          @remote_window -= sent
+        end
       end
     end
 
