@@ -558,9 +558,9 @@ module HTTP2
           # Setting header table size might cause some headers evicted
           case side
           when :local
-            @decompressor.table_size = v
-          when :remote
             @compressor.table_size = v
+          when :remote
+            @decompressor.table_size = v
           end
 
         when :settings_enable_push
