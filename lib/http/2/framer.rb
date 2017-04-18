@@ -316,7 +316,7 @@ module HTTP2
       end
 
       frame[:length] = length
-      bytes.prepend(common_header(frame))
+      bytes.prepend(common_header(frame).force_encoding("UTF-8"))
     end
 
     # Decodes complete HTTP/2 frame from provided buffer. If the buffer
