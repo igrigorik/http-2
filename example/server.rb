@@ -36,9 +36,7 @@ if options[:secure]
     DRAFT
   end
 
-  ctx.tmp_ecdh_callback = lambda do |*_args|
-    OpenSSL::PKey::EC.new 'prime256v1'
-  end
+  ctx.ecdh_curves = 'P-256'
 
   server = OpenSSL::SSL::SSLServer.new(server, ctx)
 end
