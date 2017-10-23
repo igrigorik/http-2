@@ -78,6 +78,7 @@ module HTTP2
       @dependency = dependency
       process_priority(weight: weight, stream_dependency: dependency, exclusive: exclusive)
       @local_window  = connection.local_settings[:settings_initial_window_size]
+      @recv_window_size = 0
       @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
       @state  = :idle
@@ -97,14 +98,18 @@ module HTTP2
 
       case frame[:type]
       when :data
-        window_size = frame[:payload].bytesize
-        window_size += frame[:padding] || 0
-        @local_window -= window_size
+        delta_size = frame[:payload].bytesize
+        delta_size += frame[:padding] || 0
+        @local_window -= delta_size
         emit(:data, frame[:payload]) unless frame[:ignore]
-
+        
+        adjust_recv_window_size(delta_size)
         # Automatically send WINDOW_UPDATE,
         # assuming that emit(:data) can now receive next data
-        window_update(window_size) if window_size > 0
+        if @recv_window_size > 0 && @recv_window_size >= (@local_window / 2)
+          window_update(@recv_window_size)
+          @recv_window_size = 0
+        end
       when :headers, :push_promise
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :priority
@@ -585,6 +590,14 @@ module HTTP2
       #   See https://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-5.3
       #   We currently have no prioritization among streams.
       #   We should add code here.
+    end
+
+    def adjust_recv_window_size(delta_size)
+      if @recv_window_size > @local_window ||
+        @recv_window_size > 0x7fffffff - delta_size
+        stream_error(:flow_control_error)
+      end
+      @recv_window_size += delta_size
     end
 
     def end_stream?(frame)
