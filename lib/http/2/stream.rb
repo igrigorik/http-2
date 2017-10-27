@@ -102,7 +102,7 @@ module HTTP2
         delta_size += frame[:padding] || 0
         @local_window -= delta_size
         emit(:data, frame[:payload]) unless frame[:ignore]
-        
+
         adjust_recv_window_size(delta_size)
         # Automatically send WINDOW_UPDATE,
         # assuming that emit(:data) can now receive next data
@@ -593,8 +593,7 @@ module HTTP2
     end
 
     def adjust_recv_window_size(delta_size)
-      if @recv_window_size > @local_window ||
-        @recv_window_size > 0x7fffffff - delta_size
+      if @recv_window_size > @local_window || @recv_window_size > 0x7fffffff - delta_size
         stream_error(:flow_control_error)
       end
       @recv_window_size += delta_size

@@ -611,12 +611,11 @@ RSpec.describe HTTP2::Stream do
       end
       @stream.receive HEADERS.deep_dup
       @stream.receive data
-
-		end
+    end
 
     it 'should update window when data received is over the threshold' do
-      data1 = DATA.merge({payload: 'a'*16_384, flags: []})
-      data2 = DATA.merge({payload: 'a'*16_384})
+      data1 = DATA.merge(payload: 'a'*16_384, flags: [])
+      data2 = DATA.merge(payload: 'a'*16_384)
       datalen = data1[:payload].bytesize + data2[:payload].bytesize
       expect(@stream).to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
