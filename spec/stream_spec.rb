@@ -598,7 +598,7 @@ RSpec.describe HTTP2::Stream do
       expect(s1.remote_window).to eq 900
     end
 
-    it 'should not update window when data received is under the threshold' do
+    it 'should not update window when data received is half of local window size' do
       data = DATA.deep_dup
       datalen = data[:payload].bytesize
       expect(@stream).not_to receive(:send) do |frame|
@@ -613,7 +613,7 @@ RSpec.describe HTTP2::Stream do
       @stream.receive data
     end
 
-    it 'should update window when data received is over the threshold' do
+    it 'should update window when data received is over half of the local window size' do
       data1 = DATA.merge(payload: 'a'*16_384, flags: [])
       data2 = DATA.merge(payload: 'a'*16_384)
       datalen = data1[:payload].bytesize + data2[:payload].bytesize
