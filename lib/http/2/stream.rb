@@ -104,9 +104,9 @@ module HTTP2
         # Emit DATA frame
         window_size = frame[:payload].bytesize
         window_size += frame[:padding] || 0
+        @local_window -= window_size
         emit(:data, frame[:payload]) unless frame[:ignore]
 
-        @local_window -= window_size
         local_window_used = @local_window_size - @local_window
         # If DATA frame is received with length > 0 and
         # current received window size + delta length is strictly larger than
