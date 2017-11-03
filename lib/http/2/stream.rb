@@ -102,14 +102,24 @@ module HTTP2
       case frame[:type]
       when :data
         # Emit DATA frame
-        delta_size = frame[:payload].bytesize
-        delta_size += frame[:padding] || 0
+        window_size = frame[:payload].bytesize
+        window_size += frame[:padding] || 0
         emit(:data, frame[:payload]) unless frame[:ignore]
 
-        @local_window -= delta_size
+        @local_window -= window_size
         recv_window_size = @local_window_size - @local_window
-        # verify window size
-        verify_recv_window_size(recv_window_size, delta_size)
+        # If DATA frame is received with length > 0 and
+        # current received window size + delta length is strictly larger than
+        # local window size, it throws a stream error for  FLOW_CONTROL_ERROR.
+        # Note that local_window_size is calculated after SETTINGS ACK is
+        # received from peer, so peer must honor this limit. If the resulting
+        # recv_window_size is strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
+        # throw a FLOW_CONTROLL_ERROR stream error too.
+        #  (https://github.com/nghttp2/nghttp2/blob/2bf3680d870953010d7e1e6e4a66510f8458cc3c/lib/nghttp2_session.c#L4905-L4922)
+        #
+        if recv_window_size > @local_window_size - window_size || recv_window_size > 0x7fffffff - window_size
+          stream_error(:flow_control_error)
+        end
 
         # Send WINDOW_UPDATE if the received window size goes over
         # the local window size / 2.
@@ -608,21 +618,6 @@ module HTTP2
       #   See https://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-5.3
       #   We currently have no prioritization among streams.
       #   We should add code here.
-    end
-
-    # If DATA frame is received with length > 0 and
-    # current received window size + delta length is strictly larger than
-    # local window size, it is subject to FLOW_CONTROL_ERROR, so return
-    # -1. Note that local_window_size is calculated after SETTINGS ACK is
-    # received from peer, so peer must honor this limit. If the resulting
-    # recv_window_size is strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
-    # return -1 too.
-    #  (https://github.com/nghttp2/nghttp2/blob/2bf3680d870953010d7e1e6e4a66510f8458cc3c/lib/nghttp2_session.c#L4905-L4922)
-    #
-    def verify_recv_window_size(recv_window_size, delta_size)
-      return unless recv_window_size > @local_window_size - delta_size
-      return unless recv_window_size > 0x7fffffff - delta_size
-      stream_error(:flow_control_error)
     end
 
     def end_stream?(frame)
