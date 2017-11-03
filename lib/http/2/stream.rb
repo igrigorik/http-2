@@ -87,10 +87,7 @@ module HTTP2
       @send_buffer = []
 
       on(:window) { |v| @remote_window = v }
-      on(:local_window) do |v|
-        @local_window_size = v
-        @local_window = v
-      end
+      on(:local_window) { |v| @local_window_size = @local_window = v }
     end
 
     # Processes incoming HTTP 2.0 frames. The frames must be decoded upstream.
