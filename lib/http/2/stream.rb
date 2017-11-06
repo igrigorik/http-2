@@ -77,7 +77,7 @@ module HTTP2
       @weight = weight
       @dependency = dependency
       process_priority(weight: weight, stream_dependency: dependency, exclusive: exclusive)
-      @local_window_size = connection.local_settings[:settings_initial_window_size]
+      @local_window_max_size = connection.local_settings[:settings_initial_window_size]
       @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
@@ -87,7 +87,7 @@ module HTTP2
       @send_buffer = []
 
       on(:window) { |v| @remote_window = v }
-      on(:local_window) { |v| @local_window_size = @local_window = v }
+      on(:local_window) { |v| @local_window_max_size = @local_window = v }
     end
 
     # Processes incoming HTTP 2.0 frames. The frames must be decoded upstream.
@@ -104,17 +104,17 @@ module HTTP2
         @local_window -= window_size
         emit(:data, frame[:payload]) unless frame[:ignore]
 
-        local_window_used = @local_window_size - @local_window
+        local_window_used = @local_window_max_size - @local_window
         # If DATA frame is received with length > 0 and
         # current received window size + delta length is strictly larger than
         # local window size, it throws a stream error for  FLOW_CONTROL_ERROR.
-        # Note that local_window_size is calculated after SETTINGS ACK is
+        # Note that local_window_max_size is calculated after SETTINGS ACK is
         # received from peer, so peer must honor this limit. If the resulting
         # local_window_used is strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
         # throw a FLOW_CONTROLL_ERROR stream error too.
         #  (https://github.com/nghttp2/nghttp2/blob/2bf3680d870953010d7e1e6e4a66510f8458cc3c/lib/nghttp2_session.c#L4905-L4922)
         #
-        if local_window_used > @local_window_size - window_size || local_window_used > 0x7fffffff - window_size
+        if local_window_used > @local_window_max_size - window_size || local_window_used > 0x7fffffff - frame_size
           stream_error(:flow_control_error)
         end
 
@@ -132,7 +132,7 @@ module HTTP2
         # This works because the sender doesn't need those increments
         # until the receiver window is exhausted, after which he'll be
         # waiting for the WINDOW_UPDATE frame.
-        if local_window_used > 0 && local_window_used >= (@local_window_size / 2)
+        if local_window_used > 0 && local_window_used >= (@local_window_max_size / 2)
           window_update(local_window_used)
         end
       when :headers, :push_promise
