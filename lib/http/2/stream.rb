@@ -110,11 +110,11 @@ module HTTP2
         # local window size, it throws a flow control error.
         # Note that local_window_max_size is calculated after SETTINGS ACK is
         # received from peer, so peer must honor this limit. If the resulting
-        # local_window_used is strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
+        # local window used is strictly larger than NGHTTP2_MAX_WINDOW_SIZE,
         # throw a flow control error too.
         #  (https://github.com/nghttp2/nghttp2/blob/2bf3680d870953010d7e1e6e4a66510f8458cc3c/lib/nghttp2_session.c#L4905-L4922)
         #
-        if @local_window < frame_size || local_window_used > 0x7fffffff - frame_size
+        if @local_window < 0 || local_window_used > 0x7fffffff
           stream_error(:flow_control_error)
         end
 
