@@ -104,7 +104,6 @@ module HTTP2
         @local_window -= frame_size
         emit(:data, frame[:payload]) unless frame[:ignore]
 
-        local_window_used = @local_window_max_size - @local_window
         # If DATA frame is received with length > 0 and
         # current received window size + delta length is strictly larger than
         # local window size, it throws a flow control error.
@@ -125,8 +124,8 @@ module HTTP2
         # This works because the sender doesn't need those increments
         # until the receiver window is exhausted, after which he'll be
         # waiting for the WINDOW_UPDATE frame.
-        if @local_window < @local_window_max_size && @local_window <= (@local_window_max_size / 2)
-          window_update(local_window_used)
+        if @local_window <= (@local_window_max_size / 2)
+          window_update(@local_window_max_size - @local_window)
         end
       when :headers, :push_promise
         emit(:headers, frame[:payload]) unless frame[:ignore]
