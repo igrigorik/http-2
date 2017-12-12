@@ -238,7 +238,7 @@ RSpec.describe HTTP2::Connection do
       expect(@conn.remote_window).to eq 900
     end
 
-    it 'should inform sender when it exhausted the receive window' do
+    it 'should update window when data received is over half of the maximum local window size' do
       settings, data = SETTINGS.dup, DATA.dup
       conn = Client.new(settings_initial_window_size: 500)
 
