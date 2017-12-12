@@ -147,6 +147,7 @@ module HTTP2
     #
     # @param increment [Integer]
     def window_update(increment)
+      @local_window += increment
       send(type: :window_update, stream: 0, increment: increment)
     end
 
@@ -312,6 +313,17 @@ module HTTP2
           else
             if (stream = @streams[frame[:stream]])
               stream << frame
+              # TODO: when is this NOT a data frame?
+              if frame[:type] == :data
+                frame_size = frame[:payload].bytesize
+                frame_size += frame[:padding] || 0
+                @local_window -= frame_size
+                connection_error(:flow_control_error) if @local_window < 0
+                if @local_window <= (@local_window_limit / 2)
+                  # emit connection-level WINDOW_UPDATE
+                  window_update(@local_window_limit - @local_window)
+                end
+              end
             else
               case frame[:type]
               # The PRIORITY frame can be sent for a stream in the "idle" or
@@ -664,7 +676,6 @@ module HTTP2
 
       stream.on(:promise, &method(:promise)) if self.is_a? Server
       stream.on(:frame,   &method(:send))
-      stream.on(:window_update, &method(:window_update))
 
       @streams[id] = stream
     end
