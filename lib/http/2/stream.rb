@@ -250,8 +250,6 @@ module HTTP2
     #
     # @param increment [Integer]
     def window_update(increment)
-      # always emit connection-level WINDOW_UPDATE
-      emit(:window_update, increment)
       # emit stream-level WINDOW_UPDATE unless stream is closed
       return if @state == :closed || @state == :remote_closed
       send(type: :window_update, increment: increment)

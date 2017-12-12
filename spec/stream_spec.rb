@@ -605,10 +605,6 @@ RSpec.describe HTTP2::Stream do
         expect(frame[:type]).to eq :window_update
         expect(frame[:increment]).to eq datalen
       end
-      expect(@client).not_to receive(:send) do |frame|
-        expect(frame[:type]).to eq :window_update
-        expect(frame[:increment]).to eq datalen
-      end
       @stream.receive HEADERS.deep_dup
       @stream.receive data
     end
@@ -618,10 +614,6 @@ RSpec.describe HTTP2::Stream do
       data2 = DATA.merge(payload: 'a'*16_384)
       datalen = 16_384 * 2 
       expect(@stream).to receive(:send) do |frame|
-        expect(frame[:type]).to eq :window_update
-        expect(frame[:increment]).to eq datalen
-      end
-      expect(@client).to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
         expect(frame[:increment]).to eq datalen
       end
