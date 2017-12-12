@@ -242,7 +242,7 @@ RSpec.describe HTTP2::Connection do
       settings, data = SETTINGS.dup, DATA.dup
       conn = Client.new(settings_initial_window_size: 500)
 
-      conn << f.generate(settings)
+      conn.receive f.generate(settings)
       s1 = conn.new_stream
       s2 = conn.new_stream
    
@@ -253,8 +253,8 @@ RSpec.describe HTTP2::Connection do
         expect(frame[:stream]).to eq 0
         expect(frame[:increment]).to eq 400 
       end
-      conn << f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s1.id))
-      conn << f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s2.id))
+      conn.receive f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s1.id))
+      conn.receive f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s2.id))
       expect(s1.local_window).to eq 300
       expect(s2.local_window).to eq 300
       expect(conn.local_window).to eq 500
