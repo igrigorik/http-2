@@ -616,7 +616,7 @@ RSpec.describe HTTP2::Stream do
     it 'should update window when data received is over half of the maximum local window size' do
       data1 = DATA.merge(payload: 'a'*16_384, flags: [])
       data2 = DATA.merge(payload: 'a'*16_384)
-      datalen = data1[:payload].bytesize + data2[:payload].bytesize
+      datalen = 16_384 * 2 
       expect(@stream).to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
         expect(frame[:increment]).to eq datalen
