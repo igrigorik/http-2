@@ -19,12 +19,12 @@ module HTTP2
       @local_window -= frame_size
     end
 
-    def calculate_window_update(window_max_size) 
+    def calculate_window_update(window_max_size)
       # If DATA frame is received with length > 0 and
       # current received window size + delta length is strictly larger than
       # local window size, it throws a flow control error.
       #
-      stream_error(:flow_control_error) if @local_window < 0
+      error(:flow_control_error) if @local_window < 0
 
       # Send WINDOW_UPDATE if the received window size goes over
       # the local window size / 2.

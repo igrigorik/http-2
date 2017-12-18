@@ -693,6 +693,7 @@ module HTTP2
       backtrace = (e && e.backtrace) || []
       fail Error.const_get(klass), msg, backtrace
     end
+    alias error connection_error
 
     def manage_state(_)
       yield

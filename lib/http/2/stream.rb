@@ -597,6 +597,7 @@ module HTTP2
       klass = error.to_s.split('_').map(&:capitalize).join
       fail Error.const_get(klass), msg
     end
+    alias error stream_error
 
     def manage_state(frame)
       transition(frame, true)
