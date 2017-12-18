@@ -313,7 +313,6 @@ module HTTP2
           else
             if (stream = @streams[frame[:stream]])
               stream << frame
-              # TODO: when is this NOT a data frame?
               if frame[:type] == :data
                 update_local_window(frame)
                 calculate_window_update(@local_window_limit)
