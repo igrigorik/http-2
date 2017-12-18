@@ -245,13 +245,13 @@ RSpec.describe HTTP2::Connection do
       conn.receive f.generate(settings)
       s1 = conn.new_stream
       s2 = conn.new_stream
-   
+
       s1.send HEADERS.deep_dup
       s2.send HEADERS.deep_dup
       expect(conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
         expect(frame[:stream]).to eq 0
-        expect(frame[:increment]).to eq 400 
+        expect(frame[:increment]).to eq 400
       end
       conn.receive f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s1.id))
       conn.receive f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s2.id))

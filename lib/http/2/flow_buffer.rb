@@ -40,9 +40,8 @@ module HTTP2
       # This works because the sender doesn't need those increments
       # until the receiver window is exhausted, after which he'll be
       # waiting for the WINDOW_UPDATE frame.
-      if @local_window <= (window_max_size / 2)
-        window_update(window_max_size - @local_window)
-      end
+      return unless @local_window <= (window_max_size / 2)
+      window_update(window_max_size - @local_window)
     end
 
     # Buffers outgoing DATA frames and applies flow control logic to split
