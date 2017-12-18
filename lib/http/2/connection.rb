@@ -315,14 +315,8 @@ module HTTP2
               stream << frame
               # TODO: when is this NOT a data frame?
               if frame[:type] == :data
-                frame_size = frame[:payload].bytesize
-                frame_size += frame[:padding] || 0
-                @local_window -= frame_size
-                connection_error(:flow_control_error) if @local_window < 0
-                if @local_window <= (@local_window_limit / 2)
-                  # emit connection-level WINDOW_UPDATE
-                  window_update(@local_window_limit - @local_window)
-                end
+                update_local_window(frame)
+                calculate_window_update(@local_window_limit)
               end
             else
               case frame[:type]
