@@ -598,19 +598,28 @@ RSpec.describe HTTP2::Stream do
       expect(s1.remote_window).to eq 900
     end
 
-    it 'should keep track of incoming flow control' do
+    it 'should not update window when data received is less than half of maximum local window size' do
       data = DATA.deep_dup
       datalen = data[:payload].bytesize
-      expect(@stream).to receive(:send) do |frame|
-        expect(frame[:type]).to eq :window_update
-        expect(frame[:increment]).to eq datalen
-      end
-      expect(@client).to receive(:send) do |frame|
+      expect(@stream).not_to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
         expect(frame[:increment]).to eq datalen
       end
       @stream.receive HEADERS.deep_dup
       @stream.receive data
+    end
+
+    it 'should update window when data received is over half of the maximum local window size' do
+      data1 = DATA.merge(payload: 'a'*16_384, flags: [])
+      data2 = DATA.merge(payload: 'a'*16_384)
+      datalen = 16_384 * 2
+      expect(@stream).to receive(:send) do |frame|
+        expect(frame[:type]).to eq :window_update
+        expect(frame[:increment]).to eq datalen
+      end
+      @stream.receive HEADERS.deep_dup
+      @stream.receive data1
+      @stream.receive data2
     end
   end
 

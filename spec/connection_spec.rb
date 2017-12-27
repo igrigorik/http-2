@@ -237,6 +237,28 @@ RSpec.describe HTTP2::Connection do
       expect(@conn.buffered_amount).to eq 0
       expect(@conn.remote_window).to eq 900
     end
+
+    it 'should update window when data received is over half of the maximum local window size' do
+      settings, data = SETTINGS.dup, DATA.dup
+      conn = Client.new(settings_initial_window_size: 500)
+
+      conn.receive f.generate(settings)
+      s1 = conn.new_stream
+      s2 = conn.new_stream
+
+      s1.send HEADERS.deep_dup
+      s2.send HEADERS.deep_dup
+      expect(conn).to receive(:send) do |frame|
+        expect(frame[:type]).to eq :window_update
+        expect(frame[:stream]).to eq 0
+        expect(frame[:increment]).to eq 400
+      end
+      conn.receive f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s1.id))
+      conn.receive f.generate(data.merge(payload: 'x' * 200, end_stream: false, stream: s2.id))
+      expect(s1.local_window).to eq 300
+      expect(s2.local_window).to eq 300
+      expect(conn.local_window).to eq 500
+    end
   end
 
   context 'framing' do

@@ -77,6 +77,7 @@ module HTTP2
       @weight = weight
       @dependency = dependency
       process_priority(weight: weight, stream_dependency: dependency, exclusive: exclusive)
+      @local_window_max_size = connection.local_settings[:settings_initial_window_size]
       @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
@@ -86,7 +87,7 @@ module HTTP2
       @send_buffer = []
 
       on(:window) { |v| @remote_window = v }
-      on(:local_window) { |v| @local_window = v }
+      on(:local_window) { |v| @local_window_max_size = @local_window = v }
     end
 
     # Processes incoming HTTP 2.0 frames. The frames must be decoded upstream.
@@ -97,14 +98,10 @@ module HTTP2
 
       case frame[:type]
       when :data
-        window_size = frame[:payload].bytesize
-        window_size += frame[:padding] || 0
-        @local_window -= window_size
+        update_local_window(frame)
+        # Emit DATA frame
         emit(:data, frame[:payload]) unless frame[:ignore]
-
-        # Automatically send WINDOW_UPDATE,
-        # assuming that emit(:data) can now receive next data
-        window_update(window_size) if window_size > 0
+        calculate_window_update(@local_window_max_size)
       when :headers, :push_promise
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :priority
@@ -228,8 +225,6 @@ module HTTP2
     #
     # @param increment [Integer]
     def window_update(increment)
-      # always emit connection-level WINDOW_UPDATE
-      emit(:window_update, increment)
       # emit stream-level WINDOW_UPDATE unless stream is closed
       return if @state == :closed || @state == :remote_closed
       send(type: :window_update, increment: increment)
@@ -602,6 +597,7 @@ module HTTP2
       klass = error.to_s.split('_').map(&:capitalize).join
       fail Error.const_get(klass), msg
     end
+    alias error stream_error
 
     def manage_state(frame)
       transition(frame, true)
