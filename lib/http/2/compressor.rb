@@ -444,7 +444,11 @@ module HTTP2
 
         # Literal header names MUST be translated to lowercase before
         # encoding and transmission.
-        headers.map! { |hk, hv| [hk.downcase, hv] }
+        headers.map! do |hk, hv|
+          key = hk.downcase
+          hv = "/" if key == ":path" && hv.empty?
+          [key, hv]
+        end
 
         commands = @cc.encode(headers)
         commands.each do |cmd|
