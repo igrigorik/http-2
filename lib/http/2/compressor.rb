@@ -446,7 +446,7 @@ module HTTP2
         # encoding and transmission.
         headers.map! do |hk, hv|
           key = hk.downcase
-          hv = "/" if key == ":path" && hv.empty?
+          hv = '/' if key == ':path' && hv.empty?
           [key, hv]
         end
 
