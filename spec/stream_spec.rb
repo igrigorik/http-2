@@ -651,7 +651,7 @@ RSpec.describe HTTP2::Stream do
 
       expect(@stream).to receive(:send) do |frame|
         expect(frame[:type]).to eq :headers
-        expect(frame[:payload]).to eq payload.to_a
+        expect(frame[:payload]).to eq payload
         expect(frame[:flags]).to eq [:end_headers]
       end
 

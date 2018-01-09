@@ -150,7 +150,7 @@ module HTTP2
       flags << :end_headers if end_headers
       flags << :end_stream  if end_stream
 
-      send(type: :headers, flags: flags, payload: headers.to_a)
+      send(type: :headers, flags: flags, payload: headers)
     end
 
     def promise(headers, end_headers: true, &block)
