@@ -54,5 +54,10 @@ module HTTP2
       payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
       settings(payload)
     end
+
+    def self.settings_header(**settings)
+      frame = Framer.new.generate(type: :settings, stream: 0, payload: settings)
+      Base64.urlsafe_encode64(frame[9..-1])
+    end
   end
 end
