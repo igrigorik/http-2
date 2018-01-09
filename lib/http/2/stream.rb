@@ -71,7 +71,8 @@ module HTTP2
     # @param exclusive [Boolean]
     # @param window [Integer]
     # @param parent [Stream]
-    def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil)
+    # @param state [Symbol]
+    def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil, state: :idle)
       @connection = connection
       @id = id
       @weight = weight
@@ -81,7 +82,7 @@ module HTTP2
       @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
       @parent = parent
-      @state  = :idle
+      @state  = state
       @error  = false
       @closed = false
       @send_buffer = []
