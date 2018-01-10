@@ -240,8 +240,8 @@ RSpec.describe HTTP2::Header do
 
     context 'encode' do
       it 'downcases the field' do
-        expect(EncodingContext.new.encode([["Content-Length", "5"]]))
-          .to eq(EncodingContext.new.encode([["content-length", "5"]]))
+        expect(EncodingContext.new.encode([['Content-Length', '5']]))
+          .to eq(EncodingContext.new.encode([['content-length', '5']]))
       end
 
       it 'fills :path if empty' do

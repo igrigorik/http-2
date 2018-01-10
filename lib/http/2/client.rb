@@ -40,7 +40,7 @@ module HTTP2
 
     # sends the preface and initializes the first stream in half-closed state
     def upgrade
-      fail ProtocolError unless @stream_id == 1 
+      fail ProtocolError unless @stream_id == 1
       send_connection_preface
       new_stream(state: :half_closed_local)
     end

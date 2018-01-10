@@ -3,7 +3,6 @@
 require_relative 'helper'
 require 'http_parser'
 
-options = {}
 OptionParser.new do |opts|
   opts.banner = 'Usage: upgrade_client.rb [options]'
 end.parse!
@@ -33,10 +32,9 @@ conn.on(:frame_received) do |frame|
   puts "Received frame: #{frame.inspect}"
 end
 
-
-
+# upgrader module
 class UpgradeHandler
-  UPGRADE_REQUEST = <<-RESP
+  UPGRADE_REQUEST = <<-RESP.freeze
 GET %s HTTP/1.1
 Connection: Upgrade, HTTP2-Settings
 HTTP2-Settings: #{HTTP2::Client.settings_header(settings_max_concurrent_streams: 100)}
@@ -51,7 +49,7 @@ RESP
   def initialize(conn, sock)
     @conn = conn
     @sock = sock
-    @headers = request_header_hash 
+    @headers = request_header_hash
     @body = ''.b
     @complete, @parsing = false, false
     @parser = ::HTTP::Parser.new(self)
@@ -61,7 +59,7 @@ RESP
     host = "#{uri.hostname}#{":#{uri.port}" if uri.port != uri.default_port}"
     req = format(UPGRADE_REQUEST, uri.request_uri, host)
     puts req
-    @sock << req 
+    @sock << req
   end
 
   def <<(data)
@@ -81,12 +79,12 @@ RESP
   end
 
   def on_body(chunk)
-    puts "received chunk: #{chunk}":
+    puts "received chunk: #{chunk}"
     @body << chunk
   end
 
   def on_message_complete
-    fail "could not upgrade to h2c" unless @parser.status_code == 101 
+    fail 'could not upgrade to h2c' unless @parser.status_code == 101
     @parsing = false
     complete!
   end
@@ -98,19 +96,19 @@ RESP
     stream.on(:close) do
       log.info 'stream closed'
     end
-    
+
     stream.on(:half_close) do
       log.info 'closing client-end of the stream'
     end
-    
+
     stream.on(:headers) do |h|
       log.info "response headers: #{h}"
     end
-    
+
     stream.on(:data) do |d|
       log.info "response data chunk: <<#{d}>>"
     end
-    
+
     stream.on(:altsvc) do |f|
       log.info "received ALTSVC #{f}"
     end
@@ -119,12 +117,12 @@ RESP
       promise.on(:headers) do |h|
         log.info "promise headers: #{h}"
       end
-    
+
       promise.on(:data) do |d|
         log.info "promise data chunk: <<#{d.size}>>"
       end
     end
-    
+
     @conn.on(:altsvc) do |f|
       log.info "received ALTSVC #{f}"
     end
@@ -139,12 +137,11 @@ while !sock.closed? && !sock.eof?
   data = sock.read_nonblock(1024)
 
   begin
-    case
-    when !uh.parsing && !uh.complete
+    if !uh.parsing && !uh.complete
       uh << data
-    when uh.parsing && !uh.complete
+    elsif uh.parsing && !uh.complete
       uh << data
-    when uh.complete
+    elsif uh.complete
       conn << data
     end
 
@@ -155,4 +152,3 @@ while !sock.closed? && !sock.eof?
     sock.close
   end
 end
-
