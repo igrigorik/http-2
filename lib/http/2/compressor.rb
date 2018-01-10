@@ -199,8 +199,12 @@ module HTTP2
         commands = []
         # Literals commands are marked with :noindex when index is not used
         noindex = [:static, :never].include?(@options[:index])
-        headers.each do |h|
-          cmd = addcmd(h)
+        headers.each do |field, value|
+          # Literal header names MUST be translated to lowercase before
+          # encoding and transmission.
+          field = field.downcase
+          value = '/' if field == ':path' && value.empty?
+          cmd = addcmd(field, value)
           cmd[:type] = :noindex if noindex && cmd[:type] == :incremental
           commands << cmd
           process(cmd)
@@ -220,7 +224,7 @@ module HTTP2
       #
       # @param header [Array] +[name, value]+
       # @return [Hash] command
-      def addcmd(header)
+      def addcmd(*header)
         exact = nil
         name_only = nil
 
@@ -441,10 +445,6 @@ module HTTP2
       # @return [Buffer]
       def encode(headers)
         buffer = Buffer.new
-
-        # Literal header names MUST be translated to lowercase before
-        # encoding and transmission.
-        headers.map! { |hk, hv| [hk.downcase, hv] }
 
         commands = @cc.encode(headers)
         commands.each do |cmd|
