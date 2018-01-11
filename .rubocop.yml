@@ -12,21 +12,21 @@ Metrics/LineLength:
   Max: 120
 
 Lint/EndAlignment:
-  AlignWith: variable
+  EnforcedStyleAlignWith: variable
 
-Style/CaseIndentation:
-  IndentWhenRelativeTo: end
+Layout/CaseIndentation:
+  EnforcedStyleIndentWhenRelativeTo: end
 
-Style/IndentHash:
+Layout/IndentHash:
   EnforcedStyle: consistent
 
 Style/TrailingCommaInLiteral:
   EnforcedStyleForMultiline: comma
 
-Style/SpaceAroundOperators:
+Layout/SpaceAroundOperators:
   Enabled: false
 
-Style/ExtraSpacing:
+Layout/ExtraSpacing:
   Enabled: false
 
 Style/SignalException:
