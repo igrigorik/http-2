@@ -34,6 +34,23 @@ RSpec.describe HTTP2::Client do
     end
   end
 
+  context 'upgrade' do
+    it 'fails when client has already created streams' do
+      @client.new_stream
+      expect { @client.upgrade }.to raise_error(HTTP2::Error::ProtocolError)
+    end
+
+    it 'sends the preface' do
+      expect(@client).to receive(:send_connection_preface)
+      @client.upgrade
+    end
+
+    it 'initializes the first stream in the half-closed state' do
+      stream = @client.upgrade
+      expect(stream.state).to be(:half_closed_local)
+    end
+  end
+
   context 'push' do
     it 'should disallow client initiated push' do
       expect do

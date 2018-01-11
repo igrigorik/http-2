@@ -38,6 +38,13 @@ module HTTP2
       super(frame)
     end
 
+    # sends the preface and initializes the first stream in half-closed state
+    def upgrade
+      fail ProtocolError unless @stream_id == 1
+      send_connection_preface
+      new_stream(state: :half_closed_local)
+    end
+
     # Emit the connection preface if not yet
     def send_connection_preface
       return unless @state == :waiting_connection_preface
@@ -46,6 +53,11 @@ module HTTP2
 
       payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
       settings(payload)
+    end
+
+    def self.settings_header(**settings)
+      frame = Framer.new.generate(type: :settings, stream: 0, payload: settings)
+      Base64.urlsafe_encode64(frame[9..-1])
     end
   end
 end

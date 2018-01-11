@@ -237,6 +237,18 @@ RSpec.describe HTTP2::Header do
         expect(cc.table.first[0]).to eq 'test2'
       end
     end
+
+    context 'encode' do
+      it 'downcases the field' do
+        expect(EncodingContext.new.encode([['Content-Length', '5']]))
+          .to eq(EncodingContext.new.encode([['content-length', '5']]))
+      end
+
+      it 'fills :path if empty' do
+        expect(EncodingContext.new.encode([[':path', '']]))
+          .to eq(EncodingContext.new.encode([[':path', '/']]))
+      end
+    end
   end
 
   spec_examples = [
