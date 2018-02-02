@@ -831,8 +831,8 @@ RSpec.describe HTTP2::Stream do
           expect(order).to eq [:reserved, :active, :half_close, :close]
         end
 
-        it 'client: headers > active > headers > .. > data > close' do
-          order, headers = [], []
+        it 'client: promise_headers > active > headers > .. > data > close' do
+          order, headers, promise_headers = [], [], []
           @client.on(:promise) do |push|
             order << :reserved
 
@@ -841,6 +841,10 @@ RSpec.describe HTTP2::Stream do
             push.on(:half_close) { order << :half_close }
             push.on(:close)     { order << :close }
 
+            push.on(:promise_headers) do |h|
+              order << :promise_headers
+              promise_headers += h
+            end
             push.on(:headers) do |h|
               order << :headers
               headers += h
@@ -854,10 +858,11 @@ RSpec.describe HTTP2::Stream do
             push.data('somedata')
           end
 
-          expect(headers).to eq([%w(key val), %w(key2 val2)])
+          expect(promise_headers).to eq([%w(key val)])
+          expect(headers).to eq([%w(key2 val2)])
           expect(order).to eq [
             :reserved,
-            :headers,
+            :promise_headers,
             :active,
             :headers,
             :half_close,

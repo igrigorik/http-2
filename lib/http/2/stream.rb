@@ -103,8 +103,10 @@ module HTTP2
         # Emit DATA frame
         emit(:data, frame[:payload]) unless frame[:ignore]
         calculate_window_update(@local_window_max_size)
-      when :headers, :push_promise
+      when :headers
         emit(:headers, frame[:payload]) unless frame[:ignore]
+      when :push_promise
+        emit(:promise_headers, frame[:payload]) unless frame[:ignore]
       when :priority
         process_priority(frame)
       when :window_update

@@ -86,10 +86,26 @@ RSpec.describe HTTP2::Client do
 
       promise = nil
       @client.on(:promise) { |stream| promise = stream }
-      @client << set_stream_id(f.generate(PUSH_PROMISE.dup), s.id)
+      @client << set_stream_id(f.generate(PUSH_PROMISE.deep_dup), s.id)
 
       expect(promise.id).to eq 2
       expect(promise.state).to eq :reserved_remote
+    end
+
+    it 'should emit promise headers for received PUSH_PROMISE' do
+      header = nil
+      s = @client.new_stream
+      s.send HEADERS.deep_dup
+
+      @client.on(:promise) do |stream|
+        stream.on(:promise_headers) do |h|
+          header = h
+        end
+      end
+      @client << set_stream_id(f.generate(PUSH_PROMISE.deep_dup), s.id)
+
+      expect(header).to be_a(Array)
+      # expect(header).to eq([%w(a b)])
     end
 
     it 'should auto RST_STREAM promises against locally-RST stream' do

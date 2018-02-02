@@ -55,6 +55,10 @@ conn.on(:frame_received) do |frame|
 end
 
 conn.on(:promise) do |promise|
+  promise.on(:promise_headers) do |h|
+    log.info "promise request headers: #{h}"
+  end
+
   promise.on(:headers) do |h|
     log.info "promise headers: #{h}"
   end
