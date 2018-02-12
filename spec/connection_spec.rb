@@ -543,6 +543,20 @@ RSpec.describe HTTP2::Connection do
       end.to raise_error(ProtocolError)
     end
 
+    it 'should not raise an error on frame for a closed stream ID' do
+      srv = Server.new
+      srv << CONNECTION_PREFACE_MAGIC
+
+      stream = srv.new_stream
+      stream.send HEADERS.dup
+      stream.send DATA.dup
+      stream.close
+
+      expect do
+        srv << f.generate(RST_STREAM.dup.merge(stream: stream.id))
+      end.to_not raise_error
+    end
+
     it 'should send GOAWAY frame on connection error' do
       stream = @conn.new_stream
 
