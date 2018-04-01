@@ -49,9 +49,6 @@ module HTTP2
     # Connection state (:new, :closed).
     attr_reader :state
 
-    # Last connection error if connection is aborted.
-    attr_reader :error
-
     # Size of current connection flow control window (by default, set to
     # infinity, but is automatically updated on receipt of peer settings).
     attr_reader :local_window
@@ -95,6 +92,8 @@ module HTTP2
       @send_buffer = []
       @continuation = []
       @error = nil
+
+      @h2c_upgrade = nil
     end
 
     # Allocates new stream for current connection.
