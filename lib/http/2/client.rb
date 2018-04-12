@@ -38,7 +38,7 @@ module HTTP2
       super
     end
     
-    def <<(data)
+    def connection_management(frame)
       send_connection_preface
       super
     end
