@@ -35,7 +35,12 @@ module HTTP2
     # @param frame [Hash]
     def send(frame)
       send_connection_preface
-      super(frame)
+      super
+    end
+    
+    def <<(data)
+      send_connection_preface
+      super
     end
 
     # sends the preface and initializes the first stream in half-closed state
