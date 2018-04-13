@@ -25,6 +25,8 @@ module HTTP2
       @local_role   = :client
       @remote_role  = :server
 
+      @connection_preface_sent = false
+
       super
     end
 
@@ -59,8 +61,10 @@ module HTTP2
 
     # Emit the connection preface if not yet
     def send_connection_preface
-      return unless @state == :waiting_connection_preface
-      @state = :connected
+      return if @connection_preface_sent
+
+      @connection_preface_sent = true
+
       emit(:frame, CONNECTION_PREFACE_MAGIC)
 
       payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }

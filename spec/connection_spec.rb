@@ -8,12 +8,14 @@ RSpec.describe HTTP2::Connection do
   let(:f) { Framer.new }
 
   context 'initialization and settings' do
-    it 'should raise error if first frame is not SETTINGS' do
-      (FRAME_TYPES - [SETTINGS]).each do |frame|
+    (FRAME_TYPES - [SETTINGS]).each do |frame|
+      it "should raise error if first frame is #{frame[:type]}" do
         frame = set_stream_id(f.generate(frame.deep_dup), 0x0)
         expect { @conn.dup << frame }.to raise_error(ProtocolError)
       end
-
+    end
+    
+    it 'should not raise error if first frame is SETTINGS' do
       expect { @conn << f.generate(SETTINGS.dup) }.to_not raise_error
       expect(@conn.state).to eq :connected
     end
@@ -50,13 +52,18 @@ RSpec.describe HTTP2::Connection do
       settings = SETTINGS.dup
       settings[:payload] = [[:settings_header_table_size, 256]]
 
-      expect(@conn).to receive(:send) do |frame|
-        expect(frame[:type]).to eq :settings
-        expect(frame[:flags]).to eq [:ack]
-        expect(frame[:payload]).to eq []
+      # We expect two frames here - one for the connection setup, and one for the settings ack.
+      frames = []
+      expect(@conn).to receive(:send).twice do |frame|
+        frames << frame
       end
 
       @conn << f.generate(settings)
+
+      frame = frames.last
+      expect(frame[:type]).to eq :settings
+      expect(frame[:flags]).to eq [:ack]
+      expect(frame[:payload]).to eq []
     end
   end
 
