@@ -350,8 +350,9 @@ module HTTP2
         end
       end
 
+    rescue Error::Error
+      raise
     rescue => e
-      raise if e.is_a?(Error::Error)
       connection_error(e: e)
     end
     alias << receive
