@@ -14,7 +14,7 @@ RSpec.describe HTTP2::Connection do
         expect { @conn.dup << frame }.to raise_error(ProtocolError)
       end
     end
-    
+
     it 'should not raise error if first frame is SETTINGS' do
       expect { @conn << f.generate(SETTINGS.dup) }.to_not raise_error
       expect(@conn.state).to eq :connected

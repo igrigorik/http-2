@@ -39,7 +39,7 @@ module HTTP2
       send_connection_preface
       super
     end
-    
+
     def connection_management(frame)
       send_connection_preface
       super

@@ -20,7 +20,7 @@ RSpec.describe HTTP2::Client do
       expect(frames[0]).to eq CONNECTION_PREFACE_MAGIC
       expect(f.parse(frames[1])[:type]).to eq :settings
     end
-    
+
     it 'should emit connection header and SETTINGS when receiving data' do
       frames = []
 
