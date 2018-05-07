@@ -25,6 +25,8 @@ module HTTP2
       @local_role   = :client
       @remote_role  = :server
 
+      @connection_preface_sent = false
+
       super
     end
 
@@ -35,7 +37,12 @@ module HTTP2
     # @param frame [Hash]
     def send(frame)
       send_connection_preface
-      super(frame)
+      super
+    end
+
+    def connection_management(frame)
+      send_connection_preface
+      super
     end
 
     # sends the preface and initializes the first stream in half-closed state
@@ -45,19 +52,23 @@ module HTTP2
       new_stream(state: :half_closed_local)
     end
 
+    def self.settings_header(**settings)
+      frame = Framer.new.generate(type: :settings, stream: 0, payload: settings)
+      Base64.urlsafe_encode64(frame[9..-1])
+    end
+
+    private
+
     # Emit the connection preface if not yet
     def send_connection_preface
-      return unless @state == :waiting_connection_preface
-      @state = :connected
+      return if @connection_preface_sent
+
+      @connection_preface_sent = true
+
       emit(:frame, CONNECTION_PREFACE_MAGIC)
 
       payload = @local_settings.select { |k, v| v != SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
       settings(payload)
-    end
-
-    def self.settings_header(**settings)
-      frame = Framer.new.generate(type: :settings, stream: 0, payload: settings)
-      Base64.urlsafe_encode64(frame[9..-1])
     end
   end
 end
