@@ -96,6 +96,10 @@ module HTTP2
       @h2c_upgrade = nil
     end
 
+    def closed?
+      @state == :closed
+    end
+
     # Allocates new stream for current connection.
     #
     # @param priority [Integer]

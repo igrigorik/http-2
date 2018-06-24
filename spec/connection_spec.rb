@@ -8,14 +8,18 @@ RSpec.describe HTTP2::Connection do
   let(:f) { Framer.new }
 
   context 'initialization and settings' do
-    it 'should raise error if first frame is not SETTINGS' do
-      (FRAME_TYPES - [SETTINGS]).each do |frame|
+    (FRAME_TYPES - [SETTINGS]).each do |frame|
+      it "should raise error if first frame is #{frame[:type]}" do
         frame = set_stream_id(f.generate(frame.deep_dup), 0x0)
-        expect { @conn.dup << frame }.to raise_error(ProtocolError)
+        expect { @conn << frame }.to raise_error(ProtocolError)
+        expect(@conn).to be_closed
       end
+    end
 
+    it 'should not raise error if first frame is SETTINGS' do
       expect { @conn << f.generate(SETTINGS.dup) }.to_not raise_error
       expect(@conn.state).to eq :connected
+      expect(@conn).to_not be_closed
     end
 
     it 'should raise error if SETTINGS stream != 0' do
@@ -50,13 +54,19 @@ RSpec.describe HTTP2::Connection do
       settings = SETTINGS.dup
       settings[:payload] = [[:settings_header_table_size, 256]]
 
-      expect(@conn).to receive(:send) do |frame|
-        expect(frame[:type]).to eq :settings
-        expect(frame[:flags]).to eq [:ack]
-        expect(frame[:payload]).to eq []
+      # We should expect two frames here (append .twice) - one for the connection setup, and one for the settings ack.
+      frames = []
+      expect(@conn).to receive(:send).twice do |frame|
+        frames << frame
       end
 
+      @conn.send_connection_preface
       @conn << f.generate(settings)
+
+      frame = frames.last
+      expect(frame[:type]).to eq :settings
+      expect(frame[:flags]).to eq [:ack]
+      expect(frame[:payload]).to eq []
     end
   end
 
@@ -95,6 +105,9 @@ RSpec.describe HTTP2::Connection do
       s1.receive DATA
       s2.send DATA.dup
       expect(@conn.active_stream_count).to eq 0
+
+      expect(s1).to be_closed
+      expect(s2).to be_closed
     end
 
     it 'should not exceed stream limit set by peer' do
@@ -512,10 +525,14 @@ RSpec.describe HTTP2::Connection do
       expect(last_stream).to eq 17
       expect(error).to eq :no_error
       expect(payload).to eq 'test'
+
+      expect(@conn).to be_closed
     end
 
     it 'should raise error when opening new stream after sending GOAWAY' do
       @conn.goaway
+      expect(@conn).to be_closed
+
       expect { @conn.new_stream }.to raise_error(ConnectionClosed)
     end
 

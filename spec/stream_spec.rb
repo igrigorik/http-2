@@ -194,6 +194,7 @@ RSpec.describe HTTP2::Stream do
       it 'should transition to closed if sending RST_STREAM' do
         @stream.close
         expect(@stream.state).to eq :closed
+        expect(@stream).to be_closed
       end
 
       it 'should transition to closed if receiving RST_STREAM' do

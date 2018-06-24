@@ -91,6 +91,10 @@ module HTTP2
       on(:local_window) { |v| @local_window_max_size = @local_window = v }
     end
 
+    def closed?
+      @state == :closed
+    end
+
     # Processes incoming HTTP 2.0 frames. The frames must be decoded upstream.
     #
     # @param frame [Hash]
