@@ -199,7 +199,7 @@ module HTTP2
         commands = []
         # Literals commands are marked with :noindex when index is not used
         noindex = [:static, :never].include?(@options[:index])
-        headers.each do |field, value|
+        headers.sort.each do |field, value|
           # Literal header names MUST be translated to lowercase before
           # encoding and transmission.
           field = field.downcase
@@ -550,7 +550,7 @@ module HTTP2
       def decode(buf)
         list = []
         list << @cc.process(header(buf)) until buf.empty?
-        list.compact
+        list.compact.sort
       end
     end
   end

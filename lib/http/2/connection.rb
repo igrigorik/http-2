@@ -20,9 +20,9 @@ module HTTP2
 
   DEFAULT_CONNECTION_SETTINGS = {
     settings_header_table_size:       4096,
-    settings_enable_push:             1,     # enabled for servers
+    settings_enable_push:             1,                     # enabled for servers
     settings_max_concurrent_streams:  100,
-    settings_initial_window_size:     65_535, #
+    settings_initial_window_size:     65_535,
     settings_max_frame_size:          16_384,
     settings_max_header_list_size:    2**31 - 1,             # unlimited
   }.freeze
@@ -354,7 +354,7 @@ module HTTP2
         end
       end
 
-    rescue => e
+    rescue StandardError => e
       raise if e.is_a?(Error::Error)
       connection_error(e: e)
     end
@@ -496,7 +496,7 @@ module HTTP2
           # allowed frame size (2^24-1 or 16,777,215 octets), inclusive.
           # Values outside this range MUST be treated as a connection error
           # (Section 5.4.1) of type PROTOCOL_ERROR.
-          unless 16_384 <= v && v <= 16_777_215
+          unless v >= 16_384 && v <= 16_777_215
             return ProtocolError.new("invalid #{key} value")
           end
         when :settings_max_header_list_size
@@ -606,7 +606,7 @@ module HTTP2
         frame[:payload] = @decompressor.decode(frame[:payload])
       end
 
-    rescue => e
+    rescue StandardError => e
       connection_error(:compression_error, e: e)
     end
 
@@ -637,7 +637,7 @@ module HTTP2
 
       frames
 
-    rescue => e
+    rescue StandardError => e
       connection_error(:compression_error, e: e)
       nil
     end
@@ -705,4 +705,5 @@ module HTTP2
       yield
     end
   end
+  # rubocop:enable ClassLength
 end

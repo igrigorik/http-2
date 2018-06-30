@@ -1,4 +1,3 @@
-
 guard :process, name: 'HTTP/2 Server', command: 'ruby example/server.rb', stop_signal: 'TERM' do
   watch(%r{^example/(.+)\.rb$})
   watch(%r{^lib/http/2/(.+)\.rb$})

@@ -75,14 +75,14 @@ Style/GuardClause:
 # Cop supports --auto-correct.
 # Configuration parameters: SupportedStyles, IndentationWidth.
 # SupportedStyles: special_inside_parentheses, consistent, align_brackets
-Style/IndentArray:
+Layout/IndentArray:
   EnforcedStyle: consistent
 
 # Offense count: 1
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: symmetrical, new_line, same_line
-Style/MultilineArrayBraceLayout:
+Layout/MultilineArrayBraceLayout:
   Exclude:
     - 'spec/compressor_spec.rb'
 
@@ -90,7 +90,7 @@ Style/MultilineArrayBraceLayout:
 # Cop supports --auto-correct.
 # Configuration parameters: EnforcedStyle, SupportedStyles.
 # SupportedStyles: symmetrical, new_line, same_line
-Style/MultilineHashBraceLayout:
+Layout/MultilineHashBraceLayout:
   Exclude:
     - 'spec/compressor_spec.rb'
 
