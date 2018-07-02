@@ -359,14 +359,14 @@ module HTTP2
         if frame[:flags].include? :priority
           e_sd = payload.read_uint32
           frame[:stream_dependency] = e_sd & RBIT
-          frame[:exclusive] = (e_sd & EBIT) != 0 # rubocop:disable Style/NumericPredicate
+          frame[:exclusive] = (e_sd & EBIT) != 0
           frame[:weight] = payload.getbyte + 1
         end
         frame[:payload] = payload.read(frame[:length])
       when :priority
         e_sd = payload.read_uint32
         frame[:stream_dependency] = e_sd & RBIT
-        frame[:exclusive] = (e_sd & EBIT) != 0 # rubocop:disable Style/NumericPredicate
+        frame[:exclusive] = (e_sd & EBIT) != 0
         frame[:weight] = payload.getbyte + 1
       when :rst_stream
         frame[:error] = unpack_error payload.read_uint32
@@ -442,4 +442,5 @@ module HTTP2
       name || error
     end
   end
+  # rubocop:enable ClassLength
 end

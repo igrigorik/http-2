@@ -8,25 +8,41 @@ AllCops:
     - 'vendor/**/*'
     - '**/huffman_statemachine.rb'
 
+Layout/IndentHeredoc:
+  Exclude:
+    - 'lib/tasks/generate_huffman_table.rb'
+
 Metrics/LineLength:
   Max: 120
 
-Lint/EndAlignment:
-  AlignWith: variable
+Metrics/BlockLength:
+  Max: 700
 
-Style/CaseIndentation:
-  IndentWhenRelativeTo: end
+Layout/EndAlignment:
+  EnforcedStyleAlignWith: variable
 
-Style/IndentHash:
+Layout/CaseIndentation:
+  EnforcedStyle: end
+
+Layout/IndentHash:
   EnforcedStyle: consistent
 
-Style/TrailingCommaInLiteral:
+Style/TrailingCommaInArrayLiteral:
   EnforcedStyleForMultiline: comma
 
-Style/SpaceAroundOperators:
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
+Layout/SpaceAroundOperators:
   Enabled: false
 
-Style/ExtraSpacing:
+Layout/ExtraSpacing:
+  Enabled: false
+
+Layout/EmptyLinesAroundExceptionHandlingKeywords:
+  Enabled: false
+
+Naming/UncommunicativeMethodParamName:
   Enabled: false
 
 Style/SignalException:
@@ -44,10 +60,28 @@ Style/ParenthesesAroundCondition:
 Style/IfInsideElse:
   Enabled: false
 
+Style/IfUnlessModifier:
+  Enabled: false
+
+Style/MultilineIfModifier:
+  Enabled: false
+
+Lint/EmptyWhen:
+  Enabled: false
+
 Style/TrailingCommaInArguments:
   Enabled: false
 
 Style/TrailingUnderscoreVariable:
+  Enabled: false
+
+Style/SymbolArray:
+  Enabled: false
+
+Style/CommentedKeyword:
+  Enabled: false
+
+Style/PercentLiteralDelimiters:
   Enabled: false
 
 Performance/TimesMap:
@@ -55,3 +89,4 @@ Performance/TimesMap:
 
 Performance/RedundantBlockCall:
   Enabled: false
+

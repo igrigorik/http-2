@@ -10,9 +10,11 @@ Coveralls.wear! if ENV['CI']
 
 require 'http/2'
 
+# rubocop: disable Style/MixinUsage
 include HTTP2
 include HTTP2::Header
 include HTTP2::Error
+# rubocop: enable Style/MixinUsage
 
 DATA = {
   type: :data,
