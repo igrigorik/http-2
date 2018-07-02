@@ -39,12 +39,12 @@ end
 
 class UpgradeHandler
   VALID_UPGRADE_METHODS = %w(GET OPTIONS).freeze
-  UPGRADE_RESPONSE = <<-RESP
-HTTP/1.1 101 Switching Protocols
-Connection: Upgrade
-Upgrade: h2c
+  UPGRADE_RESPONSE = <<-RESP.strip_heredoc.freeze
+    HTTP/1.1 101 Switching Protocols
+    Connection: Upgrade
+    Upgrade: h2c
 
-RESP
+  RESP
 
   attr_reader :complete, :headers, :body, :parsing
 
@@ -191,7 +191,7 @@ loop do
         conn << data
       end
 
-    rescue => e
+    rescue StandardError => e
       puts "Exception: #{e}, #{e.message} - closing socket."
       puts e.backtrace.last(10).join("\n")
       sock.close
