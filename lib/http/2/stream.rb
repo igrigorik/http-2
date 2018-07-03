@@ -148,6 +148,7 @@ module HTTP2
     end
 
     # Sends a HEADERS frame containing HTTP response headers.
+    # All pseudo-header fields MUST appear in the header block before regular header fields.
     #
     # @param headers [Array or Hash] Array of key-value pairs or Hash
     # @param end_headers [Boolean] indicates that no more headers will be sent
