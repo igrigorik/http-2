@@ -46,6 +46,9 @@ module HTTP2
     include Emitter
     include Error
 
+    # Enforce RFC conformant behaviour.
+    attr_reader :strict
+
     # Connection state (:new, :closed).
     attr_reader :state
 
@@ -69,7 +72,9 @@ module HTTP2
 
     # Initializes new connection object.
     #
-    def initialize(**settings)
+    def initialize(strict: false, **settings)
+      @strict = strict
+
       @local_settings  = DEFAULT_CONNECTION_SETTINGS.merge(settings)
       @remote_settings = SPEC_DEFAULT_CONNECTION_SETTINGS.dup
 
