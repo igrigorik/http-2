@@ -7,10 +7,10 @@
 
 Pure Ruby, framework and transport agnostic, implementation of HTTP/2 protocol and HPACK header compression with support for:
 
-* [Binary framing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_binary_framing_layer) parsing and encoding
-* [Stream multiplexing](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_STREAMS_MESSAGES_FRAMES) and [prioritization](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION)
-* Connection and stream [flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control)
-* [Header compression](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_HEADER_COMPRESSION) and [server push](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH)
+* [Binary framing](https://hpbn.co/http2/#binary-framing-layer) parsing and encoding
+* [Stream multiplexing](https://hpbn.co/http2/#streams-messages-and-frames) and [prioritization](https://hpbn.co/http2/#stream-prioritization)
+* Connection and stream [flow control](https://hpbn.co/http2/#flow-control)
+* [Header compression](https://hpbn.co/http2/#header-compression) and [server push](https://hpbn.co/http2/#server-push)
 * Connection and stream management
 * And more... see [API docs](http://www.rubydoc.info/github/igrigorik/http-2/frames)
 
@@ -88,7 +88,7 @@ Events emitted by the connection object:
 
 ### Stream lifecycle management
 
-A single HTTP/2 connection can [multiplex multiple streams](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#REQUEST_RESPONSE_MULTIPLEXING) in parallel: multiple requests and responses can be in flight simultaneously and stream data can be interleaved and prioritized. Further, the specification provides a well-defined lifecycle for each stream (see below).
+A single HTTP/2 connection can [multiplex multiple streams](https://hpbn.co/http2/#request-and-response-multiplexing) in parallel: multiple requests and responses can be in flight simultaneously and stream data can be interleaved and prioritized. Further, the specification provides a well-defined lifecycle for each stream (see below).
 
 The good news is, all of the stream management, and state transitions, and error checking is handled by the library. All you have to do is subscribe to appropriate events (marked with ":" prefix in diagram below) and provide your application logic to handle request and response processing.
 
@@ -186,7 +186,7 @@ Events emitted by the [Stream object](http://www.rubydoc.info/github/igrigorik/h
 
 ### Prioritization
 
-Each HTTP/2 [stream has a priority value](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PRIORITIZATION) that can be sent when the new stream is initialized, and optionally reprioritized later:
+Each HTTP/2 [stream has a priority value](https://hpbn.co/http2/#stream-prioritization) that can be sent when the new stream is initialized, and optionally reprioritized later:
 
 ```ruby
 client = HTTP2::Client.new
@@ -203,7 +203,7 @@ On the opposite side, the server can optimize its stream processing order or res
 
 ### Flow control
 
-Multiplexing multiple streams over the same TCP connection introduces contention for shared bandwidth resources. Stream priorities can help determine the relative order of delivery, but priorities alone are insufficient to control how the resource allocation is performed between multiple streams. To address this, HTTP/2 provides a simple mechanism for [stream and connection flow control](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#_flow_control).
+Multiplexing multiple streams over the same TCP connection introduces contention for shared bandwidth resources. Stream priorities can help determine the relative order of delivery, but priorities alone are insufficient to control how the resource allocation is performed between multiple streams. To address this, HTTP/2 provides a simple mechanism for [stream and connection flow control](https://hpbn.co/http2/#flow-control).
 
 Connection and stream flow control is handled by the library: all streams are initialized with the default window size (64KB), and send/receive window updates are automatically processed - i.e. window is decremented on outgoing data transfers, and incremented on receipt of window frames. Similarly, if the window is exceeded, then data frames are automatically buffered until window is updated.
 
@@ -219,16 +219,10 @@ stream.window              # check current window size
 stream.window_update(2048) # increment stream window by 2048 bytes
 ```
 
-Alternatively, flow control can be disabled by emitting an appropriate settings frame on the connection:
-
-```ruby
-# limit number of concurrent streams to 100 and disable flow control
-conn.settings(streams: 100, window: Float::INFINITY)
-```
 
 ### Server push
 
-An HTTP/2 server can [send multiple replies](http://chimera.labs.oreilly.com/books/1230000000545/ch12.html#HTTP2_PUSH) to a single client request. To do so, first it emits a "push promise" frame which contains the headers of the promised resource, followed by the response to the original request, as well as promised resource payloads (which may be interleaved). A simple example is in order:
+An HTTP/2 server can [send multiple replies](https://hpbn.co/http2/#server-push) to a single client request. To do so, first it emits a "push promise" frame which contains the headers of the promised resource, followed by the response to the original request, as well as promised resource payloads (which may be interleaved). A simple example is in order:
 
 ```ruby
 conn = HTTP2::Server.new
@@ -276,10 +270,10 @@ conn.on(:promise) do |push|
 end
 ```
 
-The client can cancel any given push stream (via `.close`), or disable server push entirely by sending the appropriate settings frame (note that below setting only impacts server > client direction):
+The client can cancel any given push stream (via `.close`), or disable server push entirely by sending the appropriate settings frame:
 
 ```ruby
-client.settings(streams: 0) # setting max limit to 0 disables server push
+client.settings(settings_enable_push: 0)
 ```
 ### Specs
 
