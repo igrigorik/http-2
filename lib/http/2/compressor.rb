@@ -443,9 +443,11 @@ module HTTP2
       #
       # @param headers [Array] +[[name, value], ...]+
       # @return [Buffer]
-      def encode(headers)
+      def encode(headers, ensure_proper_ordering: true)
         buffer = Buffer.new
-
+        if ensure_proper_ordering
+          headers = headers.partition { |f, _| f.start_with? ':' }.inject([]) { |a, e| a + e }
+        end
         commands = @cc.encode(headers)
         commands.each do |cmd|
           buffer << header(cmd)
@@ -549,7 +551,16 @@ module HTTP2
       # @return [Array] +[[name, value], ...]+
       def decode(buf)
         list = []
-        list << @cc.process(header(buf)) until buf.empty?
+        decoded_first_regular_header = false
+        until buf.empty?
+          next_header = @cc.process(header(buf))
+          is_pseudo_header = next_header.first.start_with? ':'
+          if decoded_first_regular_header && is_pseudo_header
+            fail CompressionError, 'one or more pseudo headers encountered after regular headers'
+          end
+          decoded_first_regular_header ||= !is_pseudo_header
+          list << next_header
+        end
         list.compact
       end
     end

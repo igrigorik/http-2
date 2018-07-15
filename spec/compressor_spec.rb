@@ -351,6 +351,55 @@ RSpec.describe HTTP2::Header do
         },
       ],
     },
+    { title: 'D.4.a.  Request Examples with Huffman - Improper Header Ordering',
+      type: :request,
+      table_size: 4096,
+      huffman: :always,
+      streams: [
+        { wire: '8286 8441 8cf1 e3c2 e5f2 3a6b a0ab 90f4 ff',
+          emitted: [
+            [':method', 'GET'],
+            [':scheme', 'http'],
+            [':path', '/'],
+            [':authority', 'www.example.com'],
+          ],
+          table: [
+            [':authority', 'www.example.com'],
+          ],
+          table_size: 57,
+        },
+        { wire: '8286 84be 5886 a8eb 1064 9cbf',
+          emitted: [
+            [':method', 'GET'],
+            [':scheme', 'http'],
+            ['cache-control', 'no-cache'],
+            [':path', '/'],
+            [':authority', 'www.example.com'],
+          ],
+          table: [
+            ['cache-control', 'no-cache'],
+            [':authority', 'www.example.com'],
+          ],
+          table_size: 110,
+        },
+        { wire: "8287 85bf 4088 25a8 49e9 5ba9 7d7f 8925
+                 a849 e95b b8e8 b4bf",
+          emitted: [
+            [':method', 'GET'],
+            [':scheme', 'https'],
+            ['custom-key', 'custom-value'],
+            [':path', '/index.html'],
+            [':authority', 'www.example.com'],
+          ],
+          table: [
+            ['custom-key', 'custom-value'],
+            ['cache-control', 'no-cache'],
+            [':authority', 'www.example.com'],
+          ],
+          table_size: 164,
+        },
+      ],
+    },
     { title: 'D.5.  Response Examples without Huffman',
       type: :response,
       table_size: 256,
@@ -474,6 +523,70 @@ RSpec.describe HTTP2::Header do
         },
       ],
     },
+    { title: 'D.6.a.  Response Examples with Huffman - Improper Header Ordering',
+      type: :response,
+      table_size: 256,
+      huffman: :always,
+      streams: [
+        { wire: '5885 aec3 771a 4b48 8264 0261 96d0 7abe
+                 9410 54d4 44a8 2005 9504 0b81 66e0 82a6
+                 2d1b ff6e 919d 29ad 1718 63c7 8f0b 97c8
+                 e9ae 82ae 43d3',
+          emitted: [
+            ['cache-control', 'private'],
+            [':status', '302'],
+            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
+            ['location', 'https://www.example.com'],
+          ],
+          table: [
+            ['location', 'https://www.example.com'],
+            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
+            [':status', '302'],
+            ['cache-control', 'private'],
+          ],
+          table_size: 222,
+          has_bad_headers: true,
+        },
+        { wire: 'c1bf 4883 640e ffbf',
+          emitted: [
+            ['cache-control', 'private'],
+            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
+            [':status', '307'],
+            ['location', 'https://www.example.com'],
+          ],
+          table: [
+            ['location', 'https://www.example.com'],
+            [':status', '307'],
+            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
+            ['cache-control', 'private'],
+          ],
+          table_size: 222,
+          has_bad_headers: true,
+        },
+        { wire: '5885 aec3 771a 4b61 96d0 7abe 9410 54d4
+                 44a8 2005 9504 0b81 66e0 84a6 2d1b ff88
+                 c15a 839b d9ab 77ad 94e7 821d d7f2 e6c7
+                 b335 dfdf cd5b 3960 d5af 2708 7f36 72c1
+                 ab27 0fb5 291f 9587 3160 65c0 03ed 4ee5
+                 b106 3d50 07',
+          emitted: [
+            ['cache-control', 'private'],
+            ['date', 'Mon, 21 Oct 2013 20:13:22 GMT'],
+            [':status', '200'],
+            ['location', 'https://www.example.com'],
+            ['content-encoding', 'gzip'],
+            ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1'],
+          ],
+          table: [
+            ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1'],
+            ['content-encoding', 'gzip'],
+            ['date', 'Mon, 21 Oct 2013 20:13:22 GMT'],
+          ],
+          table_size: 215,
+          has_bad_headers: true,
+        },
+      ],
+    },
   ]
 
   context 'decode' do
@@ -485,25 +598,38 @@ RSpec.describe HTTP2::Header do
             before do
               (0...nth).each do |i|
                 bytes = [ex[:streams][i][:wire].delete(" \n")].pack('H*')
-                @dc.decode(HTTP2::Buffer.new(bytes))
+                if ex[:streams][i][:has_bad_headers]
+                  expect { @dc.decode(HTTP2::Buffer.new(bytes)) }.to raise_error CompressionError
+                else
+                  @dc.decode(HTTP2::Buffer.new(bytes))
+                end
               end
             end
-            subject do
-              bytes = [ex[:streams][nth][:wire].delete(" \n")].pack('H*')
-              @emitted = @dc.decode(HTTP2::Buffer.new(bytes))
-            end
-            it 'should emit expected headers' do
-              subject
-              # order-perserving compare
-              expect(@emitted).to eq ex[:streams][nth][:emitted]
-            end
-            it 'should update header table' do
-              subject
-              expect(@dc.instance_eval { @cc.table }).to eq ex[:streams][nth][:table]
-            end
-            it 'should compute header table size' do
-              subject
-              expect(@dc.instance_eval { @cc.current_table_size }).to eq ex[:streams][nth][:table_size]
+            if ex[:streams][nth][:has_bad_headers]
+              it 'should raise CompressionError' do
+                bytes = [ex[:streams][nth][:wire].delete(" \n")].pack('H*')
+                expect { @dc.decode(HTTP2::Buffer.new(bytes)) }.to raise_error CompressionError
+              end
+            else
+              subject do
+                bytes = [ex[:streams][nth][:wire].delete(" \n")].pack('H*')
+                @emitted = @dc.decode(HTTP2::Buffer.new(bytes))
+              end
+              it 'should emit expected headers' do
+                subject
+                # partitioned compare
+                pseudo_headers, headers = ex[:streams][nth][:emitted].partition { |f, _| f.start_with? ':' }
+                partitioned_headers = pseudo_headers + headers
+                expect(@emitted).to eq partitioned_headers
+              end
+              it 'should update header table' do
+                subject
+                expect(@dc.instance_eval { @cc.table }).to eq ex[:streams][nth][:table]
+              end
+              it 'should compute header table size' do
+                subject
+                expect(@dc.instance_eval { @cc.current_table_size }).to eq ex[:streams][nth][:table_size]
+              end
             end
           end
         end
@@ -522,22 +648,32 @@ RSpec.describe HTTP2::Header do
             end
             before do
               (0...nth).each do |i|
-                @cc.encode(ex[:streams][i][:emitted])
+                if ex[:streams][i][:has_bad_headers]
+                  @cc.encode(ex[:streams][i][:emitted], ensure_proper_ordering: false)
+                else
+                  @cc.encode(ex[:streams][i][:emitted])
+                end
               end
             end
             subject do
-              @cc.encode(ex[:streams][nth][:emitted])
+              if ex[:streams][nth][:has_bad_headers]
+                @cc.encode(ex[:streams][nth][:emitted], ensure_proper_ordering: false)
+              else
+                @cc.encode(ex[:streams][nth][:emitted])
+              end
             end
             it 'should emit expected bytes on wire' do
               expect(subject.unpack('H*').first).to eq ex[:streams][nth][:wire].delete(" \n")
             end
-            it 'should update header table' do
-              subject
-              expect(@cc.instance_eval { @cc.table }).to eq ex[:streams][nth][:table]
-            end
-            it 'should compute header table size' do
-              subject
-              expect(@cc.instance_eval { @cc.current_table_size }).to eq ex[:streams][nth][:table_size]
+            unless ex[:streams][nth][:has_bad_headers]
+              it 'should update header table' do
+                subject
+                expect(@cc.instance_eval { @cc.table }).to eq ex[:streams][nth][:table]
+              end
+              it 'should compute header table size' do
+                subject
+                expect(@cc.instance_eval { @cc.current_table_size }).to eq ex[:streams][nth][:table_size]
+              end
             end
           end
         end
