@@ -351,7 +351,7 @@ RSpec.describe HTTP2::Header do
         },
       ],
     },
-    { title: 'D.4.a.  Request Examples with Huffman - Improper Header Ordering',
+    { title: 'D.4.a.  Request Examples with Huffman - Client Handling of Improperly Ordered Headers',
       type: :request,
       table_size: 4096,
       huffman: :always,
@@ -397,6 +397,29 @@ RSpec.describe HTTP2::Header do
             [':authority', 'www.example.com'],
           ],
           table_size: 164,
+        },
+      ],
+    },
+    { title: 'D.4.b.  Request Examples with Huffman - Server Handling of Improperly Ordered Headers',
+      type: :request,
+      bypass_encoder: true,
+      table_size: 4096,
+      huffman: :always,
+      streams: [
+        { wire: '8286408825a849e95ba97d7f8925a849e95bb8e8b4bf84418cf1e3c2e5f23a6ba0ab90f4ff',
+          emitted: [
+            [':method', 'GET'],
+            [':scheme', 'http'],
+            ['custom-key', 'custom-value'],
+            [':path', '/'],
+            [':authority', 'www.example.com'],
+          ],
+          table: [
+            ['custom-key', 'custom-value'],
+            [':authority', 'www.example.com'],
+          ],
+          table_size: 111,
+          has_bad_headers: true,
         },
       ],
     },
@@ -523,70 +546,6 @@ RSpec.describe HTTP2::Header do
         },
       ],
     },
-    { title: 'D.6.a.  Response Examples with Huffman - Improper Header Ordering',
-      type: :response,
-      table_size: 256,
-      huffman: :always,
-      streams: [
-        { wire: '5885 aec3 771a 4b48 8264 0261 96d0 7abe
-                 9410 54d4 44a8 2005 9504 0b81 66e0 82a6
-                 2d1b ff6e 919d 29ad 1718 63c7 8f0b 97c8
-                 e9ae 82ae 43d3',
-          emitted: [
-            ['cache-control', 'private'],
-            [':status', '302'],
-            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            ['location', 'https://www.example.com'],
-          ],
-          table: [
-            ['location', 'https://www.example.com'],
-            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            [':status', '302'],
-            ['cache-control', 'private'],
-          ],
-          table_size: 222,
-          has_bad_headers: true,
-        },
-        { wire: 'c1bf 4883 640e ffbf',
-          emitted: [
-            ['cache-control', 'private'],
-            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            [':status', '307'],
-            ['location', 'https://www.example.com'],
-          ],
-          table: [
-            ['location', 'https://www.example.com'],
-            [':status', '307'],
-            ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            ['cache-control', 'private'],
-          ],
-          table_size: 222,
-          has_bad_headers: true,
-        },
-        { wire: '5885 aec3 771a 4b61 96d0 7abe 9410 54d4
-                 44a8 2005 9504 0b81 66e0 84a6 2d1b ff88
-                 c15a 839b d9ab 77ad 94e7 821d d7f2 e6c7
-                 b335 dfdf cd5b 3960 d5af 2708 7f36 72c1
-                 ab27 0fb5 291f 9587 3160 65c0 03ed 4ee5
-                 b106 3d50 07',
-          emitted: [
-            ['cache-control', 'private'],
-            ['date', 'Mon, 21 Oct 2013 20:13:22 GMT'],
-            [':status', '200'],
-            ['location', 'https://www.example.com'],
-            ['content-encoding', 'gzip'],
-            ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1'],
-          ],
-          table: [
-            ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1'],
-            ['content-encoding', 'gzip'],
-            ['date', 'Mon, 21 Oct 2013 20:13:22 GMT'],
-          ],
-          table_size: 215,
-          has_bad_headers: true,
-        },
-      ],
-    },
   ]
 
   context 'decode' do
@@ -599,7 +558,7 @@ RSpec.describe HTTP2::Header do
               (0...nth).each do |i|
                 bytes = [ex[:streams][i][:wire].delete(" \n")].pack('H*')
                 if ex[:streams][i][:has_bad_headers]
-                  expect { @dc.decode(HTTP2::Buffer.new(bytes)) }.to raise_error CompressionError
+                  expect { @dc.decode(HTTP2::Buffer.new(bytes)) }.to raise_error ProtocolError
                 else
                   @dc.decode(HTTP2::Buffer.new(bytes))
                 end
@@ -608,7 +567,7 @@ RSpec.describe HTTP2::Header do
             if ex[:streams][nth][:has_bad_headers]
               it 'should raise CompressionError' do
                 bytes = [ex[:streams][nth][:wire].delete(" \n")].pack('H*')
-                expect { @dc.decode(HTTP2::Buffer.new(bytes)) }.to raise_error CompressionError
+                expect { @dc.decode(HTTP2::Buffer.new(bytes)) }.to raise_error ProtocolError
               end
             else
               subject do
@@ -639,6 +598,7 @@ RSpec.describe HTTP2::Header do
 
   context 'encode' do
     spec_examples.each do |ex|
+      next if ex[:bypass_encoder]
       context "spec example #{ex[:title]}" do
         ex[:streams].size.times do |nth|
           context "request #{nth + 1}" do
@@ -663,6 +623,7 @@ RSpec.describe HTTP2::Header do
               end
             end
             it 'should emit expected bytes on wire' do
+              puts subject.unpack('H*').first
               expect(subject.unpack('H*').first).to eq ex[:streams][nth][:wire].delete(" \n")
             end
             unless ex[:streams][nth][:has_bad_headers]
