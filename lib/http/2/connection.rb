@@ -606,8 +606,12 @@ module HTTP2
         frame[:payload] = @decompressor.decode(frame[:payload])
       end
 
-    rescue StandardError => e
+    rescue CompressionError => e
       connection_error(:compression_error, e: e)
+    rescue ProtocolError => e
+      connection_error(:protocol_error, e: e)
+    rescue StandardError => e
+      connection_error(:internal_error, e: e)
     end
 
     # Encode headers payload and update connection compressor state.
