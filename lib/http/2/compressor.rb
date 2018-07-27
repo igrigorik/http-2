@@ -553,6 +553,7 @@ module HTTP2
         decoding_pseudo_headers = true
         until buf.empty?
           next_header = @cc.process(header(buf))
+          next if next_header.nil?
           is_pseudo_header = next_header.first.start_with? ':'
           if !decoding_pseudo_headers && is_pseudo_header
             fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
@@ -560,7 +561,7 @@ module HTTP2
           decoding_pseudo_headers = is_pseudo_header
           list << next_header
         end
-        list.compact
+        list
       end
     end
   end
