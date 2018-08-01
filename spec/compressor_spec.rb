@@ -595,7 +595,7 @@ RSpec.describe HTTP2::Header do
       end
     end
 
-    it 'handle nginx header payloads with space prefix' do
+    it 'handles nginx header payloads' do
       pl = " \x88v\x89\xAAcU\xE5\x80\xAE\x16\xD7\x17a\x96\xDDm_J\t\xF52\xDBB\x82\x00^P\x02\xB8\xD3w\x1A\x02\x98\xB4o_" \
            + "\x8B\x1Du\xD0b\r&=LtA\xEA\\\x0256"
       expect(d.decode(Buffer.new(pl))).to eq([

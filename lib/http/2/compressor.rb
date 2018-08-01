@@ -139,7 +139,8 @@ module HTTP2
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-4.1
       #
       # @param cmd [Hash] { type:, name:, value:, index: }
-      # @return [Array] +[name, value]+ header field that is added to the decoded header list
+      # @return [Array, nil] +[name, value]+ header field that is added to the decoded header list,
+      #                                      or nil if +cmd[:type]+ is +:changetablesize+
       def process(cmd)
         emit = nil
 
