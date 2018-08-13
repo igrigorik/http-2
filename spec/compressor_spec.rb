@@ -546,6 +546,22 @@ RSpec.describe HTTP2::Header do
         },
       ],
     },
+    { title: 'D.6.a.  Response Examples with Huffman - nginx 1.14-1.15.2 responses',
+      type: :response,
+      table_size: 4096,
+      huffman: :always,
+      bypass_encoder: true,
+      streams: [
+        { wire: '2088 7689 aa63 55e5 80ae 16d7 17',
+          emitted: [
+            [':status', '200'],
+            ['server', 'nginx/1.15.2'],
+          ],
+          table: [],
+          table_size: 0,
+        },
+      ],
+    },
   ]
 
   context 'decode' do
@@ -593,18 +609,6 @@ RSpec.describe HTTP2::Header do
           end
         end
       end
-    end
-
-    it 'handles nginx header payloads' do
-      pl = " \x88v\x89\xAAcU\xE5\x80\xAE\x16\xD7\x17a\x96\xDDm_J\t\xF52\xDBB\x82\x00^P\x02\xB8\xD3w\x1A\x02\x98\xB4o_" \
-           + "\x8B\x1Du\xD0b\r&=LtA\xEA\\\x0256"
-      expect(d.decode(Buffer.new(pl))).to eq([
-        [':status', '200'],
-        ['server', 'nginx/1.15.2'],
-        ['date', 'Sun, 29 Jul 2018 02:45:40 GMT'],
-        ['content-type', 'application/json'],
-        ['content-length', '56'],
-      ])
     end
   end
 
