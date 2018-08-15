@@ -139,7 +139,8 @@ module HTTP2
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-4.1
       #
       # @param cmd [Hash] { type:, name:, value:, index: }
-      # @return [Array] +[name, value]+ header field that is added to the decoded header list
+      # @return [Array, nil] +[name, value]+ header field that is added to the decoded header list,
+      #                                      or nil if +cmd[:type]+ is +:changetablesize+
       def process(cmd)
         emit = nil
 
@@ -553,6 +554,7 @@ module HTTP2
         decoding_pseudo_headers = true
         until buf.empty?
           next_header = @cc.process(header(buf))
+          next if next_header.nil?
           is_pseudo_header = next_header.first.start_with? ':'
           if !decoding_pseudo_headers && is_pseudo_header
             fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
@@ -560,7 +562,7 @@ module HTTP2
           decoding_pseudo_headers = is_pseudo_header
           list << next_header
         end
-        list.compact
+        list
       end
     end
   end

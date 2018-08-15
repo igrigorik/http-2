@@ -546,6 +546,22 @@ RSpec.describe HTTP2::Header do
         },
       ],
     },
+    { title: 'D.6.a.  Response Examples with Huffman - dynamic table size updates should not trigger exceptions',
+      type: :response,
+      table_size: 4096,
+      huffman: :always,
+      bypass_encoder: true,
+      streams: [
+        { wire: '2088 7689 aa63 55e5 80ae 16d7 17',
+          emitted: [
+            [':status', '200'],
+            ['server', 'nginx/1.15.2'],
+          ],
+          table: [],
+          table_size: 0,
+        },
+      ],
+    },
   ]
 
   context 'decode' do
