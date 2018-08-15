@@ -546,7 +546,7 @@ RSpec.describe HTTP2::Header do
         },
       ],
     },
-    { title: 'D.6.a.  Response Examples with Huffman - nginx 1.14-1.15.2 responses',
+    { title: 'D.6.a.  Response Examples with Huffman - dynamic table size updates should not trigger exceptions',
       type: :response,
       table_size: 4096,
       huffman: :always,
