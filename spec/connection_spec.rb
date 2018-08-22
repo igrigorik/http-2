@@ -542,6 +542,13 @@ RSpec.describe HTTP2::Connection do
       expect { @conn.new_stream }.to raise_error(ConnectionClosed)
     end
 
+    it 'should not raise error when receiving connection management frames after closing' do
+      @conn.goaway
+      expect(@conn).to be_closed
+
+      expect { @conn << f.generate(PING.dup) }.not_to raise_error(ProtocolError)
+    end
+
     it 'should process connection management frames after GOAWAY' do
       @conn << f.generate(SETTINGS.dup)
       @conn << f.generate(HEADERS.dup)
