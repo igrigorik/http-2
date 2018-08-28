@@ -542,7 +542,7 @@ RSpec.describe HTTP2::Connection do
       expect { @conn.new_stream }.to raise_error(ConnectionClosed)
     end
 
-    it 'should not raise error when receiving connection management frames after closing' do
+    it 'should not raise error when receiving connection management frames immediately after emitting goaway' do
       @conn.goaway
       expect(@conn).to be_closed
 
