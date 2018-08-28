@@ -546,7 +546,9 @@ RSpec.describe HTTP2::Connection do
       @conn.goaway
       expect(@conn).to be_closed
 
+      expect { @conn << f.generate(SETTINGS.dup) }.not_to raise_error(ProtocolError)
       expect { @conn << f.generate(PING.dup) }.not_to raise_error(ProtocolError)
+      expect { @conn << f.generate(GOAWAY.dup) }.not_to raise_error(ProtocolError)
     end
 
     it 'should process connection management frames after GOAWAY' do
