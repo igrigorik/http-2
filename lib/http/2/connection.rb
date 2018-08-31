@@ -94,6 +94,7 @@ module HTTP2
       @error = nil
 
       @h2c_upgrade = nil
+      @closed_since = nil
     end
 
     def closed?
@@ -144,6 +145,7 @@ module HTTP2
       send(type: :goaway, last_stream: last_stream,
            error: error, payload: payload)
       @state = :closed
+      @closed_since = Time.now
     end
 
     # Sends a WINDOW_UPDATE frame to the peer.
@@ -446,12 +448,15 @@ module HTTP2
           # the connection, although a new connection can be established
           # for new streams.
           @state = :closed
+          @closed_since = Time.now
           emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
         when :altsvc, :blocked
           emit(frame[:type], frame)
         else
           connection_error
         end
+      when :closed
+        connection_error if (Time.now - @closed_since) > 15
       else
         connection_error
       end
