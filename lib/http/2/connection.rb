@@ -450,7 +450,14 @@ module HTTP2
           @state = :closed
           @closed_since = Time.now
           emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
-        when :altsvc, :blocked
+        when :altsvc
+          # 4.  The ALTSVC HTTP/2 Frame
+          # An ALTSVC frame on stream 0 with empty (length 0) "Origin"
+          # information is invalid and MUST be ignored.
+          if frame[:origin] && !frame[:origin].empty?
+            emit(frame[:type], frame)
+          end
+        when :blocked
           emit(frame[:type], frame)
         else
           connection_error

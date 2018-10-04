@@ -122,4 +122,54 @@ RSpec.describe HTTP2::Client do
       @client << set_stream_id(f.generate(PUSH_PROMISE.dup), s.id)
     end
   end
+
+  context 'alt-svc' do
+    context 'received in the connection' do
+      it 'should emit :altsvc when receiving one' do
+        @client << f.generate(SETTINGS.dup)
+        frame = nil
+        @client.on(:altsvc) do |f|
+          frame = f
+        end
+        @client << f.generate(ALTSVC.deep_dup)
+        expect(frame).to be_a(Hash)
+      end
+      it 'should not emit :altsvc when the frame when contains no host' do
+        @client << f.generate(SETTINGS.dup)
+        frame = nil
+        @client.on(:altsvc) do |f|
+          frame = f
+        end
+
+        @client << f.generate(ALTSVC.deep_dup.merge(origin: nil))
+        expect(frame).to be_nil
+      end
+    end
+    context 'received in a stream' do
+      it 'should emit :altsvc' do
+        s = @client.new_stream
+        s.send HEADERS.deep_dup
+        s.close
+
+        frame = nil
+        s.on(:altsvc) { |f| frame = f }
+
+        @client << set_stream_id(f.generate(ALTSVC.deep_dup.merge(origin: nil)), s.id)
+
+        expect(frame).to be_a(Hash)
+      end
+      it 'should not emit :alt_svc when the frame when contains a origin' do
+        s = @client.new_stream
+        s.send HEADERS.deep_dup
+        s.close
+
+        frame = nil
+        s.on(:altsvc) { |f| frame = f }
+
+        @client << set_stream_id(f.generate(ALTSVC.deep_dup), s.id)
+
+        expect(frame).to be_nil
+      end
+    end
+  end
 end
