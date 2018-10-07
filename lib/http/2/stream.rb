@@ -120,7 +120,7 @@ module HTTP2
         # An ALTSVC frame on a
         # stream other than stream 0 containing non-empty "Origin" information
         # is invalid and MUST be ignored.
-        if frame[:origin].nil? || frame[:origin].empty?
+        if !frame[:origin] || frame[:origin].empty?
           emit(frame[:type], frame)
         end
       when :blocked
