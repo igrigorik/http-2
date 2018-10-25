@@ -115,7 +115,15 @@ module HTTP2
         process_priority(frame)
       when :window_update
         process_window_update(frame)
-      when :altsvc, :blocked
+      when :altsvc
+        # 4.  The ALTSVC HTTP/2 Frame
+        # An ALTSVC frame on a
+        # stream other than stream 0 containing non-empty "Origin" information
+        # is invalid and MUST be ignored.
+        if !frame[:origin] || frame[:origin].empty?
+          emit(frame[:type], frame)
+        end
+      when :blocked
         emit(frame[:type], frame)
       end
 
