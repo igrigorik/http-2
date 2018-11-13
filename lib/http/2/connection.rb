@@ -360,7 +360,10 @@ module HTTP2
       raise if e.is_a?(Error::Error)
       connection_error(e: e)
     end
-    alias << receive
+
+    def <<(*args)
+      receive(*args)
+    end
 
     private
 
