@@ -10,7 +10,6 @@ RSpec.describe HTTP2::Connection do
   context 'initialization and settings' do
     (FRAME_TYPES - [SETTINGS]).each do |frame|
       it "should raise error if first frame is #{frame[:type]}" do
-        frame = set_stream_id(f.generate(frame.deep_dup), 0x0)
         expect { @conn << frame }.to raise_error(ProtocolError)
         expect(@conn).to be_closed
       end
