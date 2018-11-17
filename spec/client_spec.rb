@@ -32,6 +32,18 @@ RSpec.describe HTTP2::Client do
       expect(frame[:type]).to eq :settings
       expect(frame[:payload]).to include([:settings_max_concurrent_streams, 200])
     end
+
+    it 'should initialize client when receiving server settings before sending ack' do
+      frames = []
+      @client.on(:frame) { |bytes| frames << bytes }
+      @client << f.generate(SETTINGS.dup)
+
+      expect(frames[0]).to eq CONNECTION_PREFACE_MAGIC
+      expect(f.parse(frames[1])[:type]).to eq :settings
+      ack_frame = f.parse(frames[2])
+      expect(ack_frame[:type]).to eq :settings
+      expect(ack_frame[:flags]).to include(:ack)
+    end
   end
 
   context 'upgrade' do

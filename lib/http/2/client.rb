@@ -38,6 +38,11 @@ module HTTP2
       super(frame)
     end
 
+    def receive(frame)
+      send_connection_preface
+      super(frame)
+    end
+
     # sends the preface and initializes the first stream in half-closed state
     def upgrade
       fail ProtocolError unless @stream_id == 1
