@@ -1,6 +1,7 @@
 require 'helper'
 
 RSpec.describe HTTP2::Server do
+  include FrameHelpers
   before(:each) do
     @srv = Server.new
   end
@@ -46,6 +47,6 @@ RSpec.describe HTTP2::Server do
     end
 
     client.new_stream
-    client.send HEADERS.deep_dup
+    client.send headers_frame
   end
 end
