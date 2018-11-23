@@ -467,6 +467,8 @@ module HTTP2
     #   server_role = Decompressor.new(:request)
     #   client_role = Decompressor.new(:response)
     class Decompressor
+      include Error
+
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(**options)
         @cc = EncodingContext.new(options)
