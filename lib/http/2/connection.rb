@@ -349,7 +349,11 @@ module HTTP2
               # "closed" stream. A receiver MUST NOT treat this as an error
               # (see Section 5.1).
               when :window_update
+                # rubocop: disable Metrics/BlockNesting
+                stream = @streams_recently_closed[frame[:stream]]
+                connection_error(:protocol_error, 'sent window update on idle stream') unless stream
                 process_window_update(frame)
+                # rubocop: enable Metrics/BlockNesting
               else
                 # An endpoint that receives an unexpected stream identifier
                 # MUST respond with a connection error of type PROTOCOL_ERROR.
