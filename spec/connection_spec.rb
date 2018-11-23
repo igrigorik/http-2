@@ -104,7 +104,7 @@ RSpec.describe HTTP2::Connection do
       # transition to closed
       s1.receive data_frame
       s2.send data_frame
-      expect(@conn.active_stream_count).to eq 0
+      expect(@conn.active_stream_count).to eq 2
 
       expect(s1).to be_closed
       expect(s2).to be_closed

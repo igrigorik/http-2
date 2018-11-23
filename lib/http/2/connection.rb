@@ -674,6 +674,7 @@ module HTTP2
     # @param parent [Stream]
     def activate_stream(id: nil, **args)
       connection_error(msg: 'Stream ID already exists') if @streams.key?(id)
+      fail StreamLimitExceeded if @active_stream_count >= @local_settings[:settings_max_concurrent_streams]
 
       stream = Stream.new({ connection: self, id: id }.merge(args))
 
@@ -682,7 +683,6 @@ module HTTP2
       # permitted to open.
       stream.once(:active) { @active_stream_count += 1 }
       stream.once(:close) do
-        @active_stream_count -= 1
 
         # Store a reference to the closed stream, such that we can respond
         # to any in-flight frames while close is registered on both sides.
