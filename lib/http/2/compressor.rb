@@ -176,6 +176,8 @@ module HTTP2
             cmd[:index] ||= cmd[:name]
             cmd[:value] ||= v
             cmd[:name] = k
+          else
+            fail ProtocolError, "Invalid uppercase key: #{cmd[:name]}" if cmd[:name] != cmd[:name].downcase
           end
 
           emit = [cmd[:name], cmd[:value]]
