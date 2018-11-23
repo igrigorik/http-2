@@ -480,7 +480,7 @@ RSpec.describe HTTP2::Framer do
     bytes = Buffer.new(bytes + bytes) # Two HEADERS frames in bytes
     bytes.setbyte(3, 42) # Make the first unknown type 42
 
-    expect(f.parse(bytes)).to be_nil   # first frame should be ignored
+    expect(f.parse(bytes)[:type]).to be_nil
     expect(f.parse(bytes)).to eq frame # should generate only one HEADERS
     expect(bytes).to be_empty
   end

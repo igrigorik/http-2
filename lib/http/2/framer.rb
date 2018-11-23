@@ -1,7 +1,6 @@
 module HTTP2
   # Performs encoding, decoding, and validation of binary HTTP/2 frames.
   #
-  # rubocop:disable ClassLength
   class Framer
     include Error
 
@@ -336,7 +335,7 @@ module HTTP2
       # Implementations MUST discard frames
       # that have unknown or unsupported types.
       # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-5.5
-      return nil if frame[:type].nil?
+      return frame if frame[:type].nil?
 
       # Process padding
       padlen = 0
@@ -442,5 +441,4 @@ module HTTP2
       name || error
     end
   end
-  # rubocop:enable ClassLength
 end

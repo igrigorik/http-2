@@ -201,6 +201,10 @@ module HTTP2
       end
 
       while (frame = @framer.parse(@recv_buffer))
+        # Implementations MUST discard frames
+        # that have unknown or unsupported types.
+        next if frame[:type].nil?
+
         emit(:frame_received, frame)
 
         # Header blocks MUST be transmitted as a contiguous sequence of frames
