@@ -111,6 +111,7 @@ module HTTP2
         emit(:data, frame[:payload]) unless frame[:ignore]
         calculate_window_update(@local_window_max_size)
       when :headers
+        verify_pseudo_headers(frame[:payload])
         update_content_length(frame[:payload])
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :push_promise
@@ -134,6 +135,15 @@ module HTTP2
       complete_transition(frame)
     end
     alias << receive
+
+    def verify_pseudo_headers(headers)
+      return if headers.is_a?(Buffer)
+      mandatory_headers = @id.odd? ? %w[:scheme :method :authority :path] : %w[:status]
+      pseudo_headers = headers.take_while { |k, _| k.start_with?(':') }.map(&:first)
+      return if mandatory_headers.size == pseudo_headers.size &&
+                (mandatory_headers - pseudo_headers).empty?
+      stream_error(:protocol_error, msg: 'invalid pseudo-headers')
+    end
 
     def update_content_length(headers)
       return if headers.is_a?(Buffer)
