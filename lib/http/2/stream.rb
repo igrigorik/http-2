@@ -105,11 +105,13 @@ module HTTP2
 
       case frame[:type]
       when :data
+        calculate_content_length(frame[:length])
         update_local_window(frame)
         # Emit DATA frame
         emit(:data, frame[:payload]) unless frame[:ignore]
         calculate_window_update(@local_window_max_size)
       when :headers
+        update_content_length(frame[:payload])
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :push_promise
         emit(:promise_headers, frame[:payload]) unless frame[:ignore]
@@ -132,6 +134,19 @@ module HTTP2
       complete_transition(frame)
     end
     alias << receive
+
+    def update_content_length(headers)
+      return if headers.is_a?(Buffer)
+      _, length = headers.find { |k, _v| k == 'content-length' }
+      @content_length = length.to_i if length
+    end
+
+    def calculate_content_length(data_length)
+      return unless @content_length
+      @content_length -= data_length
+      return if @content_length >= 0
+      stream_error(:protocol_error, msg: 'received more data than what was defined in content-length')
+    end
 
     # Processes outgoing HTTP 2.0 frames. Data frames may be automatically
     # split and buffered based on maximum frame size and current stream flow
