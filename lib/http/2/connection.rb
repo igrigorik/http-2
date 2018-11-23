@@ -241,7 +241,7 @@ module HTTP2
             # frames MUST have the END_HEADERS flag set.
             unless frame[:flags].include? :end_headers
               @continuation << frame
-              return
+              next
             end
 
             # After sending a GOAWAY frame, the sender can discard frames
