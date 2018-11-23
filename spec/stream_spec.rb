@@ -1,6 +1,7 @@
 require 'helper'
 
 RSpec.describe HTTP2::Stream do
+  include FrameHelpers
   before(:each) do
     @client = Client.new
     @stream = @client.new_stream
@@ -18,57 +19,57 @@ RSpec.describe HTTP2::Stream do
 
     context 'idle' do
       it 'should transition to open on sent HEADERS' do
-        @stream.send HEADERS.deep_dup
+        @stream.send headers_frame
         expect(@stream.state).to eq :open
       end
       it 'should transition to open on received HEADERS' do
-        @stream.receive HEADERS
+        @stream.receive headers_frame
         expect(@stream.state).to eq :open
       end
       it 'should transition to reserved (local) on sent PUSH_PROMISE' do
-        @stream.send PUSH_PROMISE.deep_dup
+        @stream.send push_promise_frame
         expect(@stream.state).to eq :reserved_local
       end
       it 'should transition to reserved (remote) on received PUSH_PROMISE' do
-        @stream.receive PUSH_PROMISE
+        @stream.receive push_promise_frame
         expect(@stream.state).to eq :reserved_remote
       end
       it 'should reprioritize stream on sent PRIORITY' do
-        expect { @stream.send PRIORITY.dup }.to_not raise_error
+        expect { @stream.send priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
       it 'should reprioritize stream on received PRIORITY' do
-        expect { @stream.send PRIORITY.dup }.to_not raise_error
+        expect { @stream.send priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
     end
 
     context 'reserved (local)' do
-      before(:each) { @stream.send PUSH_PROMISE.deep_dup }
+      before(:each) { @stream.send push_promise_frame }
 
       it 'should transition on sent PUSH_PROMISE' do
         expect(@stream.state).to eq :reserved_local
       end
 
       it 'should allow HEADERS to be sent' do
-        expect { @stream.send HEADERS.deep_dup }.to_not raise_error
+        expect { @stream.send headers_frame }.to_not raise_error
       end
 
       it 'should raise error if sending invalid frames' do
-        (FRAME_TYPES - [HEADERS, RST_STREAM]).each do |type|
+        frame_types.reject { |frame| %i[headers rst_stream].include?(frame[:type]) }.each do |type|
           expect { @stream.dup.send type }.to raise_error InternalError
         end
       end
 
       it 'should raise error on receipt of invalid frames' do
-        what_types = (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE])
+        what_types = frame_types.reject { |frame| %i[priority window_update rst_stream].include?(frame[:type]) }
         what_types.each do |type|
           expect { @stream.dup.receive type }.to raise_error InternalError
         end
       end
 
       it 'should transition to half closed (remote) on sent HEADERS' do
-        @stream.send HEADERS.deep_dup
+        @stream.send headers_frame
         expect(@stream.state).to eq :half_closed_remote
       end
 
@@ -78,42 +79,42 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to closed on received RST_STREAM' do
-        @stream.receive RST_STREAM
+        @stream.receive rst_stream_frame
         expect(@stream.state).to eq :closed
       end
 
       it 'should reprioritize stream on PRIORITY' do
-        expect { @stream.receive PRIORITY }.to_not raise_error
+        expect { @stream.receive priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
 
       it 'should increment remote_window on received WINDOW_UPDATE' do
-        expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
-        expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
+        expect { @stream.receive window_update_frame }.to_not raise_error
+        expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW + window_update_frame[:increment]
       end
     end
 
     context 'reserved (remote)' do
-      before(:each) { @stream.receive PUSH_PROMISE }
+      before(:each) { @stream.receive push_promise_frame }
 
       it 'should transition on received PUSH_PROMISE' do
         expect(@stream.state).to eq :reserved_remote
       end
 
       it 'should raise error if sending invalid frames' do
-        (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |type|
+        frame_types.reject { |frame| %i[priority rst_stream window_update].include?(frame[:type]) }.each do |type|
           expect { @stream.dup.send type }.to raise_error InternalError
         end
       end
 
       it 'should raise error on receipt of invalid frames' do
-        (FRAME_TYPES - [HEADERS, RST_STREAM]).each do |type|
+        frame_types.reject { |frame| %i[headers rst_stream].include?(frame[:type]) }.each do |type|
           expect { @stream.dup.receive type }.to raise_error InternalError
         end
       end
 
       it 'should transition to half closed (local) on received HEADERS' do
-        @stream.receive HEADERS
+        @stream.receive headers_frame
         expect(@stream.state).to eq :half_closed_local
       end
 
@@ -123,38 +124,38 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to closed on received RST_STREAM' do
-        @stream.receive RST_STREAM
+        @stream.receive rst_stream_frame
         expect(@stream.state).to eq :closed
       end
 
       it 'should reprioritize stream on PRIORITY' do
-        expect { @stream.send PRIORITY.dup }.to_not raise_error
+        expect { @stream.send priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
 
       it 'should increment local_window on sent WINDOW_UPDATE' do
-        expect { @stream.send WINDOW_UPDATE.dup }.to_not raise_error
-        expect(@stream.local_window).to eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
+        expect { @stream.send window_update_frame }.to_not raise_error
+        expect(@stream.local_window).to eq DEFAULT_FLOW_WINDOW + window_update_frame[:increment]
       end
     end
 
     context 'open' do
-      before(:each) { @stream.receive HEADERS }
+      before(:each) { @stream.receive headers_frame }
 
       it 'should allow any valid frames types to be sent' do
-        (FRAME_TYPES - [PING, GOAWAY, SETTINGS]).each do |type|
+        (frame_types - [ping_frame, goaway_frame, settings_frame]).each do |type|
           expect { @stream.dup.send type.deep_dup }.to_not raise_error
         end
       end
 
       it 'should allow frames of any type to be received' do
-        FRAME_TYPES.each do |type|
+        frame_types.each do |type|
           expect { @stream.dup.receive type }.to_not raise_error
         end
       end
 
       it 'should transition to half closed (local) if sending END_STREAM' do
-        [DATA, HEADERS].each do |frame|
+        [data_frame, headers_frame].each do |frame|
           s, f = @stream.dup, frame.deep_dup
           f[:flags] = [:end_stream]
 
@@ -164,7 +165,7 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to half closed (remote) if receiving END_STREAM' do
-        [DATA, HEADERS].each do |frame|
+        [data_frame, headers_frame].each do |frame|
           s, f = @stream.dup, frame.dup
           f[:flags] = [:end_stream]
 
@@ -175,7 +176,7 @@ RSpec.describe HTTP2::Stream do
 
       it 'should transition to half closed if remote opened with END_STREAM' do
         s = @client.new_stream
-        hclose = HEADERS.dup
+        hclose = headers_frame
         hclose[:flags] = [:end_stream]
 
         s.receive hclose
@@ -184,7 +185,7 @@ RSpec.describe HTTP2::Stream do
 
       it 'should transition to half closed if local opened with END_STREAM' do
         s = @client.new_stream
-        hclose = HEADERS.deep_dup
+        hclose = headers_frame
         hclose[:flags] = [:end_stream]
 
         s.send hclose
@@ -198,7 +199,7 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to closed if receiving RST_STREAM' do
-        @stream.receive RST_STREAM
+        @stream.receive rst_stream_frame
         expect(@stream.state).to eq :closed
       end
 
@@ -209,8 +210,8 @@ RSpec.describe HTTP2::Stream do
         sp.on(:active) { openp = true }
         sr.on(:active) { openr = true }
 
-        sp.receive HEADERS
-        sr.send HEADERS.deep_dup
+        sp.receive headers_frame
+        sr.send headers_frame
 
         expect(openp).to be_truthy
         expect(openr).to be_truthy
@@ -223,11 +224,11 @@ RSpec.describe HTTP2::Stream do
         stream.on(:half_close) { order << :half_close }
         stream.on(:close)  { order << :close }
 
-        req = HEADERS.deep_dup
+        req = headers_frame
         req[:flags] = [:end_headers]
 
         stream.send req
-        stream.send DATA.dup
+        stream.send data_frame
         expect(order).to eq [:active, :half_close]
       end
 
@@ -238,7 +239,7 @@ RSpec.describe HTTP2::Stream do
         sp.on(:close) { closep = true }
         sr.on(:close) { closer = true }
 
-        sp.receive RST_STREAM
+        sp.receive rst_stream_frame
         sr.close
 
         expect(closep).to be_truthy
@@ -253,12 +254,12 @@ RSpec.describe HTTP2::Stream do
         stream.on(:half_close) { order << :half_close }
         stream.on(:close)  { order << :close }
 
-        req = HEADERS.deep_dup
+        req = headers_frame
         req[:flags] = [:end_stream, :end_headers]
 
         stream.send req
-        stream.receive HEADERS
-        stream.receive DATA
+        stream.receive headers_frame
+        stream.receive data_frame
 
         expect(order).to eq [:active, :half_close, :data, :close]
       end
@@ -266,31 +267,31 @@ RSpec.describe HTTP2::Stream do
       it 'should emit :close with reason' do
         reason = nil
         @stream.on(:close) { |r| reason = r }
-        @stream.receive RST_STREAM
+        @stream.receive rst_stream_frame
         expect(reason).not_to be_nil
       end
 
       it 'should reprioritize stream on sent PRIORITY' do
-        expect { @stream.send PRIORITY.dup }.to_not raise_error
+        expect { @stream.send priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
       it 'should reprioritize stream on received PRIORITY' do
-        expect { @stream.receive PRIORITY }.to_not raise_error
+        expect { @stream.receive priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
     end
 
     context 'half closed (local)' do
-      before(:each) { @stream.send HEADERS_END_STREAM.deep_dup }
+      before(:each) { @stream.send headers_frame.merge(flags: [:end_headers, :end_stream]) }
 
       it 'should raise error on attempt to send invalid frames' do
-        (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |frame|
+        frame_types.reject { |frame| %i[priority rst_stream window_update].include?(frame[:type]) }.each do |frame|
           expect { @stream.dup.send frame }.to raise_error InternalError
         end
       end
 
       it 'should transition to closed on receipt of END_STREAM flag' do
-        [DATA, HEADERS, CONTINUATION].each do |frame|
+        [data_frame, headers_frame, continuation_frame].each do |frame|
           s, f = @stream.dup, frame.dup
           f[:flags] = [:end_stream]
 
@@ -300,38 +301,38 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to closed on receipt of RST_STREAM frame' do
-        @stream.receive RST_STREAM
+        @stream.receive rst_stream_frame
         expect(@stream.state).to eq :closed
       end
 
       it 'should transition to closed if RST_STREAM frame is sent' do
-        @stream.send RST_STREAM.deep_dup
+        @stream.send rst_stream_frame
         expect(@stream.state).to eq :closed
       end
 
       it 'should ignore received WINDOW_UPDATE frames' do
-        expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
+        expect { @stream.receive window_update_frame }.to_not raise_error
         expect(@stream.state).to eq :half_closed_local
       end
 
       it 'should ignore received PRIORITY frames' do
-        expect { @stream.receive PRIORITY }.to_not raise_error
+        expect { @stream.receive priority_frame }.to_not raise_error
         expect(@stream.state).to eq :half_closed_local
       end
 
       it 'should reprioritize stream on sent PRIORITY' do
-        expect { @stream.send PRIORITY.dup }.to_not raise_error
+        expect { @stream.send priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
 
       it 'should reprioritize stream (and decendants) on received PRIORITY' do
-        expect { @stream.receive PRIORITY }.to_not raise_error
+        expect { @stream.receive priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
 
       it 'should increment local_window on sent WINDOW_UPDATE' do
-        expect { @stream.send WINDOW_UPDATE.dup }.to_not raise_error
-        expect(@stream.local_window).to eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
+        expect { @stream.send window_update_frame }.to_not raise_error
+        expect(@stream.local_window).to eq DEFAULT_FLOW_WINDOW + window_update_frame[:increment]
       end
 
       it 'should emit :half_close event on transition' do
@@ -340,7 +341,7 @@ RSpec.describe HTTP2::Stream do
         stream.on(:active) { order << :active }
         stream.on(:half_close) { order << :half_close }
 
-        req = HEADERS.deep_dup
+        req = headers_frame
         req[:flags] = [:end_stream, :end_headers]
 
         stream.send req
@@ -350,7 +351,7 @@ RSpec.describe HTTP2::Stream do
       it 'should emit :close event on transition to closed' do
         closed = false
         @stream.on(:close) { closed = true }
-        @stream.receive RST_STREAM
+        @stream.receive rst_stream_frame
 
         expect(@stream.state).to eq :closed
         expect(closed).to be_truthy
@@ -358,10 +359,10 @@ RSpec.describe HTTP2::Stream do
     end
 
     context 'half closed (remote)' do
-      before(:each) { @stream.receive HEADERS_END_STREAM }
+      before(:each) { @stream.receive headers_frame.merge(flags: [:end_headers, :end_stream]) }
 
       it 'should raise STREAM_CLOSED error on reciept of frames' do
-        (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |frame|
+        (frame_types - [priority_frame, rst_stream_frame, window_update_frame]).each do |frame|
           expect do
             @stream.dup.receive frame
           end.to raise_error(StreamClosed)
@@ -369,7 +370,7 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to closed if END_STREAM flag is sent' do
-        [DATA, HEADERS].each do |frame|
+        [data_frame, headers_frame].each do |frame|
           s, f = @stream.dup, frame.deep_dup
           f[:flags] = [:end_stream]
 
@@ -409,26 +410,26 @@ RSpec.describe HTTP2::Stream do
       end
 
       it 'should transition to closed on reciept of RST_STREAM frame' do
-        @stream.receive RST_STREAM
+        @stream.receive rst_stream_frame
         expect(@stream.state).to eq :closed
       end
 
       it 'should ignore sent WINDOW_UPDATE frames' do
-        expect { @stream.send WINDOW_UPDATE.dup }.to_not raise_error
+        expect { @stream.send window_update_frame }.to_not raise_error
         expect(@stream.state).to eq :half_closed_remote
       end
 
       it 'should increment remote_window on received WINDOW_UPDATE' do
-        expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
-        expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW + WINDOW_UPDATE[:increment]
+        expect { @stream.receive window_update_frame }.to_not raise_error
+        expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW + window_update_frame[:increment]
       end
 
       it 'should reprioritize stream on sent PRIORITY' do
-        expect { @stream.send PRIORITY.dup }.to_not raise_error
+        expect { @stream.send priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
       it 'should reprioritize stream on received PRIORITY' do
-        expect { @stream.receive PRIORITY }.to_not raise_error
+        expect { @stream.receive priority_frame }.to_not raise_error
         expect(@stream.weight).to eq 20
       end
 
@@ -438,7 +439,7 @@ RSpec.describe HTTP2::Stream do
         stream.on(:active) { order << :active }
         stream.on(:half_close) { order << :half_close }
 
-        req = HEADERS.dup
+        req = headers_frame
         req[:flags] = [:end_stream, :end_headers]
 
         stream.receive req
@@ -458,12 +459,12 @@ RSpec.describe HTTP2::Stream do
     context 'closed' do
       context 'remote closed stream' do
         before(:each) do
-          @stream.send HEADERS_END_STREAM.deep_dup     # half closed local
-          @stream.receive HEADERS_END_STREAM  # closed by remote
+          @stream.send headers_frame.merge(flags: [:end_headers, :end_stream])     # half closed local
+          @stream.receive headers_frame.merge(flags: [:end_headers, :end_stream])  # closed by remote
         end
 
         it 'should raise STREAM_CLOSED on attempt to send frames' do
-          (FRAME_TYPES - [PRIORITY, RST_STREAM]).each do |frame|
+          (frame_types - [priority_frame, rst_stream_frame]).each do |frame|
             expect do
               @stream.dup.send frame
             end.to raise_error(StreamClosed)
@@ -471,7 +472,7 @@ RSpec.describe HTTP2::Stream do
         end
 
         it 'should raise STREAM_CLOSED on receipt of frame' do
-          (FRAME_TYPES - [PRIORITY, RST_STREAM, WINDOW_UPDATE]).each do |frame|
+          (frame_types - [priority_frame, rst_stream_frame, window_update_frame]).each do |frame|
             expect do
               @stream.dup.receive frame
             end.to raise_error(StreamClosed)
@@ -479,38 +480,38 @@ RSpec.describe HTTP2::Stream do
         end
 
         it 'should allow PRIORITY, RST_STREAM to be sent' do
-          expect { @stream.send PRIORITY.dup }.to_not raise_error
-          expect { @stream.send RST_STREAM.dup }.to_not raise_error
+          expect { @stream.send priority_frame }.to_not raise_error
+          expect { @stream.send rst_stream_frame }.to_not raise_error
         end
 
         it 'should allow PRIORITY, RST_STREAM to be received' do
-          expect { @stream.receive PRIORITY }.to_not raise_error
-          expect { @stream.receive RST_STREAM }.to_not raise_error
+          expect { @stream.receive priority_frame }.to_not raise_error
+          expect { @stream.receive rst_stream_frame }.to_not raise_error
         end
 
         it 'should reprioritize stream on sent PRIORITY' do
-          expect { @stream.send PRIORITY.dup }.to_not raise_error
+          expect { @stream.send priority_frame }.to_not raise_error
           expect(@stream.weight).to eq 20
         end
         it 'should reprioritize stream on received PRIORITY' do
-          expect { @stream.receive PRIORITY }.to_not raise_error
+          expect { @stream.receive priority_frame }.to_not raise_error
           expect(@stream.weight).to eq 20
         end
 
         it 'should ignore received WINDOW_UPDATE frames' do
-          expect { @stream.receive WINDOW_UPDATE }.to_not raise_error
+          expect { @stream.receive window_update_frame }.to_not raise_error
           expect(@stream.state).to eq :closed
         end
       end
 
       context 'local closed via RST_STREAM frame' do
         before(:each) do
-          @stream.send HEADERS.deep_dup     # open
-          @stream.send RST_STREAM.deep_dup  # closed by local
+          @stream.send headers_frame     # open
+          @stream.send rst_stream_frame  # closed by local
         end
 
         it 'should ignore received frames' do
-          (FRAME_TYPES - [PUSH_PROMISE]).each do |frame|
+          (frame_types - [push_promise_frame]).each do |frame|
             expect do
               cb = []
               @stream.on(:data) { cb << :data }
@@ -533,12 +534,12 @@ RSpec.describe HTTP2::Stream do
       # FIXME: Isn't this test same as "half closed (local)"?
       # context "local closed via END_STREAM flag" do
       #   before(:each) do
-      #     @stream.send HEADERS  # open
-      #     @stream.send DATA     # contains end_stream flag
+      #     @stream.send headers_frame  # open
+      #     @stream.send data_frame     # contains end_stream flag
       #   end
 
       #   it "should ignore received frames" do
-      #     FRAME_TYPES.each do |frame|
+      #     frame_types.each do |frame|
       #       expect { @stream.dup.receive frame }.to_not raise_error
       #     end
       #   end
@@ -554,31 +555,31 @@ RSpec.describe HTTP2::Stream do
     end
 
     it 'should update window size on DATA frames only' do
-      @stream.send HEADERS.deep_dup # go to open
+      @stream.send headers_frame # go to open
       expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW
 
-      (FRAME_TYPES - [DATA, PING, GOAWAY, SETTINGS]).each do |frame|
+      (frame_types - [data_frame, ping_frame, goaway_frame, settings_frame]).each do |frame|
         s = @stream.dup
         s.send frame.deep_dup
         expect(s.remote_window).to eq DEFAULT_FLOW_WINDOW
       end
 
-      @stream.send DATA.dup
-      expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize
+      @stream.send data_frame
+      expect(@stream.remote_window).to eq DEFAULT_FLOW_WINDOW - data_frame[:payload].bytesize
     end
 
     it 'should update window size on receipt of WINDOW_UPDATE' do
-      @stream.send HEADERS.deep_dup
-      @stream.send DATA.dup
-      @stream.receive WINDOW_UPDATE
+      @stream.send headers_frame
+      @stream.send data_frame
+      @stream.receive window_update_frame
 
       expect(@stream.remote_window).to eq(
-        DEFAULT_FLOW_WINDOW - DATA[:payload].bytesize + WINDOW_UPDATE[:increment],
+        DEFAULT_FLOW_WINDOW - data_frame[:payload].bytesize + window_update_frame[:increment],
       )
     end
 
     it 'should observe session flow control' do
-      settings, data = SETTINGS.dup, DATA.dup
+      settings, data = settings_frame, data_frame
       settings[:payload] = [[:settings_initial_window_size, 1000]]
       settings[:stream] = 0
 
@@ -586,7 +587,7 @@ RSpec.describe HTTP2::Stream do
       @client << framer.generate(settings)
 
       s1 = @client.new_stream
-      s1.send HEADERS.deep_dup
+      s1.send headers_frame
       s1.send data.merge(payload: 'x' * 900, flags: [])
       expect(s1.remote_window).to eq 100
 
@@ -594,31 +595,31 @@ RSpec.describe HTTP2::Stream do
       expect(s1.remote_window).to eq 0
       expect(s1.buffered_amount).to eq 100
 
-      @client << framer.generate(WINDOW_UPDATE.merge(stream: s1.id, increment: 1000))
+      @client << framer.generate(window_update_frame.merge(stream: s1.id, increment: 1000))
       expect(s1.buffered_amount).to eq 0
       expect(s1.remote_window).to eq 900
     end
 
     it 'should not update window when data received is less than half of maximum local window size' do
-      data = DATA.deep_dup
+      data = data_frame
       datalen = data[:payload].bytesize
       expect(@stream).not_to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
         expect(frame[:increment]).to eq datalen
       end
-      @stream.receive HEADERS.deep_dup
+      @stream.receive headers_frame
       @stream.receive data
     end
 
     it 'should update window when data received is over half of the maximum local window size' do
-      data1 = DATA.merge(payload: 'a'*16_384, flags: [])
-      data2 = DATA.merge(payload: 'a'*16_384)
+      data1 = data_frame.merge(payload: 'a'*16_384, flags: [])
+      data2 = data_frame.merge(payload: 'a'*16_384)
       datalen = 16_384 * 2
       expect(@stream).to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
         expect(frame[:increment]).to eq datalen
       end
-      @stream.receive HEADERS.deep_dup
+      @stream.receive headers_frame
       @stream.receive data1
       @stream.receive data2
     end
@@ -750,7 +751,7 @@ RSpec.describe HTTP2::Stream do
     end
 
     it 'should emit received headers via on(:headers)' do
-      headers, recv = [%w(header value)], nil
+      headers, recv = REQUEST_HEADERS, nil
       @srv.on(:stream) do |stream|
         stream.on(:headers) { |h| recv = h }
       end
@@ -767,7 +768,7 @@ RSpec.describe HTTP2::Stream do
         end
       end
 
-      @client_stream.headers('key' => 'value')
+      @client_stream.headers(REQUEST_HEADERS)
       @client_stream.data(payload)
     end
 
@@ -783,7 +784,7 @@ RSpec.describe HTTP2::Stream do
         end
       end
 
-      @client_stream.headers('key' => 'value')
+      @client_stream.headers(REQUEST_HEADERS)
       @client_stream.reprioritize(weight: new_weight, dependency: new_dependency)
       expect(callback_called).to be
     end
@@ -795,18 +796,18 @@ RSpec.describe HTTP2::Stream do
           @server_stream = stream
         end
 
-        @client_stream.headers('key' => 'value')
+        @client_stream.headers(REQUEST_HEADERS)
       end
 
       it '.promise should emit server initiated stream' do
         push = nil
-        @server_stream.promise('key' => 'val') { |pstream| push = pstream }
+        @server_stream.promise(REQUEST_HEADERS) { |pstream| push = pstream }
         expect(push.id).to eq 2
       end
 
       it '.promise push stream should have parent stream' do
         push = nil
-        @server_stream.promise('key' => 'val') { |pstream| push = pstream }
+        @server_stream.promise(REQUEST_HEADERS) { |pstream| push = pstream }
 
         expect(push.state).to eq :reserved_local
         expect(push.parent.id).to eq @server_stream.id
@@ -815,7 +816,7 @@ RSpec.describe HTTP2::Stream do
       context 'stream states' do
         it 'server: active > half close > close' do
           order = []
-          @server_stream.promise('key' => 'val') do |push|
+          @server_stream.promise(REQUEST_HEADERS) do |push|
             stream = push
 
             expect(push.state).to eq :reserved_local
@@ -825,8 +826,8 @@ RSpec.describe HTTP2::Stream do
             push.on(:half_close) { order << :half_close }
             push.on(:close)     { order << :close }
 
-            push.headers('key2' => 'val2')
-            push.send DATA.merge(stream: stream.id)
+            push.headers(RESPONSE_HEADERS)
+            push.send data_frame.merge(stream: stream.id)
           end
 
           expect(order).to eq [:reserved, :active, :half_close, :close]
@@ -854,13 +855,13 @@ RSpec.describe HTTP2::Stream do
             expect(push.id).to be_even
           end
 
-          @server_stream.promise('key' => 'val') do |push|
-            push.headers('key2' => 'val2')
+          @server_stream.promise(REQUEST_HEADERS) do |push|
+            push.headers(RESPONSE_HEADERS)
             push.data('somedata')
           end
 
-          expect(promise_headers).to eq([%w(key val)])
-          expect(headers).to eq([%w(key2 val2)])
+          expect(promise_headers).to eq(REQUEST_HEADERS)
+          expect(headers).to eq(RESPONSE_HEADERS)
           expect(order).to eq [
             :reserved,
             :promise_headers,
