@@ -261,7 +261,7 @@ module HTTP2
               stream = activate_stream(
                 id:         frame[:stream],
                 weight:     frame[:weight] || DEFAULT_WEIGHT,
-                dependency: frame[:dependency] || 0,
+                dependency: frame[:stream_dependency] || 0,
                 exclusive:  frame[:exclusive] || false,
               )
               emit(:stream, stream)
@@ -336,7 +336,7 @@ module HTTP2
                 stream = activate_stream(
                   id:         frame[:stream],
                   weight:     frame[:weight] || DEFAULT_WEIGHT,
-                  dependency: frame[:dependency] || 0,
+                  dependency: frame[:stream_dependency] || 0,
                   exclusive:  frame[:exclusive] || false,
                 )
 

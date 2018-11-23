@@ -73,6 +73,8 @@ module HTTP2
     # @param parent [Stream]
     # @param state [Symbol]
     def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil, state: :idle)
+      stream_error(:protocol_error, "stream can't depend on itself") if id == dependency
+
       @connection = connection
       @id = id
       @weight = weight
