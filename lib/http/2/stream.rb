@@ -145,7 +145,10 @@ module HTTP2
     def verify_pseudo_headers(headers)
       return if headers.is_a?(Buffer)
       mandatory_headers = @id.odd? ? %w[:scheme :method :authority :path] : %w[:status]
-      pseudo_headers = headers.take_while { |k, _| k.start_with?(':') }.map(&:first)
+      pseudo_headers = headers.take_while do |k, v|
+        @_method = v if k == ':method'
+        k.start_with?(':')
+      end.map(&:first)
       return if mandatory_headers.size == pseudo_headers.size &&
                 (mandatory_headers - pseudo_headers).empty?
       stream_error(:protocol_error, msg: 'invalid pseudo-headers')
@@ -197,7 +200,7 @@ module HTTP2
     def headers(headers, end_headers: true, end_stream: false)
       flags = []
       flags << :end_headers if end_headers
-      flags << :end_stream  if end_stream
+      flags << :end_stream  if end_stream || @_method == 'HEAD'
 
       send(type: :headers, flags: flags, payload: headers)
     end
