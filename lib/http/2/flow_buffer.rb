@@ -71,6 +71,7 @@ module HTTP2
           # Split frame so that it fits in the window
           # TODO: consider padding!
           frame[:payload] = payload.slice!(0, @remote_window)
+          frame[:length] = frame[:payload].bytesize
           chunk[:length]  = payload.bytesize
           chunk[:payload] = payload
 
