@@ -106,6 +106,7 @@ module HTTP2
       case frame[:type]
       when :data
         stream_error(:stream_closed) if @state == :remote_closed
+        @received_data = true
         calculate_content_length(frame[:length])
         update_local_window(frame)
         # Emit DATA frame
@@ -120,6 +121,7 @@ module HTTP2
         emit(:promise_headers, frame[:payload]) unless frame[:ignore]
       when :continuation
         stream_error(:stream_closed) if @state == :remote_closed
+        stream_error(:protocol_error) if @received_data
       when :priority
         process_priority(frame)
       when :window_update
