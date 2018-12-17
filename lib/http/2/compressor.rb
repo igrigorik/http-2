@@ -549,7 +549,7 @@ module HTTP2
         header
       end
 
-      FORBIDDEN_HEADERS = %w[connection te]
+      FORBIDDEN_HEADERS = %w[connection te].freeze
 
       # Decodes and processes header commands within provided buffer.
       #
