@@ -544,7 +544,8 @@ module HTTP2
         # Process pending settings we have sent.
         [@pending_settings.shift, :local]
       else
-        connection_error(check) if validate_settings(@remote_role, frame[:payload])
+        check = validate_settings(@remote_role, frame[:payload])
+        connection_error(check) if check
         [frame[:payload], :remote]
       end
 
