@@ -105,17 +105,21 @@ module HTTP2
 
       case frame[:type]
       when :data
+        stream_error(:stream_closed) if closed?
         calculate_content_length(frame[:length])
         update_local_window(frame)
         # Emit DATA frame
         emit(:data, frame[:payload]) unless frame[:ignore]
         calculate_window_update(@local_window_max_size)
       when :headers
+        stream_error(:stream_closed) if closed?
         verify_pseudo_headers(frame[:payload])
         update_content_length(frame[:payload])
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :push_promise
         emit(:promise_headers, frame[:payload]) unless frame[:ignore]
+      when :continuation
+        stream_error(:stream_closed) if closed?
       when :priority
         process_priority(frame)
       when :window_update
