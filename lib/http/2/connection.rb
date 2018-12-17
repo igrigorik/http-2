@@ -322,6 +322,7 @@ module HTTP2
             stream << frame
           else
             if (stream = @streams[frame[:stream]])
+              process_window_update(frame) if frame[:type] == :window_update
               stream << frame
               if frame[:type] == :data
                 update_local_window(frame)
