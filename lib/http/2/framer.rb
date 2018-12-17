@@ -363,11 +363,13 @@ module HTTP2
         end
         frame[:payload] = payload.read(frame[:length])
       when :priority
+        fail FrameSizeError, "Invalid length for PRIORITY_STREAM (#{frame[:length]} != 5)" if frame[:length] != 5
         e_sd = payload.read_uint32
         frame[:stream_dependency] = e_sd & RBIT
         frame[:exclusive] = (e_sd & EBIT) != 0
         frame[:weight] = payload.getbyte + 1
       when :rst_stream
+        fail FrameSizeError, "Invalid length for RST_STREAM (#{frame[:length]} != 4)" if frame[:length] != 4
         frame[:error] = unpack_error payload.read_uint32
 
       when :settings
@@ -403,6 +405,7 @@ module HTTP2
         size = frame[:length] - 8 # for last_stream and error
         frame[:payload] = payload.read(size) if size > 0
       when :window_update
+        fail FrameSizeError, "Invalid length for WINDOW_UPDATE (#{frame[:length]} not multiple of 4)" if frame[:length] % 4 != 0
         frame[:increment] = payload.read_uint32 & RBIT
       when :continuation
         frame[:payload] = payload.read(frame[:length])

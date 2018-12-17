@@ -40,5 +40,7 @@ module HTTP2
 
     # Raised if stream limit has been reached and new stream cannot be opened.
     class StreamLimitExceeded < Error; end
+
+    class FrameSizeError < Error; end
   end
 end
