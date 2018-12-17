@@ -693,7 +693,6 @@ module HTTP2
       # permitted to open.
       stream.once(:active) { @active_stream_count += 1 }
       stream.once(:close) do
-
         # Store a reference to the closed stream, such that we can respond
         # to any in-flight frames while close is registered on both sides.
         # References to such streams will be purged whenever another stream

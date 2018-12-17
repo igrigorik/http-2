@@ -405,7 +405,9 @@ module HTTP2
         size = frame[:length] - 8 # for last_stream and error
         frame[:payload] = payload.read(size) if size > 0
       when :window_update
-        fail FrameSizeError, "Invalid length for WINDOW_UPDATE (#{frame[:length]} not multiple of 4)" if frame[:length] % 4 != 0
+        if frame[:length] % 4 != 0
+          fail FrameSizeError, "Invalid length for WINDOW_UPDATE (#{frame[:length]} not multiple of 4)"
+        end
         frame[:increment] = payload.read_uint32 & RBIT
       when :continuation
         frame[:payload] = payload.read(frame[:length])
