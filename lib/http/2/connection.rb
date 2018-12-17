@@ -233,6 +233,7 @@ module HTTP2
         # anything other than 0x0, the endpoint MUST respond with a connection
         # error (Section 5.4.1) of type PROTOCOL_ERROR.
         if connection_frame?(frame)
+          connection_error(:protocol_error) unless frame[:stream].zero?
           connection_management(frame)
         else
           case frame[:type]
