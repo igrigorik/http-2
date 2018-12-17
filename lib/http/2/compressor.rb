@@ -549,6 +549,8 @@ module HTTP2
         header
       end
 
+      FORBIDDEN_HEADERS = %w[connection te]
+
       # Decodes and processes header commands within provided buffer.
       #
       # @param buf [Buffer]
@@ -564,6 +566,9 @@ module HTTP2
             fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
           end
           decoding_pseudo_headers = is_pseudo_header
+          if FORBIDDEN_HEADERS.include?(next_header.first)
+            fail ProtocolError, "invalid header received: #{next_header.first}"
+          end
           list << next_header
         end
         list
