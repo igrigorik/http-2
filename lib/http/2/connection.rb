@@ -215,7 +215,7 @@ module HTTP2
           end
 
           @continuation << frame
-          return unless frame[:flags].include? :end_headers
+          next unless frame[:flags].include? :end_headers
 
           payload = @continuation.map { |f| f[:payload] }.join
 
