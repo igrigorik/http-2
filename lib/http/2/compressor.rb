@@ -103,6 +103,7 @@ module HTTP2
         @table = []
         @options = default_options.merge(options)
         @limit = @options[:table_size]
+        @_table_updated = false
       end
 
       # Duplicates current compression context
@@ -146,6 +147,7 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
+          fail CompressionError, 'tried to change table size after adding elements to table' if @_table_updated
           self.table_size = cmd[:value]
 
         when :indexed
@@ -274,6 +276,12 @@ module HTTP2
         @table.inject(0) { |r, (k, v)| r + k.bytesize + v.bytesize + 32 }
       end
 
+      def listen_on_table
+        yield
+      ensure
+        @_table_updated = false
+      end
+
       private
 
       # Add a name-value pair to the dynamic table.
@@ -284,6 +292,7 @@ module HTTP2
       def add_to_table(cmd)
         return unless size_check(cmd)
         @table.unshift(cmd)
+        @_table_updated = true
       end
 
       # To keep the dynamic table size lower than or equal to @limit,
@@ -560,26 +569,28 @@ module HTTP2
       def decode(buf, frame = nil)
         list = []
         decoding_pseudo_headers = true
-        until buf.empty?
-          field, value = @cc.process(header(buf))
-          next if field.nil?
-          is_pseudo_header = field.start_with? ':'
-          if !decoding_pseudo_headers && is_pseudo_header
-            fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
+        @cc.listen_on_table do
+          until buf.empty?
+            field, value = @cc.process(header(buf))
+            next if field.nil?
+            is_pseudo_header = field.start_with? ':'
+            if !decoding_pseudo_headers && is_pseudo_header
+              fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
+            end
+            decoding_pseudo_headers = is_pseudo_header
+            if FORBIDDEN_HEADERS.include?(field)
+              fail ProtocolError, "invalid header received: #{field}"
+            end
+            case field
+            when ':method'
+              frame[:method] = value
+            when 'content-length'
+              frame[:content_length] = Integer(value)
+            when 'trailer'
+              (frame[:trailer] ||= []) << value
+            end if frame
+            list << [field, value]
           end
-          decoding_pseudo_headers = is_pseudo_header
-          if FORBIDDEN_HEADERS.include?(field)
-            fail ProtocolError, "invalid header received: #{field}"
-          end
-          case field
-          when ':method'
-            frame[:method] = value
-          when 'content-length'
-            frame[:content_length] = Integer(value)
-          when 'trailer'
-            (frame[:trailer] ||= []) << value
-          end if frame
-          list << [field, value]
         end
         list
       end
