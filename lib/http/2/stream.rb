@@ -107,7 +107,13 @@ module HTTP2
 
       case frame[:type]
       when :data
-        stream_error(:stream_closed) if @state == :remote_closed
+        # 6.1. DATA
+        # If a DATA frame is received whose stream is not in "open" or
+        # "half closed (local)" state, the recipient MUST respond with a
+        # stream error (Section 5.4.2) of type STREAM_CLOSED.
+        stream_error(:stream_closed) unless @state == :open ||
+                                            @state == :half_closed_local ||
+                                            @state == :half_closing || @state == :closing
         @received_data = true
         calculate_content_length(frame[:length])
         update_local_window(frame)
