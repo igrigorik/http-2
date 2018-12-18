@@ -13,37 +13,65 @@ RSpec::Core::RakeTask.new(:hpack) do |t|
   t.pattern = './spec/hpack_test_spec.rb'
 end
 
+task :h2spec_install do
+  platform = case RUBY_PLATFORM
+  when /darwin/
+    'h2spec_darwin_amd64.tar.gz'
+  when /cygwin|mswin|mingw|bccwin|wince|emx/
+    'h2spec_windows_amd64.zip'
+  else
+    'h2spec_linux_amd64.tar.gz'
+  end
+  uri = "https://github.com/summerwind/h2spec/releases/download/v2.2.0/#{platform}"
+
+  tar_location = File.join(__dir__, platform)
+  require "net/http"
+  File.open(tar_location, 'wb') do |file|
+    begin
+      uri = URI(uri)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      # http.set_debug_output($stderr)
+      response = http.get(uri.request_uri)
+      uri = response['location']
+    end while response.is_a?(Net::HTTPRedirection)
+    file.write(response.body)
+  end
+
+  case RUBY_PLATFORM
+  when /cygwin|mswin|mingw|bccwin|wince|emx/
+    puts "Hi, you're on Windows, please unzip this file: #{tar_location}"
+  else
+    system("tar -xvzf #{tar_location} h2spec")
+  end
+end
+
 task :h2spec do
-  if /darwin/ !~ RUBY_PLATFORM
-    abort "h2spec rake task currently only works on OSX.
-           Download other binaries from https://github.com/summerwind/h2spec/releases"
+  h2spec = File.join(__dir__, "h2spec")
+  unless File.exists?(h2spec)
+    abort <<-OUT
+Please install h2spec first.
+
+Run "rake h2spec_install",
+Or Download the binary from https://github.com/summerwind/h2spec/releases
+OUT
   end
 
-  system 'ruby example/server.rb -p 9000 &', out: File::NULL
+  server_pid = Process.spawn('ruby example/server.rb -p 9000', out: File::NULL)
   sleep 1
-
-  output = ''
-  Open3.popen2e('spec/h2spec/h2spec.darwin -p 9000 -o 1') do |_i, oe, _t|
-    oe.each do |l|
-      l.gsub!(/\e\[(\d+)(;\d+)*m/, '')
-
-      output << l
-      if l =~ /passed.*failed/
-        puts "\n#{l}"
-        break # suppress post-summary failure output
-      else
-        print '.'
-      end
-    end
+  h2spec_pid = fork do
+    exec("#{h2spec} -p 9000 -o 1")
   end
-
-  File.write 'spec/h2spec/output/non_secure.txt', output
-
-  system 'kill `pgrep -f example/server.rb`'
+  Process.waitpid(h2spec_pid)
+  Process.kill("TERM", server_pid)
 end
 
 RuboCop::RakeTask.new
 YARD::Rake::YardocTask.new
 
-task default: [:spec, :rubocop]
+if ENV['CI']
+  task default: [:spec, :rubocop, :h2spec_install, :h2spec]
+else
+  task default: [:spec, :rubocop]
+end
 task all: [:default, :hpack]
