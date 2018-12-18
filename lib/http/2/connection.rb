@@ -447,11 +447,7 @@ module HTTP2
         when :settings
           connection_settings(frame)
         when :window_update
-          if frame[:increment]
-            connection_error(:protocol_error) if frame[:increment].zero?
-            @remote_window += frame[:increment]
-          end
-          send_data(nil, true)
+          process_window_update(frame, nil, true)
         when :ping
           if frame[:flags].include? :ack
             emit(:ack, frame[:payload])
