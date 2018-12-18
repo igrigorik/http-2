@@ -25,16 +25,18 @@ task :h2spec_install do
   uri = "https://github.com/summerwind/h2spec/releases/download/v2.2.0/#{platform}"
 
   tar_location = File.join(__dir__, platform)
-  require "net/http"
+  require 'net/http'
   File.open(tar_location, 'wb') do |file|
-    begin
+    response = nil
+    loop do
       uri = URI(uri)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
       # http.set_debug_output($stderr)
       response = http.get(uri.request_uri)
+      break unless response.is_a?(Net::HTTPRedirection)
       uri = response['location']
-    end while response.is_a?(Net::HTTPRedirection)
+    end
     file.write(response.body)
   end
 
@@ -44,17 +46,15 @@ task :h2spec_install do
   else
     system("tar -xvzf #{tar_location} h2spec")
   end
+  FileUtils.rm(tar_location)
 end
 
 task :h2spec do
-  h2spec = File.join(__dir__, "h2spec")
-  unless File.exists?(h2spec)
-    abort <<-OUT
-Please install h2spec first.
-
-Run "rake h2spec_install",
-Or Download the binary from https://github.com/summerwind/h2spec/releases
-OUT
+  h2spec = File.join(__dir__, 'h2spec')
+  unless File.exist?(h2spec)
+    abort 'Please install h2spec first.\n'\
+          'Run "rake h2spec_install",\n'\
+          'Or Download the binary from https://github.com/summerwind/h2spec/releases'
   end
 
   server_pid = Process.spawn('ruby example/server.rb -p 9000', out: File::NULL)
@@ -63,7 +63,7 @@ OUT
     exec("#{h2spec} -p 9000 -o 1")
   end
   Process.waitpid(h2spec_pid)
-  Process.kill("TERM", server_pid)
+  Process.kill('TERM', server_pid)
 end
 
 RuboCop::RakeTask.new
