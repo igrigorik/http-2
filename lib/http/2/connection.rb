@@ -203,7 +203,14 @@ module HTTP2
       while (frame = @framer.parse(@recv_buffer))
         # Implementations MUST discard frames
         # that have unknown or unsupported types.
-        next if frame[:type].nil?
+        if frame[:type].nil?
+          # However, extension frames that appear in
+          # the middle of a header block (Section 4.3) are not permitted; these
+          # MUST be treated as a connection error (Section 5.4.1) of type
+          # PROTOCOL_ERROR.
+          connection_error(:protocol_error) unless @continuation.empty?
+          next
+        end
 
         emit(:frame_received, frame)
 
