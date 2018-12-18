@@ -506,6 +506,7 @@ module HTTP2
       # @return [String] UTF-8 encoded string
       # @raise [CompressionError] when input is malformed
       def string(buf)
+        fail CompressionError, 'invalid header block fragment' if buf.empty?
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
