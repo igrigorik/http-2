@@ -89,6 +89,7 @@ module HTTP2
       @closed = false
       @send_buffer = []
       @_method = @_content_length = nil
+      @_waiting_on_trailers = false
 
       on(:window) { |v| @remote_window = v }
       on(:local_window) { |v| @local_window_max_size = @local_window = v }
@@ -117,8 +118,14 @@ module HTTP2
         stream_error(:stream_closed) if @state == :remote_closed
         @_method ||= frame[:method]
         @_content_length ||= frame[:content_length]
-        verify_pseudo_headers(frame)
+        @_trailers ||= frame[:trailer]
+        if @_waiting_on_trailers
+          verify_trailers(frame)
+        else
+          verify_pseudo_headers(frame)
+        end
         emit(:headers, frame[:payload]) unless frame[:ignore]
+        @_waiting_on_trailers = !@_trailers.nil?
       when :push_promise
         emit(:promise_headers, frame[:payload]) unless frame[:ignore]
       when :continuation
@@ -148,12 +155,24 @@ module HTTP2
       headers = frame[:payload]
       return if headers.is_a?(Buffer)
       mandatory_headers = @id.odd? ? %w[:scheme :method :authority :path] : %w[:status]
-      pseudo_headers = headers.take_while do |k, v|
+      pseudo_headers = headers.take_while do |k, _|
         k.start_with?(':')
       end.map(&:first)
       return if mandatory_headers.size == pseudo_headers.size &&
                 (mandatory_headers - pseudo_headers).empty?
       stream_error(:protocol_error, msg: 'invalid pseudo-headers')
+    end
+
+    def verify_trailers(frame)
+      stream_error(:protocol_error, msg: 'trailer headers frame must close the stream') unless end_stream?(frame)
+      return unless @_trailers
+      trailers = frame[:payload]
+      return if trailers.is_a?(Buffer)
+      trailers.each do |field, _|
+        @_trailers.delete(field)
+        break if @_trailers.empty?
+      end
+      stream_error(:protocol_error, msg: "didn't receive all expected trailer headers") unless @_trailers.empty?
     end
 
     def calculate_content_length(data_length)
