@@ -88,6 +88,7 @@ module HTTP2
       @error  = false
       @closed = false
       @send_buffer = []
+      @_method = @_content_length = nil
 
       on(:window) { |v| @remote_window = v }
       on(:local_window) { |v| @local_window_max_size = @local_window = v }
@@ -114,8 +115,9 @@ module HTTP2
         calculate_window_update(@local_window_max_size)
       when :headers
         stream_error(:stream_closed) if @state == :remote_closed
-        verify_pseudo_headers(frame[:payload])
-        update_content_length(frame[:payload])
+        @_method ||= frame[:method]
+        @_content_length ||= frame[:content_length]
+        verify_pseudo_headers(frame)
         emit(:headers, frame[:payload]) unless frame[:ignore]
       when :push_promise
         emit(:promise_headers, frame[:payload]) unless frame[:ignore]
@@ -142,11 +144,11 @@ module HTTP2
     end
     alias << receive
 
-    def verify_pseudo_headers(headers)
+    def verify_pseudo_headers(frame)
+      headers = frame[:payload]
       return if headers.is_a?(Buffer)
       mandatory_headers = @id.odd? ? %w[:scheme :method :authority :path] : %w[:status]
       pseudo_headers = headers.take_while do |k, v|
-        @_method = v if k == ':method'
         k.start_with?(':')
       end.map(&:first)
       return if mandatory_headers.size == pseudo_headers.size &&
@@ -154,16 +156,10 @@ module HTTP2
       stream_error(:protocol_error, msg: 'invalid pseudo-headers')
     end
 
-    def update_content_length(headers)
-      return if headers.is_a?(Buffer)
-      _, length = headers.find { |k, _v| k == 'content-length' }
-      @content_length = length.to_i if length
-    end
-
     def calculate_content_length(data_length)
-      return unless @content_length
-      @content_length -= data_length
-      return if @content_length >= 0
+      return unless @_content_length
+      @_content_length -= data_length
+      return if @_content_length >= 0
       stream_error(:protocol_error, msg: 'received more data than what was defined in content-length')
     end
 

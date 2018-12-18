@@ -554,22 +554,31 @@ module HTTP2
       # Decodes and processes header commands within provided buffer.
       #
       # @param buf [Buffer]
-      # @return [Array] +[[name, value], ...]+
-      def decode(buf)
+      # @param frame [HTTP2::Frame, nil]
+      # @return [Array] +[[name, value], ...]
+      def decode(buf, frame = nil)
         list = []
         decoding_pseudo_headers = true
         until buf.empty?
-          next_header = @cc.process(header(buf))
-          next if next_header.nil?
-          is_pseudo_header = next_header.first.start_with? ':'
+          field, value = @cc.process(header(buf))
+          next if field.nil?
+          is_pseudo_header = field.start_with? ':'
           if !decoding_pseudo_headers && is_pseudo_header
             fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
           end
           decoding_pseudo_headers = is_pseudo_header
-          if FORBIDDEN_HEADERS.include?(next_header.first)
-            fail ProtocolError, "invalid header received: #{next_header.first}"
+          if FORBIDDEN_HEADERS.include?(field)
+            fail ProtocolError, "invalid header received: #{field}"
           end
-          list << next_header
+          case field
+          when ':method'
+            frame[:method] = value
+          when 'content-length'
+            frame[:content_length] = Integer(value)
+          when 'trailer'
+            (frame[:trailer] ||= []) << value
+          end if frame
+          list << [field, value]
         end
         list
       end

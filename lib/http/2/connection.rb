@@ -632,7 +632,7 @@ module HTTP2
     # @param frame [Hash]
     def decode_headers(frame)
       if frame[:payload].is_a? Buffer
-        frame[:payload] = @decompressor.decode(frame[:payload])
+        frame[:payload] = @decompressor.decode(frame[:payload], frame)
       end
 
     rescue CompressionError => e
