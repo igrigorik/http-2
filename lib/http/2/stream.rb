@@ -121,7 +121,7 @@ module HTTP2
         emit(:data, frame[:payload]) unless frame[:ignore]
         calculate_window_update(@local_window_max_size)
       when :headers
-        stream_error(:stream_closed) if @state == :remote_closed
+        stream_error(:stream_closed) if @state == :closed || @state == :remote_closed
         @_method ||= frame[:method]
         @_content_length ||= frame[:content_length]
         @_trailers ||= frame[:trailer]
@@ -135,7 +135,7 @@ module HTTP2
       when :push_promise
         emit(:promise_headers, frame[:payload]) unless frame[:ignore]
       when :continuation
-        stream_error(:stream_closed) if @state == :remote_closed
+        stream_error(:stream_closed) if @state == :closed || @state == :remote_closed
         stream_error(:protocol_error) if @received_data
       when :priority
         process_priority(frame)
