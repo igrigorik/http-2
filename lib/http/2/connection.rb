@@ -329,7 +329,7 @@ module HTTP2
             stream << frame
           else
             if (stream = @streams[frame[:stream]])
-              process_window_update(frame) if frame[:type] == :window_update
+              process_window_update(frame: frame) if frame[:type] == :window_update
               stream << frame
               if frame[:type] == :data
                 update_local_window(frame)
@@ -360,7 +360,7 @@ module HTTP2
               when :window_update
                 stream = @streams_recently_closed[frame[:stream]]
                 connection_error(:protocol_error, 'sent window update on idle stream') unless stream
-                process_window_update(frame)
+                process_window_update(frame: frame)
               else
                 # An endpoint that receives an unexpected stream identifier
                 # MUST respond with a connection error of type PROTOCOL_ERROR.
@@ -452,7 +452,7 @@ module HTTP2
         when :settings
           connection_settings(frame)
         when :window_update
-          process_window_update(frame, nil, true)
+          process_window_update(frame: frame, encode: true)
         when :ping
           if frame[:flags].include? :ack
             emit(:ack, frame[:payload])

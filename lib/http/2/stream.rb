@@ -140,7 +140,7 @@ module HTTP2
       when :priority
         process_priority(frame)
       when :window_update
-        process_window_update(frame)
+        process_window_update(frame: frame)
       when :altsvc
         # 4.  The ALTSVC HTTP/2 Frame
         # An ALTSVC frame on a

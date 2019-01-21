@@ -94,14 +94,14 @@ module HTTP2
       end
     end
 
-    def process_window_update(frame, fr = nil, encode = false)
+    def process_window_update(frame:, encode: false)
       return if frame[:ignore]
       if frame[:increment]
         fail ProtocolError, 'increment MUST be higher than zero' if frame[:increment].zero?
         @remote_window += frame[:increment]
         error(:flow_control_error) if @remote_window > MAX_WINDOW_SIZE
       end
-      send_data(fr, encode)
+      send_data(nil, encode)
     end
   end
 end
