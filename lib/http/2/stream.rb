@@ -157,10 +157,13 @@ module HTTP2
     end
     alias << receive
 
+    REQUEST_MANDATORY_HEADERS = %w[:scheme :method :authority :path].freeze
+    RESPONSE_MANDATORY_HEADERS = %w[:status].freeze
+
     def verify_pseudo_headers(frame)
       headers = frame[:payload]
       return if headers.is_a?(Buffer)
-      mandatory_headers = @id.odd? ? %w[:scheme :method :authority :path] : %w[:status]
+      mandatory_headers = @id.odd? ? REQUEST_MANDATORY_HEADERS : RESPONSE_MANDATORY_HEADERS
       pseudo_headers = headers.take_while do |k, _|
         k.start_with?(':')
       end.map(&:first)
