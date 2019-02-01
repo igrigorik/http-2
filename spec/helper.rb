@@ -46,7 +46,7 @@ module FrameHelpers
       type: :priority,
       stream: 1,
       exclusive: false,
-      stream_dependency: 0,
+      dependency: 0,
       weight: 20,
     }
   end

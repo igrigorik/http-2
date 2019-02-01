@@ -186,15 +186,15 @@ module HTTP2
         length += frame[:payload].bytesize
 
       when :headers
-        if frame[:weight] || frame[:stream_dependency] || !frame[:exclusive].nil?
-          unless frame[:weight] && frame[:stream_dependency] && !frame[:exclusive].nil?
+        if frame[:weight] || frame[:dependency] || !frame[:exclusive].nil?
+          unless frame[:weight] && frame[:dependency] && !frame[:exclusive].nil?
             fail CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
           end
           frame[:flags] += [:priority] unless frame[:flags].include? :priority
         end
 
         if frame[:flags].include? :priority
-          bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:stream_dependency] & RBIT)].pack(UINT32)
+          bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)].pack(UINT32)
           bytes << [frame[:weight] - 1].pack(UINT8)
           length += 5
         end
@@ -203,10 +203,10 @@ module HTTP2
         length += frame[:payload].bytesize
 
       when :priority
-        unless frame[:weight] && frame[:stream_dependency] && !frame[:exclusive].nil?
+        unless frame[:weight] && frame[:dependency] && !frame[:exclusive].nil?
           fail CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
         end
-        bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:stream_dependency] & RBIT)].pack(UINT32)
+        bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)].pack(UINT32)
         bytes << [frame[:weight] - 1].pack(UINT8)
         length += 5
 
@@ -357,7 +357,7 @@ module HTTP2
       when :headers
         if frame[:flags].include? :priority
           e_sd = payload.read_uint32
-          frame[:stream_dependency] = e_sd & RBIT
+          frame[:dependency] = e_sd & RBIT
           frame[:exclusive] = (e_sd & EBIT) != 0
           frame[:weight] = payload.getbyte + 1
         end
@@ -365,7 +365,7 @@ module HTTP2
       when :priority
         fail FrameSizeError, "Invalid length for PRIORITY_STREAM (#{frame[:length]} != 5)" if frame[:length] != 5
         e_sd = payload.read_uint32
-        frame[:stream_dependency] = e_sd & RBIT
+        frame[:dependency] = e_sd & RBIT
         frame[:exclusive] = (e_sd & EBIT) != 0
         frame[:weight] = payload.getbyte + 1
       when :rst_stream

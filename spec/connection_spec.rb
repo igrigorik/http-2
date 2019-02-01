@@ -128,7 +128,7 @@ RSpec.describe HTTP2::Connection do
 
       stream, headers = nil, headers_frame
       headers[:weight] = 20
-      headers[:stream_dependency] = 0
+      headers[:dependency] = 0
       headers[:exclusive] = false
 
       @conn.on(:stream) { |s| stream = s }

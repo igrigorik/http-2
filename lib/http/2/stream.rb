@@ -79,7 +79,7 @@ module HTTP2
       @id = id
       @weight = weight
       @dependency = dependency
-      process_priority(weight: weight, stream_dependency: dependency, exclusive: exclusive)
+      process_priority(weight: weight, dependency: dependency, exclusive: exclusive)
       @local_window_max_size = connection.local_settings[:settings_initial_window_size]
       @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
@@ -243,7 +243,7 @@ module HTTP2
     # @param dependency [Integer] new stream dependency stream
     def reprioritize(weight: 16, dependency: 0, exclusive: false)
       stream_error if @id.even?
-      send(type: :priority, weight: weight, stream_dependency: dependency, exclusive: exclusive)
+      send(type: :priority, weight: weight, dependency: dependency, exclusive: exclusive)
     end
 
     # Sends DATA frame containing response payload.
@@ -644,11 +644,11 @@ module HTTP2
 
     def process_priority(frame)
       @weight = frame[:weight]
-      @dependency = frame[:stream_dependency]
+      @dependency = frame[:dependency]
       emit(
         :priority,
         weight:     frame[:weight],
-        dependency: frame[:stream_dependency],
+        dependency: frame[:dependency],
         exclusive:  frame[:exclusive],
       )
       # TODO: implement dependency tree housekeeping
