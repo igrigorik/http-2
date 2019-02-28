@@ -583,6 +583,7 @@ module HTTP2
           when :local
             @compressor.table_size = v
           when :remote
+            @decompressor.dynamic_table_size_update_limit = v
             @decompressor.table_size = v
           end
 
