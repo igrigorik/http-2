@@ -103,7 +103,6 @@ module HTTP2
         @table = []
         @options = default_options.merge(options)
         @limit = @options[:table_size]
-        @dynamic_table_size_update_limit = options[:settings_header_table_size] || 4096
       end
 
       # Duplicates current compression context
@@ -147,7 +146,7 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
-          if cmd[:value] > @dynamic_table_size_update_limit
+          if cmd[:value] > @limit
             fail ProtocolError, 'dynamic table size update exceed limit'
           end
           self.table_size = cmd[:value]
@@ -472,10 +471,6 @@ module HTTP2
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(**options)
         @cc = EncodingContext.new(options)
-      end
-
-      def dynamic_table_size_update_limit=(size)
-        @cc.dynamic_table_size_update_limit = size
       end
 
       # Set dynamic table size in EncodingContext

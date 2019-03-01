@@ -243,8 +243,6 @@ RSpec.describe HTTP2::Header do
         expect { cc.process(type: :changetablesize, value: 150000000) }
           .to raise_error(ProtocolError)
 
-        cc.process(type: :changetablesize, value: 1500)
-        cc.process(type: :changetablesize, value: 4000)
       end
     end
 
