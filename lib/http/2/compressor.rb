@@ -146,6 +146,9 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
+          if cmd[:value] > @limit
+            fail CompressionError, 'dynamic table size update exceed limit'
+          end
           self.table_size = cmd[:value]
 
         when :indexed
