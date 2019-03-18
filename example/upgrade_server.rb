@@ -39,10 +39,10 @@ end
 
 class UpgradeHandler
   VALID_UPGRADE_METHODS = %w(GET OPTIONS).freeze
-  UPGRADE_RESPONSE = <<-RESP.strip_heredoc.freeze
-    HTTP/1.1 101 Switching Protocols
-    Connection: Upgrade
-    Upgrade: h2c
+  UPGRADE_RESPONSE = <<-RESP.freeze
+HTTP/1.1 101 Switching Protocols
+Connection: Upgrade
+Upgrade: h2c
 
   RESP
 
