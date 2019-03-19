@@ -11,6 +11,7 @@ AllCops:
 Layout/IndentHeredoc:
   Exclude:
     - 'lib/tasks/generate_huffman_table.rb'
+    - 'example/*'
 
 Metrics/LineLength:
   Max: 120
