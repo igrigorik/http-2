@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# frozen_string_literals: true
-
 require_relative "helper"
 require "http_parser"
 

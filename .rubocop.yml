@@ -8,10 +8,14 @@ AllCops:
   TargetRubyVersion: 2.7
   DisplayCopNames: true
   Exclude:
-    - "bin/**"
-    - "vendor/**/*"
-    - "**/huffman_statemachine.rb"
-    - "lib/tasks/**"
+    - 'bin/**'
+    - 'vendor/**/*'
+    - '**/huffman_statemachine.rb'
+
+Layout/HeredocIndentation:
+  Exclude:
+    - 'lib/tasks/generate_huffman_table.rb'
+    - 'example/*'
 
 
 Metrics/BlockLength:
@@ -59,11 +63,6 @@ Style/AndOr:
 
 Style/SafeNavigation:
   Enabled: false
-
-Layout/HeredocIndentation:
-  Exclude:
-    - "lib/tasks/generate_huffman_table.rb"
-    - "example/*"
 
 Naming/MethodParameterName:
   Enabled: false
