@@ -751,20 +751,25 @@ RSpec.describe HTTP2::Stream do
     end
 
     it 'should emit received headers via on(:headers)' do
-      headers, recv = REQUEST_HEADERS, nil
+      headers, recv, flags = REQUEST_HEADERS, nil, []
       @srv.on(:stream) do |stream|
-        stream.on(:headers) { |h| recv = h }
+        stream.on(:headers) do |h, f|
+          recv = h
+          flags << f
+        end
       end
 
       @client_stream.headers(headers)
       expect(recv).to eq headers
+      expect(flags).to eq [[:end_headers]]
     end
 
-    it 'should emit received payload via on(:data)' do
+    it 'should emit received payload & flags via on(:data)' do
       payload = 'some-payload'
       @srv.on(:stream) do |stream|
-        stream.on(:data) do |recv|
+        stream.on(:data) do |recv, flags|
           expect(recv).to eq payload
+          expect(flags).to eq [:end_stream]
         end
       end
 
@@ -834,22 +839,27 @@ RSpec.describe HTTP2::Stream do
         end
 
         it 'client: promise_headers > active > headers > .. > data > close' do
-          order, headers, promise_headers = [], [], []
+          order, headers, promise_headers, flags = [], [], [], []
           @client.on(:promise) do |push|
             order << :reserved
 
             push.on(:active)    { order << :active }
-            push.on(:data)      { order << :data }
             push.on(:half_close) { order << :half_close }
             push.on(:close)     { order << :close }
 
-            push.on(:promise_headers) do |h|
+            push.on(:promise_headers) do |h, f|
               order << :promise_headers
               promise_headers += h
+              flags << f
             end
-            push.on(:headers) do |h|
+            push.on(:headers) do |h, f|
               order << :headers
               headers += h
+              flags << f
+            end
+            push.on(:data) do |_d, f|
+              order << :data
+              flags << f
             end
 
             expect(push.id).to be_even
@@ -871,6 +881,7 @@ RSpec.describe HTTP2::Stream do
             :data,
             :close,
           ]
+          expect(flags).to eql([[:end_headers], [:end_headers], [:end_stream]])
         end
       end
     end

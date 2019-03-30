@@ -18,6 +18,8 @@ Metrics/LineLength:
 
 Metrics/BlockLength:
   Max: 700
+  Exclude:
+    - spec/**/*
 
 Layout/EndAlignment:
   EnforcedStyleAlignWith: variable
