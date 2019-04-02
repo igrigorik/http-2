@@ -1,7 +1,6 @@
 module HTTP2
   # Performs encoding, decoding, and validation of binary HTTP/2 frames.
   #
-  # rubocop:disable ClassLength
   class Framer
     include Error
 
@@ -187,15 +186,15 @@ module HTTP2
         length += frame[:payload].bytesize
 
       when :headers
-        if frame[:weight] || frame[:stream_dependency] || !frame[:exclusive].nil?
-          unless frame[:weight] && frame[:stream_dependency] && !frame[:exclusive].nil?
+        if frame[:weight] || frame[:dependency] || !frame[:exclusive].nil?
+          unless frame[:weight] && frame[:dependency] && !frame[:exclusive].nil?
             fail CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
           end
           frame[:flags] += [:priority] unless frame[:flags].include? :priority
         end
 
         if frame[:flags].include? :priority
-          bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:stream_dependency] & RBIT)].pack(UINT32)
+          bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)].pack(UINT32)
           bytes << [frame[:weight] - 1].pack(UINT8)
           length += 5
         end
@@ -204,10 +203,10 @@ module HTTP2
         length += frame[:payload].bytesize
 
       when :priority
-        unless frame[:weight] && frame[:stream_dependency] && !frame[:exclusive].nil?
+        unless frame[:weight] && frame[:dependency] && !frame[:exclusive].nil?
           fail CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
         end
-        bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:stream_dependency] & RBIT)].pack(UINT32)
+        bytes << [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)].pack(UINT32)
         bytes << [frame[:weight] - 1].pack(UINT8)
         length += 5
 
@@ -336,7 +335,7 @@ module HTTP2
       # Implementations MUST discard frames
       # that have unknown or unsupported types.
       # - http://tools.ietf.org/html/draft-ietf-httpbis-http2-16#section-5.5
-      return nil if frame[:type].nil?
+      return frame if frame[:type].nil?
 
       # Process padding
       padlen = 0
@@ -358,17 +357,19 @@ module HTTP2
       when :headers
         if frame[:flags].include? :priority
           e_sd = payload.read_uint32
-          frame[:stream_dependency] = e_sd & RBIT
+          frame[:dependency] = e_sd & RBIT
           frame[:exclusive] = (e_sd & EBIT) != 0
           frame[:weight] = payload.getbyte + 1
         end
         frame[:payload] = payload.read(frame[:length])
       when :priority
+        fail FrameSizeError, "Invalid length for PRIORITY_STREAM (#{frame[:length]} != 5)" if frame[:length] != 5
         e_sd = payload.read_uint32
-        frame[:stream_dependency] = e_sd & RBIT
+        frame[:dependency] = e_sd & RBIT
         frame[:exclusive] = (e_sd & EBIT) != 0
         frame[:weight] = payload.getbyte + 1
       when :rst_stream
+        fail FrameSizeError, "Invalid length for RST_STREAM (#{frame[:length]} != 4)" if frame[:length] != 4
         frame[:error] = unpack_error payload.read_uint32
 
       when :settings
@@ -404,6 +405,9 @@ module HTTP2
         size = frame[:length] - 8 # for last_stream and error
         frame[:payload] = payload.read(size) if size > 0
       when :window_update
+        if frame[:length] % 4 != 0
+          fail FrameSizeError, "Invalid length for WINDOW_UPDATE (#{frame[:length]} not multiple of 4)"
+        end
         frame[:increment] = payload.read_uint32 & RBIT
       when :continuation
         frame[:payload] = payload.read(frame[:length])
@@ -442,5 +446,4 @@ module HTTP2
       name || error
     end
   end
-  # rubocop:enable ClassLength
 end

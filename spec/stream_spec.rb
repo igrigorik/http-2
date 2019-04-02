@@ -511,12 +511,12 @@ RSpec.describe HTTP2::Stream do
         end
 
         it 'should ignore received frames' do
-          (frame_types - [push_promise_frame]).each do |frame|
+          control_frames.each do |frame|
             expect do
               cb = []
               @stream.on(:data) { cb << :data }
               @stream.on(:headers) { cb << :headers }
-              @stream.dup.receive frame.dup
+              @stream.dup.receive frame
               expect(cb).to be_empty
             end.to_not raise_error
           end

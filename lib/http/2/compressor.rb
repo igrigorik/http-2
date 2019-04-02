@@ -103,6 +103,7 @@ module HTTP2
         @table = []
         @options = default_options.merge(options)
         @limit = @options[:table_size]
+        @_table_updated = false
       end
 
       # Duplicates current compression context
@@ -146,9 +147,12 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
+          fail CompressionError, 'tried to change table size after adding elements to table' if @_table_updated
+
           if cmd[:value] > @limit
             fail CompressionError, 'dynamic table size update exceed limit'
           end
+
           self.table_size = cmd[:value]
 
         when :indexed
@@ -179,6 +183,8 @@ module HTTP2
             cmd[:index] ||= cmd[:name]
             cmd[:value] ||= v
             cmd[:name] = k
+          else
+            fail ProtocolError, "Invalid uppercase key: #{cmd[:name]}" if cmd[:name] != cmd[:name].downcase
           end
 
           emit = [cmd[:name], cmd[:value]]
@@ -275,6 +281,12 @@ module HTTP2
         @table.inject(0) { |r, (k, v)| r + k.bytesize + v.bytesize + 32 }
       end
 
+      def listen_on_table
+        yield
+      ensure
+        @_table_updated = false
+      end
+
       private
 
       # Add a name-value pair to the dynamic table.
@@ -285,6 +297,7 @@ module HTTP2
       def add_to_table(cmd)
         return unless size_check(cmd)
         @table.unshift(cmd)
+        @_table_updated = true
       end
 
       # To keep the dynamic table size lower than or equal to @limit,
@@ -468,6 +481,8 @@ module HTTP2
     #   server_role = Decompressor.new(:request)
     #   client_role = Decompressor.new(:response)
     class Decompressor
+      include Error
+
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(**options)
         @cc = EncodingContext.new(options)
@@ -505,6 +520,7 @@ module HTTP2
       # @return [String] UTF-8 encoded string
       # @raise [CompressionError] when input is malformed
       def string(buf)
+        fail CompressionError, 'invalid header block fragment' if buf.empty?
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
@@ -548,22 +564,38 @@ module HTTP2
         header
       end
 
+      FORBIDDEN_HEADERS = %w[connection te].freeze
+
       # Decodes and processes header commands within provided buffer.
       #
       # @param buf [Buffer]
-      # @return [Array] +[[name, value], ...]+
-      def decode(buf)
+      # @param frame [HTTP2::Frame, nil]
+      # @return [Array] +[[name, value], ...]
+      def decode(buf, frame = nil)
         list = []
         decoding_pseudo_headers = true
-        until buf.empty?
-          next_header = @cc.process(header(buf))
-          next if next_header.nil?
-          is_pseudo_header = next_header.first.start_with? ':'
-          if !decoding_pseudo_headers && is_pseudo_header
-            fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
+        @cc.listen_on_table do
+          until buf.empty?
+            field, value = @cc.process(header(buf))
+            next if field.nil?
+            is_pseudo_header = field.start_with? ':'
+            if !decoding_pseudo_headers && is_pseudo_header
+              fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
+            end
+            decoding_pseudo_headers = is_pseudo_header
+            if FORBIDDEN_HEADERS.include?(field)
+              fail ProtocolError, "invalid header received: #{field}"
+            end
+            case field
+            when ':method'
+              frame[:method] = value
+            when 'content-length'
+              frame[:content_length] = Integer(value)
+            when 'trailer'
+              (frame[:trailer] ||= []) << value
+            end if frame
+            list << [field, value]
           end
-          decoding_pseudo_headers = is_pseudo_header
-          list << next_header
         end
         list
       end

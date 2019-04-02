@@ -13,11 +13,13 @@ Metrics/AbcSize:
 # Offense count: 16
 Metrics/BlockNesting:
   Max: 5
+  Exclude:
+    - 'lib/http/2/connection.rb'
 
 # Offense count: 5
 # Configuration parameters: CountComments.
 Metrics/ClassLength:
-  Max: 325
+  Max: 370
 
 Metrics/ModuleLength:
   Max: 120

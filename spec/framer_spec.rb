@@ -104,7 +104,7 @@ RSpec.describe HTTP2::Framer do
         type: :headers,
         flags: [:end_headers],
         stream: 1,
-        stream_dependency: 15,
+        dependency: 15,
         weight: 12,
         exclusive: false,
         payload: 'header-block',
@@ -122,7 +122,7 @@ RSpec.describe HTTP2::Framer do
         length: 5,
         type: :priority,
         stream: 1,
-        stream_dependency: 15,
+        dependency: 15,
         weight: 12,
         exclusive: true,
       }
@@ -436,7 +436,7 @@ RSpec.describe HTTP2::Framer do
     frames = [
       [{ type: :data, stream: 1, flags: [:end_stream], payload: 'abc' }, 3],
       [{ type: :headers, stream: 1, payload: 'abc' }, 3],
-      [{ type: :priority, stream: 3, stream_dependency: 30, exclusive: false, weight: 1 }, 5],
+      [{ type: :priority, stream: 3, dependency: 30, exclusive: false, weight: 1 }, 5],
       [{ type: :rst_stream, stream: 3, error: 100 }, 4],
       [{ type: :settings, payload: [[:settings_max_concurrent_streams, 10]] }, 6],
       [{ type: :push_promise, promise_stream: 5, payload: 'abc' }, 7],
@@ -480,7 +480,7 @@ RSpec.describe HTTP2::Framer do
     bytes = Buffer.new(bytes + bytes) # Two HEADERS frames in bytes
     bytes.setbyte(3, 42) # Make the first unknown type 42
 
-    expect(f.parse(bytes)).to be_nil   # first frame should be ignored
+    expect(f.parse(bytes)[:type]).to be_nil
     expect(f.parse(bytes)).to eq frame # should generate only one HEADERS
     expect(bytes).to be_empty
   end

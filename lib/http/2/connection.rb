@@ -201,6 +201,17 @@ module HTTP2
       end
 
       while (frame = @framer.parse(@recv_buffer))
+        # Implementations MUST discard frames
+        # that have unknown or unsupported types.
+        if frame[:type].nil?
+          # However, extension frames that appear in
+          # the middle of a header block (Section 4.3) are not permitted; these
+          # MUST be treated as a connection error (Section 5.4.1) of type
+          # PROTOCOL_ERROR.
+          connection_error(:protocol_error) unless @continuation.empty?
+          next
+        end
+
         emit(:frame_received, frame)
 
         # Header blocks MUST be transmitted as a contiguous sequence of frames
@@ -211,7 +222,7 @@ module HTTP2
           end
 
           @continuation << frame
-          return unless frame[:flags].include? :end_headers
+          next unless frame[:flags].include? :end_headers
 
           payload = @continuation.map { |f| f[:payload] }.join
 
@@ -229,6 +240,7 @@ module HTTP2
         # anything other than 0x0, the endpoint MUST respond with a connection
         # error (Section 5.4.1) of type PROTOCOL_ERROR.
         if connection_frame?(frame)
+          connection_error(:protocol_error) unless frame[:stream].zero?
           connection_management(frame)
         else
           case frame[:type]
@@ -241,7 +253,7 @@ module HTTP2
             # frames MUST have the END_HEADERS flag set.
             unless frame[:flags].include? :end_headers
               @continuation << frame
-              return
+              next
             end
 
             # After sending a GOAWAY frame, the sender can discard frames
@@ -317,6 +329,7 @@ module HTTP2
             stream << frame
           else
             if (stream = @streams[frame[:stream]])
+              process_window_update(frame: frame) if frame[:type] == :window_update
               stream << frame
               if frame[:type] == :data
                 update_local_window(frame)
@@ -345,7 +358,9 @@ module HTTP2
               # "closed" stream. A receiver MUST NOT treat this as an error
               # (see Section 5.1).
               when :window_update
-                process_window_update(frame)
+                stream = @streams_recently_closed[frame[:stream]]
+                connection_error(:protocol_error, 'sent window update on idle stream') unless stream
+                process_window_update(frame: frame)
               else
                 # An endpoint that receives an unexpected stream identifier
                 # MUST respond with a connection error of type PROTOCOL_ERROR.
@@ -437,8 +452,7 @@ module HTTP2
         when :settings
           connection_settings(frame)
         when :window_update
-          @remote_window += frame[:increment]
-          send_data(nil, true)
+          process_window_update(frame: frame, encode: true)
         when :ping
           if frame[:flags].include? :ack
             emit(:ack, frame[:payload])
@@ -536,7 +550,8 @@ module HTTP2
         # Process pending settings we have sent.
         [@pending_settings.shift, :local]
       else
-        connection_error(check) if validate_settings(@remote_role, frame[:payload])
+        check = validate_settings(@remote_role, frame[:payload])
+        connection_error(check) if check
         [frame[:payload], :remote]
       end
 
@@ -618,7 +633,7 @@ module HTTP2
     # @param frame [Hash]
     def decode_headers(frame)
       if frame[:payload].is_a? Buffer
-        frame[:payload] = @decompressor.decode(frame[:payload])
+        frame[:payload] = @decompressor.decode(frame[:payload], frame)
       end
 
     rescue CompressionError => e
@@ -670,6 +685,7 @@ module HTTP2
     # @param parent [Stream]
     def activate_stream(id: nil, **args)
       connection_error(msg: 'Stream ID already exists') if @streams.key?(id)
+      fail StreamLimitExceeded if @active_stream_count >= @local_settings[:settings_max_concurrent_streams]
 
       stream = Stream.new({ connection: self, id: id }.merge(args))
 
@@ -678,8 +694,6 @@ module HTTP2
       # permitted to open.
       stream.once(:active) { @active_stream_count += 1 }
       stream.once(:close) do
-        @active_stream_count -= 1
-
         # Store a reference to the closed stream, such that we can respond
         # to any in-flight frames while close is registered on both sides.
         # References to such streams will be purged whenever another stream

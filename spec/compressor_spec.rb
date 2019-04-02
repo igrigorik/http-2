@@ -227,9 +227,11 @@ RSpec.describe HTTP2::Header do
 
       it 'should shrink table if set smaller size' do
         cc = EncodingContext.new(table_size: 2048)
-        cc.instance_eval do
-          add_to_table(['test1', '1' * 1024])
-          add_to_table(['test2', '2' * 500])
+        cc.listen_on_table do
+          cc.instance_eval do
+            add_to_table(['test1', '1' * 1024])
+            add_to_table(['test2', '2' * 500])
+          end
         end
 
         cc.process(type: :changetablesize, value: 1500)

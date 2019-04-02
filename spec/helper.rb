@@ -46,7 +46,7 @@ module FrameHelpers
       type: :priority,
       stream: 1,
       exclusive: false,
-      stream_dependency: 0,
+      dependency: 0,
       weight: 20,
     }
   end
@@ -130,6 +130,14 @@ module FrameHelpers
       host: 'www.example.com',          # 1 + 15
       origin: 'www.example.com'         # 15
     }
+  end
+
+  DATA_FRAMES = %w[headers continuation push_promise data].freeze
+
+  def control_frames
+    methods.select { |meth| meth.to_s.end_with?('_frame') }
+           .reject { |meth| DATA_FRAMES.include?(meth.to_s.gsub(/_frame$/, '')) }
+           .map { |meth| __send__(meth) }
   end
 
   def frame_types

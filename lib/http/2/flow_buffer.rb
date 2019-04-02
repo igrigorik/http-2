@@ -3,6 +3,8 @@ module HTTP2
   # be split and / or may be buffered based on current flow control window.
   #
   module FlowBuffer
+    MAX_WINDOW_SIZE = 2**31 - 1
+
     # Amount of buffered data. Only DATA payloads are subject to flow stream
     # and connection flow control.
     #
@@ -71,6 +73,7 @@ module HTTP2
           # Split frame so that it fits in the window
           # TODO: consider padding!
           frame[:payload] = payload.slice!(0, @remote_window)
+          frame[:length] = frame[:payload].bytesize
           chunk[:length]  = payload.bytesize
           chunk[:payload] = payload
 
@@ -91,10 +94,14 @@ module HTTP2
       end
     end
 
-    def process_window_update(frame)
+    def process_window_update(frame:, encode: false)
       return if frame[:ignore]
-      @remote_window += frame[:increment]
-      send_data
+      if frame[:increment]
+        fail ProtocolError, 'increment MUST be higher than zero' if frame[:increment].zero?
+        @remote_window += frame[:increment]
+        error(:flow_control_error) if @remote_window > MAX_WINDOW_SIZE
+      end
+      send_data(nil, encode)
     end
   end
 end

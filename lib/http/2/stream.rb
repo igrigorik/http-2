@@ -73,11 +73,13 @@ module HTTP2
     # @param parent [Stream]
     # @param state [Symbol]
     def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil, state: :idle)
+      stream_error(:protocol_error, "stream can't depend on itself") if id == dependency
+
       @connection = connection
       @id = id
       @weight = weight
       @dependency = dependency
-      process_priority(weight: weight, stream_dependency: dependency, exclusive: exclusive)
+      process_priority(weight: weight, dependency: dependency, exclusive: exclusive)
       @local_window_max_size = connection.local_settings[:settings_initial_window_size]
       @local_window  = connection.local_settings[:settings_initial_window_size]
       @remote_window = connection.remote_settings[:settings_initial_window_size]
@@ -86,6 +88,8 @@ module HTTP2
       @error  = false
       @closed = false
       @send_buffer = []
+      @_method = @_content_length = nil
+      @_waiting_on_trailers = false
 
       on(:window) { |v| @remote_window = v }
       on(:local_window) { |v| @local_window_max_size = @local_window = v }
@@ -103,18 +107,40 @@ module HTTP2
 
       case frame[:type]
       when :data
+        # 6.1. DATA
+        # If a DATA frame is received whose stream is not in "open" or
+        # "half closed (local)" state, the recipient MUST respond with a
+        # stream error (Section 5.4.2) of type STREAM_CLOSED.
+        stream_error(:stream_closed) unless @state == :open ||
+                                            @state == :half_closed_local ||
+                                            @state == :half_closing || @state == :closing
+        @received_data = true
+        calculate_content_length(frame[:length])
         update_local_window(frame)
         # Emit DATA frame
         emit(:data, frame[:payload]) unless frame[:ignore]
         calculate_window_update(@local_window_max_size)
       when :headers
+        stream_error(:stream_closed) if @state == :closed || @state == :remote_closed
+        @_method ||= frame[:method]
+        @_content_length ||= frame[:content_length]
+        @_trailers ||= frame[:trailer]
+        if @_waiting_on_trailers
+          verify_trailers(frame)
+        else
+          verify_pseudo_headers(frame)
+        end
         emit(:headers, frame[:payload]) unless frame[:ignore]
+        @_waiting_on_trailers = !@_trailers.nil?
       when :push_promise
         emit(:promise_headers, frame[:payload]) unless frame[:ignore]
+      when :continuation
+        stream_error(:stream_closed) if @state == :closed || @state == :remote_closed
+        stream_error(:protocol_error) if @received_data
       when :priority
         process_priority(frame)
       when :window_update
-        process_window_update(frame)
+        process_window_update(frame: frame)
       when :altsvc
         # 4.  The ALTSVC HTTP/2 Frame
         # An ALTSVC frame on a
@@ -130,6 +156,40 @@ module HTTP2
       complete_transition(frame)
     end
     alias << receive
+
+    REQUEST_MANDATORY_HEADERS = %w[:scheme :method :authority :path].freeze
+    RESPONSE_MANDATORY_HEADERS = %w[:status].freeze
+
+    def verify_pseudo_headers(frame)
+      headers = frame[:payload]
+      return if headers.is_a?(Buffer)
+      mandatory_headers = @id.odd? ? REQUEST_MANDATORY_HEADERS : RESPONSE_MANDATORY_HEADERS
+      pseudo_headers = headers.take_while do |k, _|
+        k.start_with?(':')
+      end.map(&:first)
+      return if mandatory_headers.size == pseudo_headers.size &&
+                (mandatory_headers - pseudo_headers).empty?
+      stream_error(:protocol_error, msg: 'invalid pseudo-headers')
+    end
+
+    def verify_trailers(frame)
+      stream_error(:protocol_error, msg: 'trailer headers frame must close the stream') unless end_stream?(frame)
+      return unless @_trailers
+      trailers = frame[:payload]
+      return if trailers.is_a?(Buffer)
+      trailers.each do |field, _|
+        @_trailers.delete(field)
+        break if @_trailers.empty?
+      end
+      stream_error(:protocol_error, msg: "didn't receive all expected trailer headers") unless @_trailers.empty?
+    end
+
+    def calculate_content_length(data_length)
+      return unless @_content_length
+      @_content_length -= data_length
+      return if @_content_length >= 0
+      stream_error(:protocol_error, msg: 'received more data than what was defined in content-length')
+    end
 
     # Processes outgoing HTTP 2.0 frames. Data frames may be automatically
     # split and buffered based on maximum frame size and current stream flow
@@ -164,7 +224,7 @@ module HTTP2
     def headers(headers, end_headers: true, end_stream: false)
       flags = []
       flags << :end_headers if end_headers
-      flags << :end_stream  if end_stream
+      flags << :end_stream  if end_stream || @_method == 'HEAD'
 
       send(type: :headers, flags: flags, payload: headers)
     end
@@ -183,7 +243,7 @@ module HTTP2
     # @param dependency [Integer] new stream dependency stream
     def reprioritize(weight: 16, dependency: 0, exclusive: false)
       stream_error if @id.even?
-      send(type: :priority, weight: weight, stream_dependency: dependency, exclusive: exclusive)
+      send(type: :priority, weight: weight, dependency: dependency, exclusive: exclusive)
     end
 
     # Sends DATA frame containing response payload.
@@ -584,11 +644,11 @@ module HTTP2
 
     def process_priority(frame)
       @weight = frame[:weight]
-      @dependency = frame[:stream_dependency]
+      @dependency = frame[:dependency]
       emit(
         :priority,
         weight:     frame[:weight],
-        dependency: frame[:stream_dependency],
+        dependency: frame[:dependency],
         exclusive:  frame[:exclusive],
       )
       # TODO: implement dependency tree housekeeping
