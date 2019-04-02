@@ -34,16 +34,16 @@ end
 
 # upgrader module
 class UpgradeHandler
-  UPGRADE_REQUEST = <<-RESP.strip_heredoc.freeze
-    GET %s HTTP/1.1
-    Connection: Upgrade, HTTP2-Settings
-    HTTP2-Settings: #{HTTP2::Client.settings_header(settings_max_concurrent_streams: 100)}
-    Upgrade: h2c
-    Host: %s
-    User-Agent: http-2 upgrade
-    Accept: */*
+  UPGRADE_REQUEST = <<RESP.freeze
+GET %s HTTP/1.1
+Connection: Upgrade, HTTP2-Settings
+HTTP2-Settings: #{HTTP2::Client.settings_header(settings_max_concurrent_streams: 100)}
+Upgrade: h2c
+Host: %s
+User-Agent: http-2 upgrade
+Accept: */*
 
-  RESP
+RESP
 
   attr_reader :complete, :parsing
   def initialize(conn, sock)

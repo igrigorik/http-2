@@ -238,6 +238,12 @@ RSpec.describe HTTP2::Header do
         expect(cc.table.size).to be 1
         expect(cc.table.first[0]).to eq 'test2'
       end
+
+      it 'should reject table size update if exceed limit' do
+        cc = EncodingContext.new(table_size: 4096)
+
+        expect { cc.process(type: :changetablesize, value: 150_000_000) }.to raise_error(CompressionError)
+      end
     end
 
     context 'encode' do
