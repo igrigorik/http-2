@@ -148,6 +148,23 @@ RSpec.describe HTTP2::Connection do
     end
   end
 
+  context 'cleanup_recently_closed' do
+    it 'should cleanup old connections' do
+      now_ts = Time.now.to_i
+      stream_ids = Array.new(4) { @conn.new_stream.id }
+      expect(@conn.instance_variable_get('@streams').size).to eq(4)
+
+      # Assume that the first 3 streams were closed in different time
+      recently_closed = stream_ids[0, 3].zip([now_ts - 100, now_ts - 50, now_ts - 5]).to_h
+      @conn.instance_variable_set('@streams_recently_closed', recently_closed)
+
+      # Cleanup should delete streams that were closed earlier than 15s ago
+      @conn.__send__(:cleanup_recently_closed)
+      expect(@conn.instance_variable_get('@streams').size).to eq(2)
+      expect(@conn.instance_variable_get('@streams_recently_closed')).to eq(stream_ids[2] => now_ts - 5)
+    end
+  end
+
   context 'Headers pre/post processing' do
     it 'should not concatenate multiple occurences of a header field with the same name' do
       input = [

@@ -33,6 +33,9 @@ module HTTP2
   # Default connection "fast-fail" preamble string as defined by the spec.
   CONNECTION_PREFACE_MAGIC = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n".freeze
 
+  # Time to hold recently closed streams until purge (seconds)
+  RECENTLY_CLOSED_STREAMS_TTL = 15
+
   # Connection encapsulates all of the connection, stream, flow-control,
   # error management, and other processing logic required for a well-behaved
   # HTTP 2.0 endpoint.
@@ -683,19 +686,31 @@ module HTTP2
         # Store a reference to the closed stream, such that we can respond
         # to any in-flight frames while close is registered on both sides.
         # References to such streams will be purged whenever another stream
-        # is closed, with a minimum of 15s RTT time window.
-        @streams_recently_closed[id] = Time.now
-        to_delete = @streams_recently_closed.select { |_, v| (Time.now - v) > 15 }
-        to_delete.each do |stream_id|
-          @streams.delete stream_id
-          @streams_recently_closed.delete stream_id
-        end
+        # is closed, with a defined RTT time window.
+        @streams_recently_closed[id] = Time.now.to_i
+        cleanup_recently_closed
       end
 
       stream.on(:promise, &method(:promise)) if self.is_a? Server
       stream.on(:frame,   &method(:send))
 
       @streams[id] = stream
+    end
+
+    # Purge recently streams closed within defined RTT time window.
+    def cleanup_recently_closed
+      now_ts = Time.now.to_i
+      to_delete = []
+      @streams_recently_closed.each do |stream_id, ts|
+        # Ruby Hash enumeration is ordered, so once fresh stream is met we can stop searching.
+        break if now_ts - ts < RECENTLY_CLOSED_STREAMS_TTL
+        to_delete << stream_id
+      end
+
+      to_delete.each do |stream_id|
+        @streams.delete stream_id
+        @streams_recently_closed.delete stream_id
+      end
     end
 
     # Emit GOAWAY error indicating to peer that the connection is being
