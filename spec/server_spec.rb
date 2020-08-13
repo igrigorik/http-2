@@ -42,7 +42,7 @@ RSpec.describe HTTP2::Server do
 
     @srv.on(:stream) do |stream|
       expect do
-        stream.promise(':method' => 'GET') {}
+        stream.promise({ ':method' => 'GET' }) {}
       end.to_not raise_error
     end
 

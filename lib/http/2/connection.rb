@@ -76,8 +76,8 @@ module HTTP2
       @local_settings  = DEFAULT_CONNECTION_SETTINGS.merge(settings)
       @remote_settings = SPEC_DEFAULT_CONNECTION_SETTINGS.dup
 
-      @compressor   = Header::Compressor.new(settings)
-      @decompressor = Header::Decompressor.new(settings)
+      @compressor   = Header::Compressor.new(**settings)
+      @decompressor = Header::Decompressor.new(**settings)
 
       @active_stream_count = 0
       @streams = {}
@@ -674,7 +674,7 @@ module HTTP2
     def activate_stream(id: nil, **args)
       connection_error(msg: 'Stream ID already exists') if @streams.key?(id)
 
-      stream = Stream.new({ connection: self, id: id }.merge(args))
+      stream = Stream.new(**{ connection: self, id: id }.merge(args))
 
       # Streams that are in the "open" state, or either of the "half closed"
       # states count toward the maximum number of streams that an endpoint is

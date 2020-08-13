@@ -331,7 +331,7 @@ module HTTP2
     class Compressor
       # @param options [Hash] encoding options
       def initialize(**options)
-        @cc = EncodingContext.new(options)
+        @cc = EncodingContext.new(**options)
       end
 
       # Set dynamic table size in EncodingContext
@@ -470,7 +470,7 @@ module HTTP2
     class Decompressor
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(**options)
-        @cc = EncodingContext.new(options)
+        @cc = EncodingContext.new(**options)
       end
 
       # Set dynamic table size in EncodingContext
