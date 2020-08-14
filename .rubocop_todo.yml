@@ -62,6 +62,15 @@ Style/Documentation:
     - 'example/upgrade_server.rb'
     - 'lib/tasks/generate_huffman_table.rb'
 
+# Offense count: 3
+# Cop supports --auto-correct.
+# Configuration parameters: EnforcedStyle.
+# SupportedStyles: braces, no_braces, context_dependent
+Style/BracesAroundHashParameters:
+  Exclude:
+    - 'spec/connection_spec.rb'
+    - 'spec/server_spec.rb'
+
 # Offense count: 1
 # Cop supports --auto-correct.
 Style/EmptyCaseCondition:

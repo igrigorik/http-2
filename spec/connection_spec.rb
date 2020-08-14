@@ -369,7 +369,7 @@ RSpec.describe HTTP2::Connection do
       stream = @conn.new_stream
 
       expect do
-        stream.headers('name' => Float::INFINITY)
+        stream.headers({ 'name' => Float::INFINITY })
       end.to raise_error(CompressionError)
     end
 
@@ -397,10 +397,10 @@ RSpec.describe HTTP2::Connection do
       end
 
       stream = @conn.new_stream
-      stream.headers(':method' => 'get',
-                     ':scheme' => 'http',
-                     ':authority' => 'www.example.org',
-                     ':path'   => '/resource')
+      stream.headers({ ':method' => 'get',
+                       ':scheme' => 'http',
+                       ':authority' => 'www.example.org',
+                       ':path'   => '/resource' })
     end
 
     it 'should generate CONTINUATION if HEADERS is too long' do
