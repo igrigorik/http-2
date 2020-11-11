@@ -49,6 +49,22 @@ RSpec.describe HTTP2::Connection do
 
       expect(@conn.remote_settings[:settings_header_table_size]).to eq 256
     end
+    
+    it 'should reflect settings_max_frame_size recevied from perr' do
+      settings = settings_frame
+      settings[:payload] = [[:settings_max_frame_size, 16_385]]
+
+      @conn << f.generate(settings)
+
+      frame = {
+        length: 16_385,
+        type: :data,
+        flags: [:end_stream],
+        stream: 1,
+        payload: 'a' * 16_385,
+      }
+      expect { @conn.send(frame) }.not_to raise_error(CompressionError)
+    end
 
     it 'should send SETTINGS ACK when SETTINGS is received' do
       settings = settings_frame
