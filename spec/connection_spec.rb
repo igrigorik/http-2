@@ -50,7 +50,7 @@ RSpec.describe HTTP2::Connection do
       expect(@conn.remote_settings[:settings_header_table_size]).to eq 256
     end
     
-    it 'should reflect settings_max_frame_size recevied from perr' do
+    it 'should reflect settings_max_frame_size recevied from peer' do
       settings = settings_frame
       settings[:payload] = [[:settings_max_frame_size, 16_385]]
 
