@@ -539,7 +539,7 @@ module HTTP2
         # Process pending settings we have sent.
         [@pending_settings.shift, :local]
       else
-        connection_error(check) if validate_settings(@remote_role, frame[:payload])
+        connection_error if validate_settings(@remote_role, frame[:payload])
         [frame[:payload], :remote]
       end
 
@@ -593,7 +593,8 @@ module HTTP2
           # nothing to do
 
         when :settings_max_frame_size
-          # nothing to do
+          # update framer max_frame_size
+          @framer.max_frame_size = v
 
           # else # ignore unknown settings
         end
