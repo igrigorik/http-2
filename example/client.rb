@@ -44,11 +44,11 @@ log = Logger.new(stream.id)
 
 conn_mutex = Mutex.new # Synchronize writing to socket
 conn.on(:frame) do |bytes|
-  conn_mutex.synchronize { # Make sure that only one frame is sent at a time
+  conn_mutex.synchronize do # Make sure that only one frame is sent at a time
     # puts "Sending bytes: #{bytes.unpack("H*").first}"
     sock.print bytes
     sock.flush
-  }
+  end
 end
 conn.on(:frame_sent) do |frame|
   puts "Sent frame: #{frame.inspect}"
