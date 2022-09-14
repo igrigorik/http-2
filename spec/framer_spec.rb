@@ -1,3 +1,4 @@
+# frozen-string-literal: false
 require 'helper'
 
 RSpec.describe HTTP2::Framer do
