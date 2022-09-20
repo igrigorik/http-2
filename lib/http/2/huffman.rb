@@ -30,7 +30,7 @@ module HTTP2
       # @return [String] binary string
       # @raise [CompressionError] when Huffman coded string is malformed
       def decode(buf)
-        emit = ''
+        emit = String.new
         state = 0 # start state
 
         mask = (1 << BITS_AT_ONCE) - 1
