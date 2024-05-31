@@ -24,7 +24,7 @@ jobs:
 
       - name: Install gems
         run: |
-          bundle config set --local without 'development docs'
+          bundle config set --local without 'docs'
           bundle install
 
       - name: Tests
