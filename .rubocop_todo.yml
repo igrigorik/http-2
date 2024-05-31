@@ -51,7 +51,7 @@ Metrics/PerceivedComplexity:
 # Configuration parameters: MaxKeyValuePairs.
 Performance/RedundantMerge:
   Exclude:
-    - 'lib/http/2/server.rb'
+    - 'lib/http2/server.rb'
 
 # Offense count: 4
 Style/Documentation:
@@ -81,7 +81,7 @@ Style/EmptyCaseCondition:
 # Configuration parameters: MinBodyLength.
 Style/GuardClause:
   Exclude:
-    - 'lib/http/2/connection.rb'
+    - 'lib/http2/connection.rb'
 
 # Offense count: 2
 # Cop supports --auto-correct.
@@ -116,7 +116,7 @@ Style/MutableConstant:
 # Cop supports --auto-correct.
 Style/RedundantSelf:
   Exclude:
-    - 'lib/http/2/connection.rb'
+    - 'lib/http2/connection.rb'
 
 # Offense count: 1
 # Cop supports --auto-correct.
@@ -128,4 +128,4 @@ Style/UnneededInterpolation:
 # Cop supports --auto-correct.
 Style/ZeroLengthPredicate:
   Exclude:
-    - 'lib/http/2/framer.rb'
+    - 'lib/http2/framer.rb'

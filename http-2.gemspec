@@ -1,4 +1,4 @@
-require_relative 'lib/http/2/version'
+require_relative 'lib/http2/version'
 
 Gem::Specification.new do |spec|
   spec.name          = 'http-2'

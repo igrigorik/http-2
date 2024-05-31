@@ -7,6 +7,6 @@ end
 
 guard :shell, name:'H2 Spec' do
   watch(%r{^example/(.+)\.rb$})    { h2spec }
-  watch(%r{^lib/http/2/(.+)\.rb$}) { h2spec }
+  watch(%r{^lib/http2/(.+)\.rb$}) { h2spec }
 end
 

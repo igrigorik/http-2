@@ -1,6 +1,6 @@
 guard :process, name: 'HTTP/2 Server', command: 'ruby example/server.rb', stop_signal: 'TERM' do
   watch(%r{^example/(.+)\.rb$})
-  watch(%r{^lib/http/2/(.+)\.rb$})
+  watch(%r{^lib/http2/(.+)\.rb$})
 
   watch('Gemfile.lock')
 end
@@ -14,5 +14,5 @@ end
 
 guard :shell, name: 'H2 Spec' do
   watch(%r{^example/(.+)\.rb$})    { h2spec }
-  watch(%r{^lib/http/2/(.+)\.rb$}) { h2spec }
+  watch(%r{^lib/http2/(.+)\.rb$}) { h2spec }
 end
