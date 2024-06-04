@@ -3,7 +3,8 @@ require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
 require 'yard'
 require 'open3'
-require_relative 'lib/tasks/generate_huffman_table'
+
+require_relative 'tasks/generate_huffman_table'
 
 RSpec::Core::RakeTask.new(:spec) do |t|
   t.exclude_pattern = './spec/hpack_test_spec.rb'
