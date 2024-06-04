@@ -3,8 +3,8 @@ source 'https://rubygems.org'
 gem 'rake', require: false
 
 group :development do
-  # Last supported version for Ruby 2.1
-  gem 'rubocop', '0.57.2'
+  # Last supported version for Ruby 2.5
+  gem 'rubocop', '1.28'
 end
 
 group :docs do
