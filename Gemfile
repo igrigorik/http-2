@@ -1,16 +1,19 @@
 source 'https://rubygems.org'
 
-gem 'rake'
-gem 'yard'
+gem 'rake', require: false
+
+group :development do
+  # Last supported version for Ruby 2.1
+  gem 'rubocop', '0.57.2'
+end
+
+group :docs do
+  gem 'yard'
+end
 
 group :test do
   gem 'autotest-standalone'
   gem 'coveralls', require: false
-  gem 'pry'
-  gem 'pry-byebug', platform: :mri
-  gem 'rspec', '~> 3.4.0'
+  gem 'rspec'
   gem 'rspec-autotest'
-  gem 'rubocop', '0.57.2'
 end
-
-gemspec
