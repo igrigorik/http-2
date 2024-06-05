@@ -1,4 +1,4 @@
-# frozen_string_literal: false
+# frozen_string_literal: true
 
 require './spec/support/deep_dup'
 
@@ -17,11 +17,13 @@ include HTTP2::Header
 include HTTP2::Error
 # rubocop: enable Style/MixinUsage
 
-REQUEST_HEADERS = [%w[:scheme https],
-                   %w[:path /],
-                   %w[:authority example.com],
-                   %w[:method GET],
-                   %w[a b]].freeze
+REQUEST_HEADERS = [
+  %w[:scheme https],
+  %w[:path /],
+  %w[:authority example.com],
+  %w[:method GET],
+  %w[a b]
+].freeze
 RESPONSE_HEADERS = [%w[:status 200]].freeze
 
 module FrameHelpers
@@ -128,9 +130,9 @@ module FrameHelpers
       type: :altsvc,
       max_age: 1_402_290_402,           # 4
       port: 8080,                       # 2    reserved 1
-      proto: 'h2-12',                   # 1 + 5
-      host: 'www.example.com',          # 1 + 15
-      origin: 'www.example.com'         # 15
+      proto: String.new('h2-12'),                   # 1 + 5
+      host: String.new('www.example.com'),          # 1 + 15
+      origin: String.new('www.example.com')         # 15
     }
   end
 
