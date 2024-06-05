@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module HTTP2
   # Implementation of stream and connection DATA flow control: frames may
   # be split and / or may be buffered based on current flow control window.
@@ -24,7 +26,7 @@ module HTTP2
       # current received window size + delta length is strictly larger than
       # local window size, it throws a flow control error.
       #
-      error(:flow_control_error) if @local_window < 0
+      error(:flow_control_error) if @local_window.negative?
 
       # Send WINDOW_UPDATE if the received window size goes over
       # the local window size / 2.
@@ -41,6 +43,7 @@ module HTTP2
       # until the receiver window is exhausted, after which he'll be
       # waiting for the WINDOW_UPDATE frame.
       return unless @local_window <= (window_max_size / 2)
+
       window_update(window_max_size - @local_window)
     end
 
@@ -59,10 +62,11 @@ module HTTP2
       # FIXME: Frames with zero length with the END_STREAM flag set (that
       # is, an empty DATA frame) MAY be sent if there is no available space
       # in either flow control window.
-      while @remote_window > 0 && !@send_buffer.empty?
+      while @remote_window.positive? && !@send_buffer.empty?
         frame = @send_buffer.shift
 
-        sent, frame_size = 0, frame[:payload].bytesize
+        sent = 0
+        frame_size = frame[:payload].bytesize
 
         if frame_size > @remote_window
           payload = frame.delete(:payload)
@@ -93,6 +97,7 @@ module HTTP2
 
     def process_window_update(frame)
       return if frame[:ignore]
+
       @remote_window += frame[:increment]
       send_data
     end

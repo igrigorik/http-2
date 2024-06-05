@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 $LOAD_PATH << 'lib' << '../lib'
 
 require 'optparse'
@@ -6,7 +8,7 @@ require 'openssl'
 require 'http/2'
 require 'uri'
 
-DRAFT = 'h2'.freeze
+DRAFT = 'h2'
 
 class Logger
   def initialize(id)

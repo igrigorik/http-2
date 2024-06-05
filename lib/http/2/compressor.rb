@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module HTTP2
   # Implementation of header compression for HTTP 2.0 (HPACK) format adapted
   # to efficiently represent HTTP headers in the context of HTTP 2.0.
@@ -74,7 +76,7 @@ module HTTP2
         ['user-agent',                  ''],
         ['vary',                        ''],
         ['via',                         ''],
-        ['www-authenticate',            ''],
+        ['www-authenticate',            '']
       ].each { |pair| pair.each(&:freeze).freeze }.freeze
 
       # Current table of header key-value pairs.
@@ -96,9 +98,9 @@ module HTTP2
       #   :index       Symbol   :all, :static, :never
       def initialize(**options)
         default_options = {
-          huffman:    :shorter,
-          index:      :all,
-          table_size: 4096,
+          huffman: :shorter,
+          index: :all,
+          table_size: 4096
         }
         @table = []
         @options = default_options.merge(options)
@@ -112,7 +114,7 @@ module HTTP2
         t = @table
         l = @limit
         other.instance_eval do
-          @table = t.dup              # shallow copy
+          @table = t.dup # shallow copy
           @limit = l
         end
         other
@@ -131,7 +133,8 @@ module HTTP2
       def dereference(index)
         # NOTE: index is zero-based in this module.
         value = STATIC_TABLE[index] || @table[index - STATIC_TABLE.size]
-        fail CompressionError, 'Index too large' unless value
+        raise CompressionError, 'Index too large' unless value
+
         value
       end
 
@@ -146,9 +149,8 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
-          if cmd[:value] > @limit
-            fail CompressionError, 'dynamic table size update exceed limit'
-          end
+          raise CompressionError, 'dynamic table size update exceed limit' if cmd[:value] > @limit
+
           self.table_size = cmd[:value]
 
         when :indexed
@@ -186,7 +188,7 @@ module HTTP2
           add_to_table(emit) if cmd[:type] == :incremental
 
         else
-          fail CompressionError, "Invalid type: #{cmd[:type]}"
+          raise CompressionError, "Invalid type: #{cmd[:type]}"
         end
 
         emit
@@ -202,7 +204,7 @@ module HTTP2
       def encode(headers)
         commands = []
         # Literals commands are marked with :noindex when index is not used
-        noindex = [:static, :never].include?(@options[:index])
+        noindex = %i[static never].include?(@options[:index])
         headers.each do |field, value|
           # Literal header names MUST be translated to lowercase before
           # encoding and transmission.
@@ -232,7 +234,7 @@ module HTTP2
         exact = nil
         name_only = nil
 
-        if [:all, :static].include?(@options[:index])
+        if %i[all static].include?(@options[:index])
           STATIC_TABLE.each_index do |i|
             if STATIC_TABLE[i] == header
               exact ||= i
@@ -284,6 +286,7 @@ module HTTP2
       # @param cmd [Array] +[name, value]+
       def add_to_table(cmd)
         return unless size_check(cmd)
+
         @table.unshift(cmd)
       end
 
@@ -309,11 +312,11 @@ module HTTP2
 
     # Header representation as defined by the spec.
     HEADREP = {
-      indexed:      { prefix: 7, pattern: 0x80 },
-      incremental:  { prefix: 6, pattern: 0x40 },
-      noindex:      { prefix: 4, pattern: 0x00 },
+      indexed: { prefix: 7, pattern: 0x80 },
+      incremental: { prefix: 6, pattern: 0x40 },
+      noindex: { prefix: 4, pattern: 0x00 },
       neverindexed: { prefix: 4, pattern: 0x10 },
-      changetablesize: { prefix: 5, pattern: 0x20 },
+      changetablesize: { prefix: 5, pattern: 0x20 }
     }.each_value(&:freeze).freeze
 
     # Predefined options set for Compressor
@@ -356,14 +359,14 @@ module HTTP2
       # @param n [Integer] number of available bits
       # @return [String] binary string
       def integer(i, n)
-        limit = 2**n - 1
+        limit = (2**n) - 1
         return [i].pack('C') if i < limit
 
         bytes = []
         bytes.push limit unless n.zero?
 
         i -= limit
-        while (i >= 128)
+        while i >= 128
           bytes.push((i % 128) + 128)
           i /= 128
         end
@@ -393,7 +396,8 @@ module HTTP2
       # @param str [String]
       # @return [String] binary string
       def string(str)
-        plain, huffman = nil, nil
+        plain = nil
+        huffman = nil
         unless @cc.options[:huffman] == :always
           plain = integer(str.bytesize, 7) << str.dup.force_encoding(Encoding::BINARY)
         end
@@ -485,16 +489,18 @@ module HTTP2
       # @param n [Integer] number of available bits
       # @return [Integer]
       def integer(buf, n)
-        limit = 2**n - 1
-        i = !n.zero? ? (buf.getbyte & limit) : 0
+        limit = (2**n) - 1
+        i = n.zero? ? 0 : (buf.getbyte & limit)
 
         m = 0
-        while (byte = buf.getbyte)
-          i += ((byte & 127) << m)
-          m += 7
+        if i == limit
+          while (byte = buf.getbyte)
+            i += ((byte & 127) << m)
+            m += 7
 
-          break if (byte & 128).zero?
-        end if (i == limit)
+            break if (byte & 128).zero?
+          end
+        end
 
         i
       end
@@ -508,7 +514,8 @@ module HTTP2
         huffman = (buf.readbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
-        fail CompressionError, 'string too short' unless str.bytesize == len
+        raise CompressionError, 'string too short' unless str.bytesize == len
+
         str = Huffman.new.decode(Buffer.new(str)) if huffman
         str.force_encoding(Encoding::UTF_8)
       end
@@ -526,13 +533,14 @@ module HTTP2
           mask == desc[:pattern]
         end
 
-        fail CompressionError unless header[:type]
+        raise CompressionError unless header[:type]
 
         header[:name] = integer(buf, type[:prefix])
 
         case header[:type]
         when :indexed
-          fail CompressionError if (header[:name]).zero?
+          raise CompressionError if (header[:name]).zero?
+
           header[:name] -= 1
         when :changetablesize
           header[:value] = header[:name]
@@ -558,10 +566,12 @@ module HTTP2
         until buf.empty?
           next_header = @cc.process(header(buf))
           next if next_header.nil?
+
           is_pseudo_header = next_header.first.start_with? ':'
           if !decoding_pseudo_headers && is_pseudo_header
-            fail ProtocolError, 'one or more pseudo headers encountered after regular headers'
+            raise ProtocolError, 'one or more pseudo headers encountered after regular headers'
           end
+
           decoding_pseudo_headers = is_pseudo_header
           list << next_header
         end

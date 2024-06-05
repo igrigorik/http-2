@@ -1,4 +1,5 @@
-# frozen-string-literal: false
+# frozen_string_literal: false
+
 require './spec/support/deep_dup'
 
 RSpec.configure(&:disable_monkey_patching!)
@@ -16,12 +17,12 @@ include HTTP2::Header
 include HTTP2::Error
 # rubocop: enable Style/MixinUsage
 
-REQUEST_HEADERS = [%w(:scheme https),
-                   %w(:path /),
-                   %w(:authority example.com),
-                   %w(:method GET),
-                   %w(a b)].freeze
-RESPONSE_HEADERS = [%w(:status 200)].freeze
+REQUEST_HEADERS = [%w[:scheme https],
+                   %w[:path /],
+                   %w[:authority example.com],
+                   %w[:method GET],
+                   %w[a b]].freeze
+RESPONSE_HEADERS = [%w[:status 200]].freeze
 
 module FrameHelpers
   def data_frame
@@ -29,7 +30,7 @@ module FrameHelpers
       type: :data,
       flags: [:end_stream],
       stream: 1,
-      payload: 'text',
+      payload: 'text'
     }
   end
 
@@ -38,7 +39,7 @@ module FrameHelpers
       type: :headers,
       flags: [:end_headers].freeze,
       stream: 1,
-      payload: Compressor.new.encode(REQUEST_HEADERS),
+      payload: Compressor.new.encode(REQUEST_HEADERS)
     }
   end
 
@@ -48,7 +49,7 @@ module FrameHelpers
       stream: 1,
       exclusive: false,
       stream_dependency: 0,
-      weight: 20,
+      weight: 20
     }
   end
 
@@ -56,7 +57,7 @@ module FrameHelpers
     {
       type: :rst_stream,
       stream: 1,
-      error: :stream_closed,
+      error: :stream_closed
     }
   end
 
@@ -66,8 +67,8 @@ module FrameHelpers
       stream: 0,
       payload: [
         [:settings_max_concurrent_streams, 10],
-        [:settings_initial_window_size, 0x7fffffff],
-      ],
+        [:settings_initial_window_size, 0x7fffffff]
+      ]
     }
   end
 
@@ -77,7 +78,7 @@ module FrameHelpers
       flags: [:end_headers],
       stream: 1,
       promise_stream: 2,
-      payload: Compressor.new.encode([%w(a b)]),
+      payload: Compressor.new.encode([%w[a b]])
     }
   end
 
@@ -85,7 +86,7 @@ module FrameHelpers
     {
       stream: 0,
       type: :ping,
-      payload: '12345678',
+      payload: '12345678'
     }
   end
 
@@ -94,7 +95,7 @@ module FrameHelpers
       stream: 0,
       type: :ping,
       flags: [:ack],
-      payload: '12345678',
+      payload: '12345678'
     }
   end
 
@@ -103,14 +104,14 @@ module FrameHelpers
       type: :goaway,
       last_stream: 2,
       error: :no_error,
-      payload: 'debug',
+      payload: 'debug'
     }
   end
 
   def window_update_frame
     {
       type: :window_update,
-      increment: 10,
+      increment: 10
     }
   end
 
@@ -118,7 +119,7 @@ module FrameHelpers
     {
       type: :continuation,
       flags: [:end_headers],
-      payload: '-second-block',
+      payload: '-second-block'
     }
   end
 

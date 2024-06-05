@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'helper'
 
 options = { port: 8080 }
@@ -33,6 +35,7 @@ if options[:secure]
 
   ctx.alpn_select_cb = lambda do |protocols|
     raise "Protocol #{DRAFT} is required" if protocols.index(DRAFT).nil?
+
     DRAFT
   end
 
@@ -59,7 +62,8 @@ loop do
 
   conn.on(:stream) do |stream|
     log = Logger.new(stream.id)
-    req, buffer = {}, ''
+    req = {}
+    buffer = ''
 
     stream.on(:active) { log.info 'client opened new stream' }
     stream.on(:close)  { log.info 'stream closed' }
@@ -87,10 +91,10 @@ loop do
       end
 
       stream.headers({
-        ':status' => '200',
-        'content-length' => response.bytesize.to_s,
-        'content-type' => 'text/plain',
-      }, end_stream: false)
+                       ':status' => '200',
+                       'content-length' => response.bytesize.to_s,
+                       'content-type' => 'text/plain'
+                     }, end_stream: false)
 
       if options[:push]
         push_streams = []
@@ -132,7 +136,7 @@ loop do
       conn << data
     rescue StandardError => e
       puts "#{e.class} exception: #{e.message} - closing socket."
-      e.backtrace.each { |l| puts "\t" + l }
+      e.backtrace.each { |l| puts "\t#{l}" }
       sock.close
     end
   end

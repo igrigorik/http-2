@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # frozen_string_literals: true
 
 require_relative 'helper'
@@ -34,24 +36,26 @@ end
 
 # upgrader module
 class UpgradeHandler
-  UPGRADE_REQUEST = <<RESP.freeze
-GET %s HTTP/1.1
-Connection: Upgrade, HTTP2-Settings
-HTTP2-Settings: #{HTTP2::Client.settings_header(settings_max_concurrent_streams: 100)}
-Upgrade: h2c
-Host: %s
-User-Agent: http-2 upgrade
-Accept: */*
+  UPGRADE_REQUEST = <<~RESP
+    GET %s HTTP/1.1
+    Connection: Upgrade, HTTP2-Settings
+    HTTP2-Settings: #{HTTP2::Client.settings_header(settings_max_concurrent_streams: 100)}
+    Upgrade: h2c
+    Host: %s
+    User-Agent: http-2 upgrade
+    Accept: */*
 
-RESP
+  RESP
 
   attr_reader :complete, :parsing
+
   def initialize(conn, sock)
     @conn = conn
     @sock = sock
     @headers = request_header_hash
     @body = ''.b
-    @complete, @parsing = false, false
+    @complete = false
+    @parsing = false
     @parser = ::HTTP::Parser.new(self)
   end
 
@@ -66,6 +70,7 @@ RESP
     @parsing ||= true
     @parser << data
     return unless complete
+
     upgrade
   end
 
@@ -84,7 +89,8 @@ RESP
   end
 
   def on_message_complete
-    fail 'could not upgrade to h2c' unless @parser.status_code == 101
+    raise 'could not upgrade to h2c' unless @parser.status_code == 101
+
     @parsing = false
     complete!
   end
@@ -146,7 +152,7 @@ while !sock.closed? && !sock.eof?
     end
   rescue StandardError => e
     puts "#{e.class} exception: #{e.message} - closing socket."
-    e.backtrace.each { |l| puts "\t" + l }
+    e.backtrace.each { |l| puts "\t#{l}" }
     conn.close
     sock.close
   end

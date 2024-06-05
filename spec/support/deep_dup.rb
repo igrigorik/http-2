@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # https://github.com/rails/rails/blob/master/activesupport/lib/active_support/core_ext/object/deep_dup.rb
 
 require_relative 'duplicable'
@@ -43,7 +45,7 @@ class Hash
   def deep_dup
     hash = dup
     each_pair do |key, value|
-      if key.frozen? && ::String == key  # changed === to == for rubocop
+      if key.frozen? && key == ::String # changed === to == for rubocop
         hash[key] = value.deep_dup
       else
         hash.delete(key)

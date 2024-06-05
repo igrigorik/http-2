@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'forwardable'
 
 module HTTP2
@@ -10,7 +12,7 @@ module HTTP2
                    :size, :each_byte, :to_str, :to_s, :length, :inspect,
                    :[], :[]=, :empty?, :bytesize, :include?
 
-    UINT32 = 'N'.freeze
+    UINT32 = 'N'
     private_constant :UINT32
 
     # Forces binary encoding on the string
@@ -59,12 +61,12 @@ module HTTP2
     # Slice unsigned 32-bit integer from buffer.
     # @return [Integer]
     def read_uint32
-      read(4).unpack(UINT32).first
+      read(4).unpack1(UINT32)
     end
 
     # Ensures that data that is added is binary encoded as well,
     # otherwise this could lead to the Buffer instance changing its encoding.
-    [:<<, :prepend].each do |mutating_method|
+    %i[<< prepend].each do |mutating_method|
       define_method(mutating_method) do |string|
         string = string.dup if string.frozen?
         @buffer.send mutating_method, string.force_encoding(Encoding::BINARY)
