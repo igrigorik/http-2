@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'helper'
 
 options = {}
@@ -100,7 +102,7 @@ head = {
   ':method' => (options[:payload].nil? ? 'GET' : 'POST'),
   ':authority' => [uri.host, uri.port].join(':'),
   ':path' => uri.path,
-  'accept' => '*/*',
+  'accept' => '*/*'
 }
 
 puts 'Sending HTTP 2.0 request'
@@ -119,7 +121,7 @@ while !sock.closed? && !sock.eof?
     conn << data
   rescue StandardError => e
     puts "#{e.class} exception: #{e.message} - closing socket."
-    e.backtrace.each { |l| puts "\t" + l }
+    e.backtrace.each { |l| puts "\t#{l}" }
     sock.close
   end
 end

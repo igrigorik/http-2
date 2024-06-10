@@ -5,6 +5,9 @@ on:
     branches:
       - master
 
+env:
+  ruby_version: 3.3
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,16 +18,28 @@ jobs:
                jruby-9.2, jruby-9.3, jruby-9.4]
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
 
-      - uses: actions/checkout@v4
-
-      - name: Install gems
-        run: bundle install
-
       - name: Tests
         run: ENV=CI bundle exec rake spec
+
+  rubocop:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.ruby_version }}
+          bundler-cache: true
+
+      - name: Rubocop
+        run: ENV=CI bundle exec rubocop

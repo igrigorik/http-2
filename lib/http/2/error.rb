@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module HTTP2
   # Stream, connection, and compressor exceptions.
   module Error

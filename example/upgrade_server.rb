@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # frozen_string_literals: true
 
 require_relative 'helper'
@@ -38,19 +40,21 @@ def request_header_hash
 end
 
 class UpgradeHandler
-  VALID_UPGRADE_METHODS = %w(GET OPTIONS).freeze
-  UPGRADE_RESPONSE = <<RESP.freeze
-HTTP/1.1 101 Switching Protocols
-Connection: Upgrade
-Upgrade: h2c
+  VALID_UPGRADE_METHODS = %w[GET OPTIONS].freeze
+  UPGRADE_RESPONSE = <<~RESP
+    HTTP/1.1 101 Switching Protocols
+    Connection: Upgrade
+    Upgrade: h2c
 
-RESP
+  RESP
 
   attr_reader :complete, :headers, :body, :parsing
 
   def initialize(conn, sock)
-    @conn, @sock = conn, sock
-    @complete, @parsing = false, false
+    @conn = conn
+    @sock = sock
+    @complete = false
+    @parsing = false
     @headers = request_header_hash
     @body = ''
     @parser = ::HTTP::Parser.new(self)
@@ -65,10 +69,10 @@ RESP
 
     settings = headers['http2-settings']
     request = {
-      ':scheme'    => 'http',
-      ':method'    => @parser.http_method,
+      ':scheme' => 'http',
+      ':method' => @parser.http_method,
       ':authority' => headers['Host'],
-      ':path'      => @parser.request_url,
+      ':path' => @parser.request_url
     }.merge(headers)
 
     @conn.upgrade(settings, request, @body)
@@ -87,7 +91,8 @@ RESP
   end
 
   def on_message_complete
-    fail unless VALID_UPGRADE_METHODS.include?(@parser.http_method)
+    raise unless VALID_UPGRADE_METHODS.include?(@parser.http_method)
+
     @parsing = false
     complete!
   end
@@ -137,10 +142,10 @@ loop do
         if req[':method'] != 'OPTIONS' # Don't respond to OPTIONS...
           response = 'Hello h2c world!'
           stream.headers({
-            ':status' => '200',
-            'content-length' => response.bytesize.to_s,
-            'content-type' => 'text/plain',
-          }, end_stream: false)
+                           ':status' => '200',
+                           'content-length' => response.bytesize.to_s,
+                           'content-type' => 'text/plain'
+                         }, end_stream: false)
           stream.data(response)
         end
       else
@@ -155,10 +160,10 @@ loop do
         end
 
         stream.headers({
-          ':status' => '200',
-          'content-length' => response.bytesize.to_s,
-          'content-type' => 'text/plain',
-        }, end_stream: false)
+                         ':status' => '200',
+                         'content-length' => response.bytesize.to_s,
+                         'content-type' => 'text/plain'
+                       }, end_stream: false)
 
         # split response into multiple DATA frames
         stream.data(response.slice!(0, 5), end_stream: false)
@@ -174,8 +179,7 @@ loop do
     # puts "Received bytes: #{data.unpack("H*").first}"
 
     begin
-      case
-      when !uh.parsing && !uh.complete
+      if !uh.parsing && !uh.complete
 
         if data.start_with?(*UpgradeHandler::VALID_UPGRADE_METHODS)
           uh << data
@@ -184,13 +188,12 @@ loop do
           conn << data
         end
 
-      when uh.parsing && !uh.complete
+      elsif uh.parsing && !uh.complete
         uh << data
 
-      when uh.complete
+      elsif uh.complete
         conn << data
       end
-
     rescue StandardError => e
       puts "Exception: #{e}, #{e.message} - closing socket."
       puts e.backtrace.last(10).join("\n")

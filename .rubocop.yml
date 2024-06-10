@@ -1,93 +1,24 @@
 inherit_from: .rubocop_todo.yml
 
+require:
+  - rubocop-rake
+
 AllCops:
+  NewCops: enable
+  SuggestExtensions: false
   TargetRubyVersion: 2.5
-  DisplayCopNames: true
   Exclude:
-    - 'bin/**'
-    - 'vendor/**/*'
-    - '**/huffman_statemachine.rb'
+    - 'lib/http/2/huffman_statemachine.rb'
+    - 'vendor/bundle/**/*' # see https://github.com/rubocop/rubocop/issues/9832
 
-Layout/IndentHeredoc:
+Gemspec/RequireMFA:
+  Enabled: false
+
+Metrics:
   Exclude:
-    - 'tasks/generate_huffman_table.rb'
-    - 'example/*'
+    - 'spec/**/*.rb'
 
-Metrics/LineLength:
-  Max: 120
-
+# For some reason, Metrics disable doesn't cover this
 Metrics/BlockLength:
-  Max: 700
-
-Layout/EndAlignment:
-  EnforcedStyleAlignWith: variable
-
-Layout/CaseIndentation:
-  EnforcedStyle: end
-
-Layout/IndentHash:
-  EnforcedStyle: consistent
-
-Style/TrailingCommaInArrayLiteral:
-  EnforcedStyleForMultiline: comma
-
-Style/TrailingCommaInHashLiteral:
-  EnforcedStyleForMultiline: comma
-
-Layout/SpaceAroundOperators:
-  Enabled: false
-
-Layout/ExtraSpacing:
-  Enabled: false
-
-Layout/EmptyLinesAroundExceptionHandlingKeywords:
-  Enabled: false
-
-Naming/UncommunicativeMethodParamName:
-  Enabled: false
-
-Style/SignalException:
-  Enabled: false
-
-Style/FrozenStringLiteralComment:
-  Enabled: false
-
-Style/ParallelAssignment:
-  Enabled: false
-
-Style/ParenthesesAroundCondition:
-  Enabled: false
-
-Style/IfInsideElse:
-  Enabled: false
-
-Style/IfUnlessModifier:
-  Enabled: false
-
-Style/MultilineIfModifier:
-  Enabled: false
-
-Lint/EmptyWhen:
-  Enabled: false
-
-Style/TrailingCommaInArguments:
-  Enabled: false
-
-Style/TrailingUnderscoreVariable:
-  Enabled: false
-
-Style/SymbolArray:
-  Enabled: false
-
-Style/CommentedKeyword:
-  Enabled: false
-
-Style/PercentLiteralDelimiters:
-  Enabled: false
-
-Performance/TimesMap:
-  Enabled: false
-
-Performance/RedundantBlockCall:
-  Enabled: false
-
+  Exclude:
+    - 'spec/**/*.rb'

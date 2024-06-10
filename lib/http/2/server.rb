@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'base64'
 module HTTP2
   # HTTP 2.0 server connection class that implements appropriate header
@@ -77,7 +79,7 @@ module HTTP2
         length: buf.bytesize,
         type: :settings,
         stream: 0,
-        flags: [],
+        flags: []
       )
       buf.prepend(header)
       receive(buf)
@@ -87,12 +89,12 @@ module HTTP2
       emit(:stream, stream)
 
       headers_frame = {
-        type:       :headers,
-        stream:     1,
-        weight:     DEFAULT_WEIGHT,
+        type: :headers,
+        stream: 1,
+        weight: DEFAULT_WEIGHT,
         dependency: 0,
-        exclusive:  false,
-        payload: headers,
+        exclusive: false,
+        payload: headers
       }
 
       if body.empty?
@@ -124,7 +126,7 @@ module HTTP2
         flags: flags,
         stream: parent.id,
         promise_stream: promise.id,
-        payload: headers.to_a,
+        payload: headers.to_a
       )
 
       callback.call(promise)

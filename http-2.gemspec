@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'lib/http/2/version'
 
 Gem::Specification.new do |spec|
@@ -9,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary       = spec.description
   spec.homepage      = 'https://github.com/igrigorik/http-2'
   spec.license       = 'MIT'
-  spec.files         = Dir["LICENSE", "README.md", "lib/**/*.rb"]
+  spec.files         = Dir['LICENSE', 'README.md', 'lib/**/*.rb']
 
   spec.add_runtime_dependency 'base64'
 

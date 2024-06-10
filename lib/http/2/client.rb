@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module HTTP2
   # HTTP 2.0 client connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
@@ -45,7 +47,8 @@ module HTTP2
 
     # sends the preface and initializes the first stream in half-closed state
     def upgrade
-      fail ProtocolError unless @stream_id == 1
+      raise ProtocolError unless @stream_id == 1
+
       send_connection_preface
       new_stream(state: :half_closed_local)
     end
@@ -53,6 +56,7 @@ module HTTP2
     # Emit the connection preface if not yet
     def send_connection_preface
       return unless @state == :waiting_connection_preface
+
       @state = :connected
       emit(:frame, CONNECTION_PREFACE_MAGIC)
 
