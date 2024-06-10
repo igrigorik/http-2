@@ -21,9 +21,12 @@ def request_header_hash
   end
 end
 
+conn_mutex = Mutex.new # Synchronize writing to socket
 conn.on(:frame) do |bytes|
-  sock.print bytes
-  sock.flush
+  conn_mutex.synchronize do # Make sure that only one frame is sent at a time
+    sock.print bytes
+    sock.flush
+  end
 end
 conn.on(:frame_sent) do |frame|
   puts "Sent frame: #{frame.inspect}"
