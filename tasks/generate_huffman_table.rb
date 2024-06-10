@@ -1,5 +1,7 @@
 require_relative '../lib/http/2/huffman'
 
+# TODO: Currently, regenerating this table will produce something different from
+# the table shipped with this gem. It is however stable.
 desc 'Generate Huffman precompiled table in huffman_statemachine.rb'
 task :generate_huffman_table do
   HuffmanTable::Node.generate_state_table
