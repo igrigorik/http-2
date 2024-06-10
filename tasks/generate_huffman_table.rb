@@ -1,13 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../lib/http/2/huffman'
+
+# TODO: Currently, regenerating this table will produce something different from
+# the table shipped with this gem. It is however stable.
 desc 'Generate Huffman precompiled table in huffman_statemachine.rb'
-task :generate_table do
+task :generate_huffman_table do
   HuffmanTable::Node.generate_state_table
 end
 
-require_relative '../http/2/huffman'
-
-# @private
 module HuffmanTable
   BITS_AT_ONCE = HTTP2::Header::Huffman::BITS_AT_ONCE
   EOS          = 256

@@ -109,7 +109,7 @@ Style/Documentation:
     - 'test/**/*'
     - 'example/helper.rb'
     - 'example/upgrade_server.rb'
-    - 'lib/tasks/generate_huffman_table.rb'
+    - 'tasks/generate_huffman_table.rb'
 
 # Offense count: 1
 # Configuration parameters: MinBodyLength, AllowConsecutiveConditionals.
