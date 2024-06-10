@@ -2,13 +2,22 @@ inherit_from: .rubocop_todo.yml
 
 require:
   - rubocop-rake
-  - rubocop-rspec
 
 AllCops:
   NewCops: enable
+  SuggestExtensions: false
   TargetRubyVersion: 2.5
   Exclude:
     - 'lib/http/2/huffman_statemachine.rb'
 
 Gemspec/RequireMFA:
   Enabled: false
+
+Metrics:
+  Exclude:
+    - 'spec/**/*.rb'
+
+# For some reason, Metrics disable doesn't cover this
+Metrics/BlockLength:
+  Exclude:
+    - 'spec/**/*.rb'

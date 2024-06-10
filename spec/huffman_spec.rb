@@ -5,7 +5,7 @@ require 'helper'
 RSpec.describe HTTP2::Header::Huffman do
   huffman_examples = [ # plain, encoded
     ['www.example.com', 'f1e3c2e5f23a6ba0ab90f4ff'],
-    ['no-cache',        'a8eb10649cbf'],
+    %w[no-cache a8eb10649cbf],
     ['Mon, 21 Oct 2013 20:13:21 GMT', 'd07abe941054d444a8200595040b8166e082a62d1bff']
   ]
   context 'encode' do

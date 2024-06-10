@@ -284,10 +284,10 @@ RSpec.describe HTTP2::Header do
             [':scheme', 'http'],
             [':path', '/'],
             [':authority', 'www.example.com'],
-            ['cache-control', 'no-cache']
+            %w[cache-control no-cache]
           ],
           table: [
-            ['cache-control', 'no-cache'],
+            %w[cache-control no-cache],
             [':authority', 'www.example.com']
           ],
           table_size: 110 },
@@ -298,11 +298,11 @@ RSpec.describe HTTP2::Header do
             [':scheme', 'https'],
             [':path', '/index.html'],
             [':authority', 'www.example.com'],
-            ['custom-key', 'custom-value']
+            %w[custom-key custom-value]
           ],
           table: [
-            ['custom-key', 'custom-value'],
-            ['cache-control', 'no-cache'],
+            %w[custom-key custom-value],
+            %w[cache-control no-cache],
             [':authority', 'www.example.com']
           ],
           table_size: 164 }
@@ -329,10 +329,10 @@ RSpec.describe HTTP2::Header do
             [':scheme', 'http'],
             [':path', '/'],
             [':authority', 'www.example.com'],
-            ['cache-control', 'no-cache']
+            %w[cache-control no-cache]
           ],
           table: [
-            ['cache-control', 'no-cache'],
+            %w[cache-control no-cache],
             [':authority', 'www.example.com']
           ],
           table_size: 110 },
@@ -343,11 +343,11 @@ RSpec.describe HTTP2::Header do
             [':scheme', 'https'],
             [':path', '/index.html'],
             [':authority', 'www.example.com'],
-            ['custom-key', 'custom-value']
+            %w[custom-key custom-value]
           ],
           table: [
-            ['custom-key', 'custom-value'],
-            ['cache-control', 'no-cache'],
+            %w[custom-key custom-value],
+            %w[cache-control no-cache],
             [':authority', 'www.example.com']
           ],
           table_size: 164 }
@@ -372,12 +372,12 @@ RSpec.describe HTTP2::Header do
           emitted: [
             [':method', 'GET'],
             [':scheme', 'http'],
-            ['cache-control', 'no-cache'],
+            %w[cache-control no-cache],
             [':path', '/'],
             [':authority', 'www.example.com']
           ],
           table: [
-            ['cache-control', 'no-cache'],
+            %w[cache-control no-cache],
             [':authority', 'www.example.com']
           ],
           table_size: 110 },
@@ -386,13 +386,13 @@ RSpec.describe HTTP2::Header do
           emitted: [
             [':method', 'GET'],
             [':scheme', 'https'],
-            ['custom-key', 'custom-value'],
+            %w[custom-key custom-value],
             [':path', '/index.html'],
             [':authority', 'www.example.com']
           ],
           table: [
-            ['custom-key', 'custom-value'],
-            ['cache-control', 'no-cache'],
+            %w[custom-key custom-value],
+            %w[cache-control no-cache],
             [':authority', 'www.example.com']
           ],
           table_size: 164 }
@@ -407,12 +407,12 @@ RSpec.describe HTTP2::Header do
           emitted: [
             [':method', 'GET'],
             [':scheme', 'http'],
-            ['custom-key', 'custom-value'],
+            %w[custom-key custom-value],
             [':path', '/'],
             [':authority', 'www.example.com']
           ],
           table: [
-            ['custom-key', 'custom-value'],
+            %w[custom-key custom-value],
             [':authority', 'www.example.com']
           ],
           table_size: 111,
@@ -430,21 +430,21 @@ RSpec.describe HTTP2::Header do
                  6c65 2e63 6f6d",
           emitted: [
             [':status', '302'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
             ['location', 'https://www.example.com']
           ],
           table: [
             ['location', 'https://www.example.com'],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             [':status', '302']
           ],
           table_size: 222 },
         { wire: '4803 3330 37c1 c0bf',
           emitted: [
             [':status', '307'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
             ['location', 'https://www.example.com']
           ],
@@ -452,7 +452,7 @@ RSpec.describe HTTP2::Header do
             [':status', '307'],
             ['location', 'https://www.example.com'],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            ['cache-control', 'private']
+            %w[cache-control private]
           ],
           table_size: 222 },
         { wire: "88c1 611d 4d6f 6e2c 2032 3120 4f63 7420
@@ -464,15 +464,15 @@ RSpec.describe HTTP2::Header do
                  3d31",
           emitted: [
             [':status', '200'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             ['date', 'Mon, 21 Oct 2013 20:13:22 GMT'],
             ['location', 'https://www.example.com'],
-            ['content-encoding', 'gzip'],
+            %w[content-encoding gzip],
             ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1']
           ],
           table: [
             ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1'],
-            ['content-encoding', 'gzip'],
+            %w[content-encoding gzip],
             ['date', 'Mon, 21 Oct 2013 20:13:22 GMT']
           ],
           table_size: 215 }
@@ -488,21 +488,21 @@ RSpec.describe HTTP2::Header do
                  e9ae 82ae 43d3",
           emitted: [
             [':status', '302'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
             ['location', 'https://www.example.com']
           ],
           table: [
             ['location', 'https://www.example.com'],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             [':status', '302']
           ],
           table_size: 222 },
         { wire: '4883 640e ffc1 c0bf',
           emitted: [
             [':status', '307'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
             ['location', 'https://www.example.com']
           ],
@@ -510,7 +510,7 @@ RSpec.describe HTTP2::Header do
             [':status', '307'],
             ['location', 'https://www.example.com'],
             ['date', 'Mon, 21 Oct 2013 20:13:21 GMT'],
-            ['cache-control', 'private']
+            %w[cache-control private]
           ],
           table_size: 222 },
         { wire: "88c1 6196 d07a be94 1054 d444 a820 0595
@@ -520,15 +520,15 @@ RSpec.describe HTTP2::Header do
                  9587 3160 65c0 03ed 4ee5 b106 3d50 07",
           emitted: [
             [':status', '200'],
-            ['cache-control', 'private'],
+            %w[cache-control private],
             ['date', 'Mon, 21 Oct 2013 20:13:22 GMT'],
             ['location', 'https://www.example.com'],
-            ['content-encoding', 'gzip'],
+            %w[content-encoding gzip],
             ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1']
           ],
           table: [
             ['set-cookie', 'foo=ASDJKHQKBZXOQWEOPIUAXQWEOIU; max-age=3600; version=1'],
-            ['content-encoding', 'gzip'],
+            %w[content-encoding gzip],
             ['date', 'Mon, 21 Oct 2013 20:13:22 GMT']
           ],
           table_size: 215 }

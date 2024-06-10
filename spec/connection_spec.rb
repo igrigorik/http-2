@@ -189,12 +189,12 @@ RSpec.describe HTTP2::Connection do
       input = [
         ['Content-Type', 'text/html'],
         ['Cache-Control', 'max-age=60, private'],
-        ['Cache-Control', 'must-revalidate']
+        %w[Cache-Control must-revalidate]
       ]
       expected = [
         ['content-type', 'text/html'],
         ['cache-control', 'max-age=60, private'],
-        ['cache-control', 'must-revalidate']
+        %w[cache-control must-revalidate]
       ]
       headers = []
       @conn.on(:frame) do |bytes|
@@ -436,10 +436,10 @@ RSpec.describe HTTP2::Connection do
       stream = @conn.new_stream
       stream.headers({
                        ':method' => 'get',
-        ':scheme' => 'http',
-        ':authority' => 'www.example.org',
-        ':path' => '/resource',
-        'custom' => 'q' * 44_000
+                       ':scheme' => 'http',
+                       ':authority' => 'www.example.org',
+                       ':path' => '/resource',
+                       'custom' => 'q' * 44_000
                      }, end_stream: true)
       expect(headers.size).to eq 3
       expect(headers[0][:type]).to eq :headers
@@ -460,10 +460,10 @@ RSpec.describe HTTP2::Connection do
       stream = @conn.new_stream
       stream.headers({
                        ':method' => 'get',
-        ':scheme' => 'http',
-        ':authority' => 'www.example.org',
-        ':path' => '/resource',
-        'custom' => 'q' * 18_682 # this number should be updated when Huffman table is changed
+                       ':scheme' => 'http',
+                       ':authority' => 'www.example.org',
+                       ':path' => '/resource',
+                       'custom' => 'q' * 18_682 # this number should be updated when Huffman table is changed
                      }, end_stream: true)
       expect(headers[0][:length]).to eq @conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
@@ -482,10 +482,10 @@ RSpec.describe HTTP2::Connection do
       stream = @conn.new_stream
       stream.headers({
                        ':method' => 'get',
-        ':scheme' => 'http',
-        ':authority' => 'www.example.org',
-        ':path' => '/resource',
-        'custom' => 'q' * 18_682 # this number should be updated when Huffman table is changed
+                       ':scheme' => 'http',
+                       ':authority' => 'www.example.org',
+                       ':path' => '/resource',
+                       'custom' => 'q' * 18_682 # this number should be updated when Huffman table is changed
                      }, end_stream: true)
       expect(headers[0][:length]).to eq @conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
@@ -503,10 +503,10 @@ RSpec.describe HTTP2::Connection do
       stream = @conn.new_stream
       stream.headers({
                        ':method' => 'get',
-        ':scheme' => 'http',
-        ':authority' => 'www.example.org',
-        ':path' => '/resource',
-        'custom' => 'q' * 18_683 # this number should be updated when Huffman table is changed
+                       ':scheme' => 'http',
+                       ':authority' => 'www.example.org',
+                       ':path' => '/resource',
+                       'custom' => 'q' * 18_683 # this number should be updated when Huffman table is changed
                      }, end_stream: true)
       expect(headers[0][:length]).to eq @conn.remote_settings[:settings_max_frame_size]
       expect(headers[1][:length]).to eq 1

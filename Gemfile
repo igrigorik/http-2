@@ -8,7 +8,6 @@ group :development do
   # Last supported version for Ruby 2.5
   gem 'rubocop', '1.28'
   gem 'rubocop-rake', require: false
-  gem 'rubocop-rspec', require: false
 end
 
 group :docs do
