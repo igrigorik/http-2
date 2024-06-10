@@ -645,7 +645,6 @@ RSpec.describe HTTP2::Header do
               end
             end
             it 'should emit expected bytes on wire' do
-              puts subject.unpack('H*').first
               expect(subject.unpack('H*').first).to eq ex[:streams][nth][:wire].delete(" \n")
             end
             unless ex[:streams][nth][:has_bad_headers]
