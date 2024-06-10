@@ -9,7 +9,7 @@ AllCops:
   TargetRubyVersion: 2.5
   Exclude:
     - 'lib/http/2/huffman_statemachine.rb'
-    - 'vendor/**/*.rb' # see https://github.com/rubocop/rubocop/issues/9832
+    - 'vendor/bundle/**/*' # see https://github.com/rubocop/rubocop/issues/9832
 
 Gemspec/RequireMFA:
   Enabled: false
