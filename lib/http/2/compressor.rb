@@ -330,6 +330,7 @@ module HTTP2
     # Responsible for encoding header key-value pairs using HPACK algorithm.
     class Compressor
       # @param options [Hash] encoding options
+      # @see EncodingContext#initialize
       def initialize(**options)
         @cc = EncodingContext.new(**options)
       end
@@ -463,12 +464,9 @@ module HTTP2
     # Responsible for decoding received headers and maintaining compression
     # context of the opposing peer. Decompressor must be initialized with
     # appropriate starting context based on local role: client or server.
-    #
-    # @example
-    #   server_role = Decompressor.new(:request)
-    #   client_role = Decompressor.new(:response)
     class Decompressor
       # @param options [Hash] decoding options.  Only :table_size is effective.
+      # @see EncodingContext#initialize
       def initialize(**options)
         @cc = EncodingContext.new(**options)
       end
