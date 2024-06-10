@@ -11,5 +11,7 @@ Gem::Specification.new do |spec|
   spec.license       = 'MIT'
   spec.files         = Dir["LICENSE", "README.md", "lib/**/*.rb"]
 
+  spec.add_runtime_dependency 'base64'
+
   spec.required_ruby_version = '>= 2.5'
 end
