@@ -629,8 +629,15 @@ RSpec.describe HTTP2::Header do
               end
             end
 
+            subject do
+              if ex[:streams][nth][:has_bad_headers]
+                @cc.encode(ex[:streams][nth][:emitted], ensure_proper_ordering: false)
+              else
+                @cc.encode(ex[:streams][nth][:emitted])
+              end
+            end
+            
             it 'emits expected bytes on wire' do
-              puts subject.unpack1('H*')
               expect(subject.unpack1('H*')).to eq ex[:streams][nth][:wire].delete(" \n")
             end
 
