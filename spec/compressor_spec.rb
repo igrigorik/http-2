@@ -636,7 +636,7 @@ RSpec.describe HTTP2::Header do
                 @cc.encode(ex[:streams][nth][:emitted])
               end
             end
-            
+
             it 'emits expected bytes on wire' do
               expect(subject.unpack1('H*')).to eq ex[:streams][nth][:wire].delete(" \n")
             end
