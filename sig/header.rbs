@@ -1,4 +1,4 @@
-module HTTP2Next
+module HTTP2
   module Header
     type header_key = :type | :name | :value | :index
     type header_value = Integer | String | :indexed | :changetablesize | :incremental | :noindex | :neverindexed

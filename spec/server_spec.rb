@@ -3,7 +3,7 @@
 require "helper"
 require "shared_examples/connection"
 
-RSpec.describe HTTP2Next::Server do
+RSpec.describe HTTP2::Server do
   include FrameHelpers
 
   it_behaves_like "a connection" do

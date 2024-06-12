@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module HTTP2Next
+module HTTP2
   module Header
     using StringExtensions
     # Responsible for decoding received headers and maintaining compression
@@ -104,7 +104,7 @@ module HTTP2Next
       # Decodes and processes header commands within provided buffer.
       #
       # @param buf [Buffer]
-      # @param frame [HTTP2Next::Frame, nil]
+      # @param frame [HTTP2::Frame, nil]
       # @return [Array] +[[name, value], ...]
       def decode(buf, frame = nil)
         list = []

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module HTTP2Next
+module HTTP2
   # Default connection and stream flow control window (64KB).
   DEFAULT_FLOW_WINDOW = 65_535
 

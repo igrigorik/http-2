@@ -2,7 +2,7 @@
 
 require "helper"
 
-RSpec.describe HTTP2Next::Header do
+RSpec.describe HTTP2::Header do
   using StringExtensions
 
   let(:c) { Compressor.new }

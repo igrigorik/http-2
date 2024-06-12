@@ -3,7 +3,7 @@
 require_relative "../error"
 require_relative "../extensions"
 
-module HTTP2Next
+module HTTP2
   # Implementation of huffman encoding for HPACK
   #
   # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10

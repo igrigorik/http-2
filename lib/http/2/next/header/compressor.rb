@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module HTTP2Next
+module HTTP2
   module Header
     # Responsible for encoding header key-value pairs using HPACK algorithm.
     class Compressor

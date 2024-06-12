@@ -1,4 +1,4 @@
-module HTTP2Next
+module HTTP2
   class Server < Connection
 
     def upgrade: (String settings, Enumerable[header_pair] headers, String body) -> void

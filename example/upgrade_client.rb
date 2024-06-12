@@ -12,7 +12,7 @@ end.parse!
 uri = URI.parse(ARGV[0] || "http://localhost:8080/")
 sock = TCPSocket.new(uri.host, uri.port)
 
-conn = HTTP2Next::Client.new
+conn = HTTP2::Client.new
 
 def request_header_hash
   Hash.new do |hash, key|
@@ -39,7 +39,7 @@ class UpgradeHandler
   UPGRADE_REQUEST = <<RESP
 GET %s HTTP/1.1
 Connection: Upgrade, HTTP2-Settings
-HTTP2-Settings: #{HTTP2Next::Client.settings_header(settings_max_concurrent_streams: 100)}
+HTTP2-Settings: #{HTTP2::Client.settings_header(settings_max_concurrent_streams: 100)}
 Upgrade: h2c
 Host: %s
 User-Agent: http-2 upgrade

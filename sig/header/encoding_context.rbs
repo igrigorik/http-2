@@ -1,4 +1,4 @@
-module HTTP2Next
+module HTTP2
   module Header
     class EncodingContext
       STATIC_TABLE: Array[header_pair]

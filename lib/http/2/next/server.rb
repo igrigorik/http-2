@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module HTTP2Next
+module HTTP2
   # HTTP 2.0 server connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
   #
@@ -11,7 +11,7 @@ module HTTP2Next
   # @example
   #     socket = YourTransport.new
   #
-  #     conn = HTTP2Next::Server.new
+  #     conn = HTTP2::Server.new
   #     conn.on(:stream) do |stream|
   #       ...
   #     end

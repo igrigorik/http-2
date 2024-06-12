@@ -6,7 +6,7 @@ require "http/2/next/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "http-2-next"
-  spec.version       = HTTP2Next::VERSION
+  spec.version       = HTTP2::VERSION
   spec.authors       = ["Tiago Cardoso", "Ilya Grigorik", "Kaoru Maeda"]
   spec.email         = ["cardoso_tiago@hotmail.com"]
   spec.description   = "Pure-ruby HTTP 2.0 protocol implementation"

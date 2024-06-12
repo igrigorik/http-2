@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module HTTP2Next
+module HTTP2
   # To decompress header blocks, a decoder only needs to maintain a
   # dynamic table as a decoding context.
   # No other state information is needed.

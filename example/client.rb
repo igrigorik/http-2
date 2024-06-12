@@ -40,7 +40,7 @@ else
   sock = tcp
 end
 
-conn = HTTP2Next::Client.new
+conn = HTTP2::Client.new
 stream = conn.new_stream
 log = Logger.new(stream.id)
 

@@ -2,7 +2,7 @@
 
 require "helper"
 
-RSpec.describe HTTP2Next::Framer do
+RSpec.describe HTTP2::Framer do
   using StringExtensions
 
   let(:f) { Framer.new }

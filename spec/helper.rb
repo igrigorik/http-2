@@ -15,9 +15,9 @@ require "json"
 
 # rubocop: disable Style/MixinUsage
 require "http/2/next"
-include HTTP2Next
-include HTTP2Next::Header
-include HTTP2Next::Error
+include HTTP2
+include HTTP2::Header
+include HTTP2::Error
 # rubocop: enable Style/MixinUsage
 
 REQUEST_HEADERS = [%w[:scheme https],
@@ -27,8 +27,8 @@ REQUEST_HEADERS = [%w[:scheme https],
                    %w[a b]].freeze
 RESPONSE_HEADERS = [%w[:status 200]].freeze
 
-HTTP2Next::Connection.__send__ :public, :send_buffer
-HTTP2Next::Stream.__send__ :public, :send_buffer
+HTTP2::Connection.__send__ :public, :send_buffer
+HTTP2::Stream.__send__ :public, :send_buffer
 
 module FrameHelpers
   def data_frame

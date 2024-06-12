@@ -1,4 +1,4 @@
-module HTTP2Next
+module HTTP2
   VERSION: String
 
   DEFAULT_FLOW_WINDOW: Integer

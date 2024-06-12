@@ -34,7 +34,6 @@ Your code is responsible for feeding data into the parser, which performs all of
 
 ```ruby
 require 'http/2/next'
-HTTP2 = HTTP2Next
 
 socket = YourTransport.new
 
@@ -54,7 +53,6 @@ Checkout provided [client](example/client.rb) and [server](example/server.rb) im
 Depending on the role of the endpoint you must initialize either a [Client](lib/http/2/next/client.rb) or a [Server](lib/http/2/next/server.rb) object. Doing so picks the appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
 
 ```ruby
-HTTP2 = HTTP2Next
 # - Server ---------------
 server = HTTP2::Server.new
 
@@ -127,8 +125,6 @@ The good news is, all of the stream management, and state transitions, and error
 For sake of example, let's take a look at a simple server implementation:
 
 ```ruby
-HTTP2 = HTTP2Next
-
 conn = HTTP2::Server.new
 
 # emits new streams opened by the client
@@ -196,8 +192,6 @@ Events emitted by the [Stream object](lib/http/2/next/stream.rb):
 Each HTTP/2 [stream has a priority value](https://hpbn.co/http2/#stream-prioritization) that can be sent when the new stream is initialized, and optionally reprioritized later:
 
 ```ruby
-HTTP2 = HTTP2Next
-
 client = HTTP2::Client.new
 
 default_priority_stream = client.new_stream
@@ -234,8 +228,6 @@ stream.window_update(2048) # increment stream window by 2048 bytes
 An HTTP/2 server can [send multiple replies](https://hpbn.co/http2/#server-push) to a single client request. To do so, first it emits a "push promise" frame which contains the headers of the promised resource, followed by the response to the original request, as well as promised resource payloads (which may be interleaved). A simple example is in order:
 
 ```ruby
-HTTP2 = HTTP2Next
-
 conn = HTTP2::Server.new
 
 conn.on(:stream) do |stream|
@@ -275,8 +267,6 @@ end
 When a new push promise stream is sent by the server, the client is notified via the `:promise` event:
 
 ```ruby
-HTTP2 = HTTP2Next
-
 conn = HTTP2::Client.new
 conn.on(:promise) do |push|
   # process push stream

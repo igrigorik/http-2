@@ -1,4 +1,4 @@
-module HTTP2Next
+module HTTP2
   module Emitter
     def on: (Symbol event) { (*untyped) -> void } -> void
 

@@ -9,7 +9,7 @@ require_relative "../http/2/next/header/huffman"
 
 # @private
 module HuffmanTable
-  BITS_AT_ONCE = HTTP2Next::Header::Huffman::BITS_AT_ONCE
+  BITS_AT_ONCE = HTTP2::Header::Huffman::BITS_AT_ONCE
   EOS          = 256
 
   class Node
@@ -46,7 +46,7 @@ module HuffmanTable
 
     def self.generate_tree
       @root = new(0)
-      HTTP2Next::Header::Huffman::CODES.each_with_index do |c, chr|
+      HTTP2::Header::Huffman::CODES.each_with_index do |c, chr|
         code, len = c
         @root.add(code, len, chr)
       end
@@ -114,7 +114,7 @@ module HuffmanTable
 # The following task generates this file.
 #   rake generate_huffman_table
 
-module HTTP2Next
+module HTTP2
   module Header
     class Huffman
       # :nodoc:

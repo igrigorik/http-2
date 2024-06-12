@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module HTTP2Next
+module HTTP2
   # A single HTTP 2.0 connection can multiplex multiple streams in parallel:
   # multiple requests and responses can be in flight simultaneously and stream
   # data can be interleaved and prioritized.

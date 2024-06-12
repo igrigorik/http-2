@@ -1,4 +1,4 @@
-module HTTP2Next
+module HTTP2
   module Error
     def self?.types: () -> Hash[Symbol, singleton(Error)]
 

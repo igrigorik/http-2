@@ -2,7 +2,7 @@
 
 require "helper"
 
-RSpec.describe HTTP2Next::Emitter do
+RSpec.describe HTTP2::Emitter do
   class Worker
     include Emitter
   end

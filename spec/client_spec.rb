@@ -3,7 +3,7 @@
 require "helper"
 require "shared_examples/connection"
 
-RSpec.describe HTTP2Next::Client do
+RSpec.describe HTTP2::Client do
   include FrameHelpers
 
   let(:f) { Framer.new }
@@ -93,7 +93,7 @@ RSpec.describe HTTP2Next::Client do
   context "upgrade" do
     it "fails when client has already created streams" do
       client.new_stream
-      expect { client.upgrade }.to raise_error(HTTP2Next::Error::ProtocolError)
+      expect { client.upgrade }.to raise_error(HTTP2::Error::ProtocolError)
     end
 
     it "sends the preface" do

@@ -3,7 +3,7 @@
 if RUBY_VERSION < "3.3.0"
   require "base64"
 elsif !defined?(Base64)
-  module HTTP2Next
+  module HTTP2
     # require "base64" will not be a default gem after ruby 3.4.0
     module Base64
       module_function

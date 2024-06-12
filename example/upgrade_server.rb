@@ -102,7 +102,7 @@ loop do
   sock = server.accept
   puts "New TCP connection!"
 
-  conn = HTTP2Next::Server.new
+  conn = HTTP2::Server.new
   conn.on(:frame) do |bytes|
     # puts "Writing bytes: #{bytes.unpack("H*").first}"
     sock.write bytes

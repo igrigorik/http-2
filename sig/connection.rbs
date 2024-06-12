@@ -1,4 +1,4 @@
-module HTTP2Next
+module HTTP2
   class Connection
     include FlowBuffer
     include Emitter
