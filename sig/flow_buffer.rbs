@@ -1,0 +1,21 @@
+module HTTP2Next
+  module FlowBuffer
+    MAX_WINDOW_SIZE: Integer
+
+    def buffered_amount: () -> Integer
+
+    def flush: () -> void
+
+    private
+
+    def send_buffer: () -> FrameBuffer
+
+    def update_local_window: (frame) -> void
+
+    def calculate_window_update: (Integer) -> void
+
+    def send_data: (?frame? frame, ?bool encode) -> void
+
+    def process_window_update: (frame: frame, ?encode: bool) -> void
+  end
+end

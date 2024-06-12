@@ -1,0 +1,27 @@
+module HTTP2Next
+  module Header
+    class Compressor
+      include PackingExtensions
+
+      @cc: EncodingContext
+
+      def table_size=: (Integer) -> void
+
+      def integer: (Integer, Integer, buffer: String, ?offset: Integer) -> String
+
+      def string: (String) -> String
+
+      def header: (header_command, ?String) -> String
+
+      def encode: (Enumerable[header_pair]) -> String
+
+      private
+
+      def initialize: (?context_hash options) -> void
+
+      def huffman_string: (String str) -> String
+
+      def plain_string: (String str) -> String
+    end
+  end
+end

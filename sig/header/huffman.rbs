@@ -1,0 +1,9 @@
+module HTTP2Next
+  module Header
+    class Huffman
+      def encode: (String str) -> String
+
+      def decode: (String str) -> String
+    end
+  end
+end

@@ -1,0 +1,93 @@
+module HTTP2Next
+  class Connection
+    include FlowBuffer
+    include Emitter
+
+    REQUEST_MANDATORY_HEADERS: Array[String]
+    RESPONSE_MANDATORY_HEADERS: Array[String]
+
+    attr_reader state: Symbol
+
+    attr_reader local_window: Integer
+    attr_reader remote_window: Integer
+
+    alias window local_window
+
+    attr_reader remote_settings: settings_hash
+    attr_reader local_settings: settings_hash
+    attr_reader pending_settings: settings_ary
+
+    attr_accessor active_stream_count: Integer
+
+    @stream_id: Integer
+    @active_stream_count: Integer
+    @last_activated_stream: Integer
+    @last_stream_id: Integer
+
+    @streams: Hash[Integer, Stream]
+    @streams_recently_closed: Hash[Integer, Stream]
+
+    @framer: Framer
+
+    @local_window_limit: Integer
+    @remote_window_limit: Integer
+
+    @compressor: Header::Compressor
+    @decompressor: Header::Decompressor
+    @error: Symbol?
+
+    @recv_buffer: String
+    @continuation: Array[frame]
+
+    @closed_since: Float?
+    @received_frame: bool
+
+    def closed?: () -> bool
+
+    def new_stream: (**untyped) -> Stream
+
+    def ping: (String) -> void
+            | (String) { () -> void } -> void
+
+    def goaway: (?Symbol, ?String) -> void
+
+    def window_update: (Integer increment) -> void
+
+    def settings: (settings_enum) -> void
+
+    def receive: (string data) -> void
+    alias << receive
+
+    def initialize: (?settings_hash) -> void
+
+    private
+
+    def send: (frame) -> void
+
+    def encode: (frame) -> Array[String]
+
+    def connection_frame?: (frame) -> bool
+
+    def connection_management: (frame) -> void
+
+    def ping_management: (frame) -> void
+
+    def validate_settings: (:client | :server, settings_enum) -> void
+
+    def connection_settings: (frame) -> void
+
+    def decode_headers: (frame) -> void
+
+    def encode_headers: (frame) -> Array[frame]
+
+    def activate_stream: (id: Integer, **untyped) -> Stream
+
+    def verify_stream_order: (Integer id) -> void
+
+    def verify_pseudo_headers: (frame) -> void
+
+    def _verify_pseudo_headers: (frame, Array[String]) -> void
+
+    def connection_error: (?Symbol error, ?msg: String?, ?e: StandardError?) -> void
+  end
+end

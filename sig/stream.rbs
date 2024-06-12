@@ -1,0 +1,91 @@
+module HTTP2Next
+  class Stream
+    include FlowBuffer
+    include Emitter
+
+    attr_reader id: Integer
+    attr_reader state: Symbol
+    attr_reader parent: Stream?
+    attr_reader weight: Integer
+    attr_reader dependency: Integer
+    attr_reader remote_window: Integer
+    attr_reader local_window: Integer
+    attr_reader closed: Symbol?
+
+    @connection: Connection
+    @local_window_max_size: Integer
+    @error: bool
+    @_method: String?
+    @_content_length: Integer?
+    @_status_code: Integer?
+    @_waiting_on_trailers: bool
+    @received_data: bool
+    @activated: bool
+
+    alias window local_window
+
+    def closed?: () -> bool
+
+    def receive: (frame) -> void
+
+    alias << receive
+
+    def verify_trailers: (frame) -> void
+
+    def calculate_content_length: (Integer?) -> void
+
+    def send: (frame) -> void
+
+    def headers: (Enumerable[header_pair] headers, ?end_headers: bool, ?end_stream: bool) -> void
+
+    def promise: (Enumerable[header_pair] headers, ?end_headers: bool) { (Stream) -> void } -> void
+
+    def reprioritize: (?weight: Integer, ?dependency: Integer, ?exclusive: bool) -> void
+
+    def data: (String payload, ?end_stream: bool) -> void
+
+    def chunk_data: (String payload, Integer max_size) { (String) -> void } -> String
+
+    def close: (Symbol error) -> void
+             | () -> void
+
+    def cancel: () -> void
+
+    def refuse: () -> void
+
+    def window_update: (Integer increment) -> void
+
+    private
+
+    def initialize: (
+      connection: Connection,
+      id: Integer,
+      ?weight: Integer,
+      ?dependency: Integer,
+      ?exclusive: bool,
+      ?parent: Stream?,
+      ?state: Symbol
+    ) -> untyped
+
+    def transition: (frame, bool sending) -> void
+
+    def event: (Symbol newstate) -> void
+
+    def activate_stream_in_conn: () -> void
+
+    def close_stream_in_conn: (*untyped) -> void
+
+    def complete_transition: (frame) -> void
+
+    def process_priority: ({weight: Integer, dependency: Integer, exclusive: bool}) -> void
+
+    def end_frame?: () -> bool
+
+    def stream_error: (Symbol error, ?msg: String?) -> void
+                    | () -> void
+
+    alias error stream_error
+
+    def manage_state: (frame) { () -> void } -> void
+  end
+end

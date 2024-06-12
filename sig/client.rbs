@@ -1,0 +1,9 @@
+module HTTP2Next
+  class Client < Connection
+    def upgrade: () -> Stream
+
+    def send_connection_preface: () -> void
+
+    def self.settings_header: (settings_enum) -> String
+  end
+end

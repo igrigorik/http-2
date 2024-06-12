@@ -1,0 +1,13 @@
+module HTTP2Next
+  module Emitter
+    def on: (Symbol event) { (*untyped) -> void } -> void
+
+    def once: (Symbol event) { (*untyped) -> void } -> void
+
+    def emit: (Symbol event, *untyped args) ?{ (*untyped) -> void } -> void
+
+    private
+
+    def listeners: (Symbol event)  -> Array[Proc]
+  end
+end

@@ -1,0 +1,13 @@
+module HTTP2Next
+  class FrameBuffer
+    attr_reader bytesize: Integer
+
+    @buffer: Array[data_frame]
+
+    def <<: (data_frame) -> void
+
+    def empty?: () -> bool
+
+    def retrieve: (Integer) -> data_frame?
+  end
+end

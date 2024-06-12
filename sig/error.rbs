@@ -1,0 +1,35 @@
+module HTTP2Next
+  module Error
+    def self?.types: () -> Hash[Symbol, singleton(Error)]
+
+    class Error < StandardError
+    end
+
+    class HandshakeError < Error
+    end
+
+    class ProtocolError < Error
+    end
+
+    class CompressionError < ProtocolError
+    end
+
+    class FlowControlError < ProtocolError
+    end
+
+    class InternalError < ProtocolError
+    end
+
+    class StreamClosed < Error
+    end
+
+    class ConnectionClosed < Error
+    end
+
+    class StreamLimitExceeded < Error
+    end
+
+    class FrameSizeError < Error
+    end
+  end
+end

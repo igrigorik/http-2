@@ -1,0 +1,34 @@
+module HTTP2Next
+  module Header
+    class EncodingContext
+      STATIC_TABLE: Array[header_pair]
+
+      attr_reader table: Array[header_pair]
+
+      attr_reader options: context_hash
+
+      def dup: () -> EncodingContext
+
+      def dereference: (Integer) -> header_pair
+
+      def process: (header_command cmd) -> header_pair?
+
+      def encode: (_Each[header_pair]) -> Array[header_command]
+
+      def addcmd: (String name, String value) -> header_command
+
+      def table_size=: (Integer) -> void
+
+      def current_table_size: () -> Integer
+
+      private
+
+      def initialize: (context_hash options) -> untyped
+                    | () -> untyped
+
+      def add_to_table: (header_pair) -> void
+
+      def size_check: (header_pair?) -> bool
+    end
+  end
+end
