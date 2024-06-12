@@ -28,8 +28,8 @@ module HTTP2
   end
 end
 
-require "http/2/next/header/huffman"
-require "http/2/next/header/huffman_statemachine"
-require "http/2/next/header/encoding_context"
-require "http/2/next/header/compressor"
-require "http/2/next/header/decompressor"
+require "http/2/header/huffman"
+require "http/2/header/huffman_statemachine"
+require "http/2/header/encoding_context"
+require "http/2/header/compressor"
+require "http/2/header/decompressor"

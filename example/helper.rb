@@ -14,7 +14,7 @@ if ENV.key?("CI")
   SimpleCov.coverage_dir "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec"
 end
 
-require "http/2/next"
+require "http/2"
 
 DRAFT = "h2"
 

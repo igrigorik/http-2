@@ -33,7 +33,7 @@ This implementation makes no assumptions as how the data is delivered: it could 
 Your code is responsible for feeding data into the parser, which performs all of the necessary HTTP/2 decoding, state management and the rest, and vice versa, the parser will emit bytes (encoded HTTP/2 frames) that you can then route to the destination. Roughly, this works as follows:
 
 ```ruby
-require 'http/2/next'
+require 'http/2'
 
 socket = YourTransport.new
 
@@ -50,7 +50,7 @@ Checkout provided [client](example/client.rb) and [server](example/server.rb) im
 
 ### Connection lifecycle management
 
-Depending on the role of the endpoint you must initialize either a [Client](lib/http/2/next/client.rb) or a [Server](lib/http/2/next/server.rb) object. Doing so picks the appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
+Depending on the role of the endpoint you must initialize either a [Client](lib/http/2/client.rb) or a [Server](lib/http/2/server.rb) object. Doing so picks the appropriate header compression / decompression algorithms and stream management logic. From there, you can subscribe to connection level events, or invoke appropriate APIs to allocate new streams and manage the lifecycle. For example:
 
 ```ruby
 # - Server ---------------
@@ -153,7 +153,7 @@ conn.on(:stream) do |stream|
 end
 ```
 
-Events emitted by the [Stream object](lib/http/2/next/stream.rb):
+Events emitted by the [Stream object](lib/http/2/stream.rb):
 
 <table>
   <tr>
