@@ -1,3 +1,0 @@
-[submodule "spec/hpack-test-case"]
-	path = spec/hpack-test-case
-	url = https://github.com/http2jp/hpack-test-case
