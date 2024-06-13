@@ -5,8 +5,6 @@ require 'bundler/gem_tasks'
 require 'open3'
 require_relative 'lib/tasks/generate_huffman_table'
 
-RUBY_MAJOR_MINOR = RUBY_VERSION.split('.').first(2).join('.')
-
 begin
   require 'rspec/core/rake_task'
   RSpec::Core::RakeTask.new(:spec) do |t|
@@ -101,6 +99,6 @@ end
 
 default_tasks = %i[spec]
 default_tasks << :rubocop if defined?(RuboCop) && RUBY_ENGINE == 'ruby'
-default_tasks += %i[h2spec_install h2spec] if ENV.key?('CI') && RUBY_VERSION >= '3.0.0'
+default_tasks += %i[h2spec_install h2spec] if ENV.key?('CI')
 task default: default_tasks
 task all: %i[default hpack]
