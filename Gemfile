@@ -10,16 +10,15 @@ gem 'yard'
 
 gem 'pry'
 gem 'pry-byebug', platform: :mri
-gem 'rspec', '~> 3.4.0'
+gem 'rspec'
 
-if RUBY_VERSION >= '3.0'
-  gem 'rubocop'
-  gem 'rubocop-performance'
-  platform :mri do
-    gem 'rbs'
-    gem 'steep'
-    gem 'typeprof'
-  end
+gem 'rubocop', '1.28'
+gem 'rubocop-performance'
+
+platform :mri do
+  gem 'rbs'
+  gem 'steep'
+  gem 'typeprof'
 end
 
 # gem "memory_profiler"

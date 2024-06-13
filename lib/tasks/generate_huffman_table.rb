@@ -65,7 +65,7 @@ module HuffmanTable
 
         next if node.transitions
 
-        node.transitions = Array[1 << BITS_AT_ONCE]
+        node.transitions = [1 << BITS_AT_ONCE]
 
         (1 << BITS_AT_ONCE).times do |input|
           n = node

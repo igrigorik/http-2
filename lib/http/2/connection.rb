@@ -45,7 +45,6 @@ module HTTP2
   # Note that this class should not be used directly. Instead, you want to
   # use either Client or Server class to drive the HTTP 2.0 exchange.
   #
-  # rubocop:disable Metrics/ClassLength
   class Connection
     include FlowBuffer
     include Emitter
@@ -795,5 +794,4 @@ module HTTP2
       yield
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end
