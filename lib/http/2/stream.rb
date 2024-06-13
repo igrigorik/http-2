@@ -170,7 +170,7 @@ module HTTP2
       trailers = frame[:payload]
       return unless trailers.respond_to?(:each)
 
-      trailers.each do |field, _|
+      trailers.each_key do |field|
         @_trailers.delete(field)
         break if @_trailers.empty?
       end

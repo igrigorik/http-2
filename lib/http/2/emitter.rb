@@ -31,9 +31,9 @@ module HTTP2
     # @param event [Symbol]
     # @param args [Array] arguments to be passed to the callbacks
     # @param block [Proc] callback function
-    def emit(event, *args, &block)
+    def emit(event, ...)
       listeners(event).delete_if do |cb|
-        :delete == cb.call(*args, &block) # rubocop:disable Style/YodaCondition
+        :delete == cb.call(...) # rubocop:disable Style/YodaCondition
       end
     end
 

@@ -4,22 +4,26 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'rake'
-gem 'simplecov', require: false
-gem 'yard'
+gem 'rake', require: false
 
-gem 'pry'
-gem 'pry-byebug', platform: :mri
-gem 'rspec'
+group :development do
+  gem 'pry'
+  gem 'pry-byebug', platform: :mri
+  gem 'rubocop'
+  gem 'rubocop-performance'
+end
 
-gem 'rubocop', '1.28'
-gem 'rubocop-performance'
+group :docs do
+  gem 'yard'
+end
 
-platform :mri do
+group :test do
+  gem 'rspec'
+  gem 'simplecov', require: false
+end
+
+group :types do
   gem 'rbs'
   gem 'steep'
   gem 'typeprof'
 end
-
-# gem "memory_profiler"
-# gem "stackprof", platform: :mri

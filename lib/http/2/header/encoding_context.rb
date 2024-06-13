@@ -8,7 +8,7 @@ module HTTP2
     class EncodingContext
       include Error
 
-      UPPER = /[[:upper:]]/.freeze
+      UPPER = /[[:upper:]]/
 
       # @private
       # Static table
