@@ -24,6 +24,6 @@ end
 
 group :types do
   gem 'rbs', platform: :mri
-  gem 'steep'
+  gem 'steep', platform: :mri
   gem 'typeprof'
 end

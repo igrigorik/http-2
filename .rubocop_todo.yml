@@ -106,7 +106,6 @@ Style/Documentation:
     - 'test/**/*'
     - 'example/helper.rb'
     - 'example/upgrade_server.rb'
-    - 'lib/http/2/base64.rb'
     - 'lib/http/2/error.rb'
     - 'lib/http/2/extensions.rb'
     - 'lib/http/2/flow_buffer.rb'

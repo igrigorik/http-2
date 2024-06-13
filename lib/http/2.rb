@@ -2,7 +2,6 @@
 
 require 'http/2/version'
 require 'http/2/extensions'
-require 'http/2/base64'
 require 'http/2/error'
 require 'http/2/emitter'
 require 'http/2/flow_buffer'

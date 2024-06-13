@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'base64'
+
 module HTTP2
   # HTTP 2.0 server connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
