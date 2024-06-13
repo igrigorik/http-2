@@ -23,7 +23,9 @@ group :test do
 end
 
 group :types do
-  gem 'rbs', platform: :mri
-  gem 'steep', platform: :mri
-  gem 'typeprof'
+  platform :mri do
+    gem 'rbs'
+    gem 'steep'
+    gem 'typeprof'
+  end
 end
