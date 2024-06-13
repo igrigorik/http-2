@@ -27,19 +27,67 @@ jobs:
           bundler-cache: true
 
       - name: Tests
-        run: ENV=CI bundle exec rake spec
+        run: |
+          RUBY_PLATFORM=`ruby -e 'puts RUBY_PLATFORM'`
+          RUBY_ENGINE=`ruby -e 'puts RUBY_ENGINE'`
+          if [[ "$RUBY_ENGINE" = "ruby" ]] && [[ ${RUBY_VERSION:0:1} = "3" ]] && [[ ! $RUBYOPT =~ "jit" ]]; then
+            echo "running runtime type checking..."
+            export RUBYOPT="-rbundler/setup -rrbs/test/setup"
+            export RBS_TEST_RAISE="true"
+            export RBS_TEST_LOGLEVEL="error"
+            export RBS_TEST_OPT="-Isig -rbase64"
+            export RBS_TEST_TARGET="HTTP2Next*"
+          fi
+          ENV=CI bundle exec rake
+      - name: Upload coverage
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
 
-  rubocop:
+  coverage:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/download-artifact@master
+        with:
+          name: coverage-report
+          path: path/to/artifact
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: ${{ env.ruby_version }}
+          ruby-version: 3.3
           bundler-cache: true
 
-      - name: Rubocop
-        run: ENV=CI bundle exec rubocop
+      - name: coverage
+        run: |
+          gem install simplecov --no-doc
+          ls
+          find coverage -name "*resultset.json" -exec sed -i 's?/home?'`pwd`'?' {} \;
+          rake coverage:report
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+
+  # pages:
+  #   needs: coverage
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - uses: actions/download-artifact@master
+  #       with:
+  #         name: coverage-report
+  #         path: path/to/artifact
+
+  #     - name: publish
