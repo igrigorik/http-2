@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - master
 
 env:
   ruby_version: 3.3
