@@ -3,7 +3,8 @@
 require 'English'
 require 'bundler/gem_tasks'
 require 'open3'
-require_relative 'lib/tasks/generate_huffman_table'
+
+require_relative 'tasks/generate_huffman_table'
 
 begin
   require 'rspec/core/rake_task'
