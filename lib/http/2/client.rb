@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'base64'
-
 module HTTP2
   # HTTP 2.0 client connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
@@ -71,7 +69,7 @@ module HTTP2
 
     def self.settings_header(settings)
       frame = Framer.new.generate(type: :settings, stream: 0, payload: settings)
-      Base64.urlsafe_encode64(frame[9..])
+      Base64.urlsafe_encode64(frame[9..-1])
     end
 
     private

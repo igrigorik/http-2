@@ -164,13 +164,13 @@ module HTTP2
     alias << receive
 
     def verify_trailers(frame)
-      stream_error(:protocol_error, msg: 'trailer headers frame must close the stream') unless end_stream?(frame)
+      stream_error(:protocol_error, msg: "trailer headers frame must close the stream") unless end_stream?(frame)
       return unless @_trailers
 
       trailers = frame[:payload]
       return unless trailers.respond_to?(:each)
 
-      trailers.each_key do |field|
+      trailers.each do |field, _| # rubocop:disable Style/HashEachMethods
         @_trailers.delete(field)
         break if @_trailers.empty?
       end
@@ -183,7 +183,7 @@ module HTTP2
       @_content_length -= data_length
       return if @_content_length >= 0
 
-      stream_error(:protocol_error, msg: 'received more data than what was defined in content-length')
+      stream_error(:protocol_error, msg: "received more data than what was defined in content-length")
     end
 
     # Processes outgoing HTTP 2.0 frames. Data frames may be automatically
@@ -219,13 +219,13 @@ module HTTP2
     def headers(headers, end_headers: true, end_stream: false)
       flags = []
       flags << :end_headers if end_headers
-      flags << :end_stream  if end_stream || @_method == 'HEAD'
+      flags << :end_stream  if end_stream || @_method == "HEAD"
 
       send(type: :headers, flags: flags, payload: headers)
     end
 
     def promise(headers, end_headers: true, &block)
-      raise ArgumentError, 'must provide callback' unless block
+      raise ArgumentError, "must provide callback" unless block
 
       flags = end_headers ? [:end_headers] : []
       emit(:promise, self, headers, flags, &block)

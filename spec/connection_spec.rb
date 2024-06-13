@@ -1,28 +1,28 @@
 # frozen_string_literal: true
 
-require 'helper'
+require "helper"
 
 RSpec.describe HTTP2::Connection do
   include FrameHelpers
   let(:conn) { Client.new }
   let(:f) { Framer.new }
 
-  context 'Headers pre/post processing' do
+  context "Headers pre/post processing" do
     let(:conn) do
       client = Client.new
       client << f.generate(settings_frame)
       client
     end
 
-    it 'should not concatenate multiple occurences of a header field with the same name' do
+    it "should not concatenate multiple occurences of a header field with the same name" do
       input = [
-        ['Content-Type', 'text/html'],
-        ['Cache-Control', 'max-age=60, private'],
+        ["Content-Type", "text/html"],
+        ["Cache-Control", "max-age=60, private"],
         %w[Cache-Control must-revalidate]
       ]
       expected = [
-        ['content-type', 'text/html'],
-        ['cache-control', 'max-age=60, private'],
+        ["content-type", "text/html"],
+        ["cache-control", "max-age=60, private"],
         %w[cache-control must-revalidate]
       ]
       headers = []
@@ -38,15 +38,15 @@ RSpec.describe HTTP2::Connection do
       expect(emitted).to match_array(expected)
     end
 
-    it 'should not split zero-concatenated header field values' do
+    it "should not split zero-concatenated header field values" do
       input = [*RESPONSE_HEADERS,
-               ['cache-control', "max-age=60, private\0must-revalidate"],
-               ['content-type', 'text/html'],
-               ['cookie', "a=b\0c=d; e=f"]]
+               ["cache-control", "max-age=60, private\0must-revalidate"],
+               ["content-type", "text/html"],
+               ["cookie", "a=b\0c=d; e=f"]]
       expected = [*RESPONSE_HEADERS,
-                  ['cache-control', "max-age=60, private\0must-revalidate"],
-                  ['content-type', 'text/html'],
-                  ['cookie', "a=b\0c=d; e=f"]]
+                  ["cache-control", "max-age=60, private\0must-revalidate"],
+                  ["content-type", "text/html"],
+                  ["cookie", "a=b\0c=d; e=f"]]
 
       result = nil
       conn.on(:stream) do |stream|

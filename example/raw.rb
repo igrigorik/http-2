@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'socket'
+require "socket"
 
-puts 'Starting server on port 9000'
+puts "Starting server on port 9000"
 server = TCPServer.new(9000)
 
 loop do

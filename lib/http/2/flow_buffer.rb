@@ -38,7 +38,7 @@ module HTTP2
       # current received window size + delta length is strictly larger than
       # local window size, it throws a flow control error.
       #
-      error(:flow_control_error) if @local_window.negative?
+      error(:flow_control_error) if @local_window < 0
 
       # Send WINDOW_UPDATE if the received window size goes over
       # the local window size / 2.
@@ -91,10 +91,10 @@ module HTTP2
       return if frame[:ignore]
 
       if frame[:increment]
-        raise ProtocolError, 'increment MUST be higher than zero' if frame[:increment].zero?
+        raise ProtocolError, "increment MUST be higher than zero" if frame[:increment].zero?
 
         @remote_window += frame[:increment]
-        error(:flow_control_error, msg: 'window size too large') if @remote_window > MAX_WINDOW_SIZE
+        error(:flow_control_error, msg: "window size too large") if @remote_window > MAX_WINDOW_SIZE
       end
       send_data(nil, encode)
     end
@@ -126,7 +126,7 @@ module HTTP2
       # Frames with zero length with the END_STREAM flag set (that
       # is, an empty DATA frame) MAY be sent if there is no available space
       # in either flow control window.
-      return if window_size <= 0 && !(frame_size.zero? && end_stream)
+      return if window_size <= 0 && !(frame_size == 0 && end_stream)
 
       @buffer.shift
 

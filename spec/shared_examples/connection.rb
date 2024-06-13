@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-RSpec.shared_examples 'a connection' do
+RSpec.shared_examples "a connection" do
   let(:conn) { described_class.new }
   let(:f) { Framer.new }
 
-  context 'settings synchronization' do
-    it 'should reflect incoming settings when SETTINGS is received' do
+  context "settings synchronization" do
+    it "should reflect incoming settings when SETTINGS is received" do
       expect(conn.remote_settings[:settings_header_table_size]).to eq 4096
       settings = settings_frame
       settings[:payload] = [[:settings_header_table_size, 256]]
@@ -15,7 +15,7 @@ RSpec.shared_examples 'a connection' do
       expect(conn.remote_settings[:settings_header_table_size]).to eq 256
     end
 
-    it 'should send SETTINGS ACK when SETTINGS is received' do
+    it "should send SETTINGS ACK when SETTINGS is received" do
       settings = settings_frame
       settings[:payload] = [[:settings_header_table_size, 256]]
 
@@ -34,16 +34,16 @@ RSpec.shared_examples 'a connection' do
     end
   end
 
-  context 'flow control' do
-    it 'should initialize to default flow window' do
+  context "flow control" do
+    it "should initialize to default flow window" do
       expect(conn.remote_window).to eq DEFAULT_FLOW_WINDOW
     end
 
-    it 'should update connection and stream windows on SETTINGS' do
+    it "should update connection and stream windows on SETTINGS" do
       settings = settings_frame
       data = data_frame
       settings[:payload] = [[:settings_initial_window_size, 1024]]
-      data[:payload] = 'x' * 2048
+      data[:payload] = "x" * 2048
 
       stream = conn.new_stream
 
@@ -59,7 +59,7 @@ RSpec.shared_examples 'a connection' do
       expect(stream.remote_window).to eq(-1024)
     end
 
-    it 'should initialize streams with window specified by peer' do
+    it "should initialize streams with window specified by peer" do
       settings = settings_frame
       settings[:payload] = [[:settings_initial_window_size, 1024]]
 
@@ -67,7 +67,7 @@ RSpec.shared_examples 'a connection' do
       expect(conn.new_stream.remote_window).to eq 1024
     end
 
-    it 'should observe connection flow control' do
+    it "should observe connection flow control" do
       settings = settings_frame
       data = data_frame
       settings[:payload] = [[:settings_max_frame_size, 65_535]]
@@ -77,11 +77,11 @@ RSpec.shared_examples 'a connection' do
       s2 = conn.new_stream
 
       s1.send headers_frame
-      s1.send data.merge(payload: 'x' * 65_000)
+      s1.send data.merge(payload: "x" * 65_000)
       expect(conn.remote_window).to eq 535
 
       s2.send headers_frame
-      s2.send data.merge(payload: 'x' * 635)
+      s2.send data.merge(payload: "x" * 635)
       expect(conn.remote_window).to eq 0
       expect(conn.buffered_amount).to eq 100
 
@@ -90,7 +90,7 @@ RSpec.shared_examples 'a connection' do
       expect(conn.remote_window).to eq 900
     end
 
-    it 'should update window when data received is over half of the maximum local window size' do
+    it "should update window when data received is over half of the maximum local window size" do
       settings = settings_frame
       data = data_frame
       conn = Client.new(settings_initial_window_size: 500)
@@ -106,36 +106,36 @@ RSpec.shared_examples 'a connection' do
         expect(frame[:stream]).to eq 0
         expect(frame[:increment]).to eq 400
       end
-      conn.receive f.generate(data.merge(payload: 'x' * 200, stream: s1.id))
-      conn.receive f.generate(data.merge(payload: 'x' * 200, stream: s2.id))
+      conn.receive f.generate(data.merge(payload: "x" * 200, stream: s1.id))
+      conn.receive f.generate(data.merge(payload: "x" * 200, stream: s2.id))
       expect(s1.local_window).to eq 300
       expect(s2.local_window).to eq 300
       expect(conn.local_window).to eq 500
     end
   end
 
-  context 'connection management' do
-    it 'should respond to PING frames' do
+  context "connection management" do
+    it "should respond to PING frames" do
       conn << f.generate(settings_frame)
       expect(conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :ping
         expect(frame[:flags]).to eq [:ack]
-        expect(frame[:payload]).to eq '12345678'
+        expect(frame[:payload]).to eq "12345678"
       end
 
       conn << f.generate(ping_frame)
     end
 
-    it 'should fire callback on PONG' do
+    it "should fire callback on PONG" do
       conn << f.generate(settings_frame)
 
       pong = nil
-      conn.ping('12345678') { |d| pong = d }
+      conn.ping("12345678") { |d| pong = d }
       conn << f.generate(pong_frame)
-      expect(pong).to eq '12345678'
+      expect(pong).to eq "12345678"
     end
 
-    it 'should fire callback on receipt of GOAWAY' do
+    it "should fire callback on receipt of GOAWAY" do
       last_stream, payload, error = nil
       conn << f.generate(settings_frame)
       conn.on(:goaway) do |s, e, p|
@@ -143,29 +143,29 @@ RSpec.shared_examples 'a connection' do
         error = e
         payload = p
       end
-      conn << f.generate(goaway_frame.merge(last_stream: 17, payload: 'test'))
+      conn << f.generate(goaway_frame.merge(last_stream: 17, payload: "test"))
 
       expect(last_stream).to eq 17
       expect(error).to eq :no_error
-      expect(payload).to eq 'test'
+      expect(payload).to eq "test"
 
       expect(conn).to be_closed
     end
 
-    it 'should raise error when opening new stream after sending GOAWAY' do
+    it "should raise error when opening new stream after sending GOAWAY" do
       conn.goaway
       expect(conn).to be_closed
 
       expect { conn.new_stream }.to raise_error(ConnectionClosed)
     end
 
-    it 'should raise error when opening new stream after receiving GOAWAY' do
+    it "should raise error when opening new stream after receiving GOAWAY" do
       conn << f.generate(settings_frame)
       conn << f.generate(goaway_frame)
       expect { conn.new_stream }.to raise_error(ConnectionClosed)
     end
 
-    it 'should not raise error when receiving connection management frames immediately after emitting goaway' do
+    it "should not raise error when receiving connection management frames immediately after emitting goaway" do
       conn.goaway
       expect(conn).to be_closed
 
@@ -173,14 +173,14 @@ RSpec.shared_examples 'a connection' do
       expect { conn << f.generate(ping_frame) }.not_to raise_error(ProtocolError)
     end
 
-    it 'should respond with protocol error when receiving goaway' do
+    it "should respond with protocol error when receiving goaway" do
       conn.goaway
       expect(conn).to be_closed
 
       expect { conn << f.generate(goaway_frame) }.to raise_error(ProtocolError)
     end
 
-    it 'should raise error on frame for invalid stream ID' do
+    it "should raise error on frame for invalid stream ID" do
       conn << f.generate(settings_frame)
 
       expect do
@@ -188,7 +188,7 @@ RSpec.shared_examples 'a connection' do
       end.to raise_error(ProtocolError)
     end
 
-    it 'should allow to change the frame size' do
+    it "should allow to change the frame size" do
       buffer = []
       conn.on(:frame) do |bytes|
         buffer << bytes
@@ -197,34 +197,34 @@ RSpec.shared_examples 'a connection' do
       stream1.send headers_frame
 
       # splits big data
-      expect { stream1.data('a' * 16_385) }.to change { buffer.size }.by(2)
+      expect { stream1.data("a" * 16_385) }.to change { buffer.size }.by(2)
 
       conn << f.generate(settings_frame.merge(payload: [[:settings_max_frame_size, 65_536]]))
 
       stream2 = conn.new_stream
       stream2.send headers_frame
-      expect { stream2.data('a' * 16_385, end_stream: false) }.to change { buffer.size }.by(1)
+      expect { stream2.data("a" * 16_385, end_stream: false) }.to change { buffer.size }.by(1)
     end
   end
 
-  context 'stream management' do
-    it 'should initialize to default stream limit (100)' do
+  context "stream management" do
+    it "should initialize to default stream limit (100)" do
       expect(conn.local_settings[:settings_max_concurrent_streams]).to eq 100
     end
 
-    it 'should change stream limit to received SETTINGS value' do
+    it "should change stream limit to received SETTINGS value" do
       conn << f.generate(settings_frame)
       expect(conn.remote_settings[:settings_max_concurrent_streams]).to eq 10
     end
 
-    it 'should count open streams against stream limit' do
+    it "should count open streams against stream limit" do
       s = conn.new_stream
       expect(conn.active_stream_count).to eq 0
       s.receive headers_frame
       expect(conn.active_stream_count).to eq 1
     end
 
-    it 'should not count reserved streams against stream limit' do
+    it "should not count reserved streams against stream limit" do
       s1 = conn.new_stream
       s1.receive push_promise_frame
       expect(conn.active_stream_count).to eq 0
@@ -253,7 +253,7 @@ RSpec.shared_examples 'a connection' do
       expect(s3).to be_closed
     end
 
-    it 'should not exceed stream limit set by peer' do
+    it "should not exceed stream limit set by peer" do
       conn << f.generate(settings_frame)
 
       expect do
@@ -266,7 +266,7 @@ RSpec.shared_examples 'a connection' do
       expect { conn.new_stream }.to raise_error(StreamLimitExceeded)
     end
 
-    it 'should initialize idle stream on PRIORITY frame' do
+    it "should initialize idle stream on PRIORITY frame" do
       conn << f.generate(settings_frame)
 
       stream = nil
@@ -277,10 +277,10 @@ RSpec.shared_examples 'a connection' do
     end
   end
 
-  context 'framing' do
+  context "framing" do
     let(:conn) { connected_conn }
 
-    it 'should require that split header blocks are a contiguous sequence' do
+    it "should require that split header blocks are a contiguous sequence" do
       headers = headers_frame
       headers[:flags] = []
 
@@ -290,7 +290,7 @@ RSpec.shared_examples 'a connection' do
       end
     end
 
-    it 'should require that split promise blocks are a contiguous sequence' do
+    it "should require that split promise blocks are a contiguous sequence" do
       headers = push_promise_frame
       headers[:flags] = []
 
@@ -300,13 +300,13 @@ RSpec.shared_examples 'a connection' do
       end
     end
 
-    it 'should raise connection error on decode of invalid frame' do
+    it "should raise connection error on decode of invalid frame" do
       frame = f.generate(data_frame) # Receiving DATA on unopened stream 1 is an error.
       # Connection errors emit protocol error frames
       expect { conn << frame }.to raise_error(ProtocolError)
     end
 
-    it 'should emit encoded frames via on(:frame)' do
+    it "should emit encoded frames via on(:frame)" do
       bytes = nil
       conn.on(:frame) { |d| bytes = d }
       conn.settings(settings_max_concurrent_streams: 10,
@@ -315,23 +315,23 @@ RSpec.shared_examples 'a connection' do
       expect(bytes).to eq f.generate(settings_frame)
     end
 
-    it 'should compress stream headers' do
+    it "should compress stream headers" do
       conn.on(:frame) do |bytes|
-        expect(bytes).not_to include('get')
-        expect(bytes).not_to include('http')
-        expect(bytes).not_to include('www.example.org') # should be huffman encoded
+        expect(bytes).not_to include("get")
+        expect(bytes).not_to include("http")
+        expect(bytes).not_to include("www.example.org") # should be huffman encoded
       end
 
       stream = conn.new_stream
       stream.headers({
-                       ':method' => 'get',
-                       ':scheme' => 'http',
-                       ':authority' => 'www.example.org',
-                       ':path' => '/resource'
+                       ":method" => "get",
+                       ":scheme" => "http",
+                       ":authority" => "www.example.org",
+                       ":path" => "/resource"
                      })
     end
 
-    it 'should generate CONTINUATION if HEADERS is too long' do
+    it "should generate CONTINUATION if HEADERS is too long" do
       headers = []
       conn.on(:frame) do |bytes|
         # bytes[3]: frame's type field
@@ -340,11 +340,11 @@ RSpec.shared_examples 'a connection' do
 
       stream = conn.new_stream
       stream.headers({
-                       ':method' => 'get',
-                       ':scheme' => 'http',
-                       ':authority' => 'www.example.org',
-                       ':path' => '/resource',
-                       'custom' => 'q' * 44_000
+                       ":method" => "get",
+                       ":scheme" => "http",
+                       ":authority" => "www.example.org",
+                       ":path" => "/resource",
+                       "custom" => "q" * 44_000
                      }, end_stream: true)
       expect(headers.size).to eq 3
       expect(headers[0][:type]).to eq :headers
@@ -355,7 +355,7 @@ RSpec.shared_examples 'a connection' do
       expect(headers[2][:flags]).to eq [:end_headers]
     end
 
-    it 'should not generate CONTINUATION if HEADERS fits exactly in a frame' do
+    it "should not generate CONTINUATION if HEADERS fits exactly in a frame" do
       headers = []
       conn.on(:frame) do |bytes|
         # bytes[3]: frame's type field
@@ -364,11 +364,11 @@ RSpec.shared_examples 'a connection' do
 
       stream = conn.new_stream
       stream.headers({
-                       ':method' => 'get',
-                       ':scheme' => 'http',
-                       ':authority' => 'www.example.org',
-                       ':path' => '/resource',
-                       'custom' => 'q' * 18_682 # this number should be updated when Huffman table is changed
+                       ":method" => "get",
+                       ":scheme" => "http",
+                       ":authority" => "www.example.org",
+                       ":path" => "/resource",
+                       "custom" => "q" * 18_682 # this number should be updated when Huffman table is changed
                      }, end_stream: true)
       expect(headers[0][:length]).to eq conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
@@ -377,7 +377,7 @@ RSpec.shared_examples 'a connection' do
       expect(headers[0][:flags]).to include(:end_stream)
     end
 
-    it 'should not generate CONTINUATION if HEADERS fits exactly in a frame' do
+    it "should not generate CONTINUATION if HEADERS fits exactly in a frame" do
       headers = []
       conn.on(:frame) do |bytes|
         # bytes[3]: frame's type field
@@ -386,11 +386,11 @@ RSpec.shared_examples 'a connection' do
 
       stream = conn.new_stream
       stream.headers({
-                       ':method' => 'get',
-                       ':scheme' => 'http',
-                       ':authority' => 'www.example.org',
-                       ':path' => '/resource',
-                       'custom' => 'q' * 18_682 # this number should be updated when Huffman table is changed
+                       ":method" => "get",
+                       ":scheme" => "http",
+                       ":authority" => "www.example.org",
+                       ":path" => "/resource",
+                       "custom" => "q" * 18_682 # this number should be updated when Huffman table is changed
                      }, end_stream: true)
       expect(headers[0][:length]).to eq conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
@@ -399,7 +399,7 @@ RSpec.shared_examples 'a connection' do
       expect(headers[0][:flags]).to include(:end_stream)
     end
 
-    it 'should generate CONTINUATION if HEADERS exceed the max payload by one byte' do
+    it "should generate CONTINUATION if HEADERS exceed the max payload by one byte" do
       headers = []
       conn.on(:frame) do |bytes|
         headers << f.parse(bytes) if [1, 5, 9].include?(bytes[3].ord)
@@ -407,11 +407,11 @@ RSpec.shared_examples 'a connection' do
 
       stream = conn.new_stream
       stream.headers({
-                       ':method' => 'get',
-                       ':scheme' => 'http',
-                       ':authority' => 'www.example.org',
-                       ':path' => '/resource',
-                       'custom' => 'q' * 18_683 # this number should be updated when Huffman table is changed
+                       ":method" => "get",
+                       ":scheme" => "http",
+                       ":authority" => "www.example.org",
+                       ":path" => "/resource",
+                       "custom" => "q" * 18_683 # this number should be updated when Huffman table is changed
                      }, end_stream: true)
       expect(headers[0][:length]).to eq conn.remote_settings[:settings_max_frame_size]
       expect(headers[1][:length]).to eq 1
@@ -422,8 +422,8 @@ RSpec.shared_examples 'a connection' do
       expect(headers[1][:flags]).to eq [:end_headers]
     end
   end
-  context 'API' do
-    it '.settings should emit SETTINGS frames' do
+  context "API" do
+    it ".settings should emit SETTINGS frames" do
       expect(conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :settings
         expect(frame[:payload]).to eq([
@@ -437,16 +437,16 @@ RSpec.shared_examples 'a connection' do
                     settings_initial_window_size: 0x7fffffff)
     end
 
-    it '.ping should generate PING frames' do
+    it ".ping should generate PING frames" do
       expect(conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :ping
-        expect(frame[:payload]).to eq 'somedata'
+        expect(frame[:payload]).to eq "somedata"
       end
 
-      conn.ping('somedata')
+      conn.ping("somedata")
     end
 
-    it '.window_update should emit WINDOW_UPDATE frames' do
+    it ".window_update should emit WINDOW_UPDATE frames" do
       expect(conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :window_update
         expect(frame[:increment]).to eq 20

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'base64'
-
 module HTTP2
   # HTTP 2.0 server connection class that implements appropriate header
   # compression / decompression algorithms and stream management logic.
@@ -80,7 +78,7 @@ module HTTP2
       receive(CONNECTION_PREFACE_MAGIC)
 
       # Process received HTTP2-Settings payload
-      buf = ''.b
+      buf = "".b
       buf << Base64.urlsafe_decode64(settings.to_s)
       @framer.common_header(
         {

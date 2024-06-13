@@ -1,22 +1,22 @@
 # frozen_string_literal: true
 
-$LOAD_PATH << 'lib' << '../lib'
+$LOAD_PATH << "lib" << "../lib"
 
-require 'optparse'
-require 'socket'
-require 'openssl'
-require 'uri'
+require "optparse"
+require "socket"
+require "openssl"
+require "uri"
 
 # This will enable coverage within the CI environment
-if ENV.key?('CI')
-  require 'simplecov'
+if ENV.key?("CI")
+  require "simplecov"
   SimpleCov.command_name "#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec"
   SimpleCov.coverage_dir "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec"
 end
 
-require 'http/2'
+require "http/2"
 
-DRAFT = 'h2'
+DRAFT = "h2"
 
 class Logger
   def initialize(id)

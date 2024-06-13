@@ -1,15 +1,107 @@
 inherit_from: .rubocop_todo.yml
 
+require:
+  - rubocop-performance
+
 AllCops:
   NewCops: enable
-  SuggestExtensions: false
-  TargetRubyVersion: 3.0
+  TargetRubyVersion: 2.7
+  DisplayCopNames: true
   Exclude:
-    - 'vendor/bundle/**/*' # see https://github.com/rubocop/rubocop/issues/9832
+    - "bin/**"
+    - "vendor/**/*"
+    - "**/huffman_statemachine.rb"
+    - "lib/tasks/**"
 
-Gemspec/RequireMFA:
-  Enabled: false
 
 Metrics/BlockLength:
+  Enabled: false
+
+Lint/EmptyWhen:
+  Enabled: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/NumericPredicate:
+  Enabled: false
+
+Gemspec/RequiredRubyVersion:
+  Enabled: false
+
+Bundler/DuplicatedGem:
+  Enabled: false
+
+Style/OptionalBooleanParameter:
+  Enabled: false
+
+Style/ArgumentsForwarding:
+  Enabled: false
+
+Lint/MissingSuper:
   Exclude:
-    - 'spec/**/*.rb'
+    - 'lib/httpx/io/unix.rb'
+
+Style/HashTransformValues:
+  Exclude:
+    - 'lib/httpx/plugins/digest_authentication.rb'
+
+Lint/ConstantDefinitionInBlock:
+  Exclude:
+    - 'spec/**/*'
+
+# TODO: remove this if min supported version of ruby is 2.3
+Style/HashSyntax:
+  Enabled: false
+
+Style/AndOr:
+  Enabled: false
+
+Style/SafeNavigation:
+  Enabled: false
+
+Layout/HeredocIndentation:
+  Exclude:
+    - "lib/tasks/generate_huffman_table.rb"
+    - "example/*"
+
+Naming/MethodParameterName:
+  Enabled: false
+
+Naming/VariableNumber:
+  Exclude:
+    - example/server.rb
+
+Layout/LineLength:
+  Max: 128
+
+Style/HashEachMethods:
+  Enabled: true
+
+Style/HashTransformKeys:
+  Enabled: true
+
+Style/CommentAnnotation:
+  Enabled: false
+
+Style/SlicingWithRange:
+  Enabled: false
+
+Lint/SuppressedException:
+  Exclude:
+    - Rakefile
+
+Lint/EmptyBlock:
+  Exclude:
+    - spec/*
+
+Performance/CollectionLiteralInLoop:
+  Exclude:
+    - spec/*
+
+Performance/MethodObjectAsBlock:
+  Enabled: false
+
+Metrics/CollectionLiteralLength:
+  Exclude:
+    - lib/http/2/header/huffman.rb

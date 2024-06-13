@@ -1,10 +1,7 @@
-# HTTP-2-Next
+# HTTP-2
 
-[![Gem Version](https://badge.fury.io/rb/http-2-next.svg)](http://rubygems.org/gems/http-2-next)
-[![Build status](https://gitlab.com/os85/http-2-next/badges/master/pipeline.svg)](https://gitlab.com/os85/http-2-next/commits/master)
-[![coverage report](https://gitlab.com/os85/http-2-next/badges/master/coverage.svg?job=coverage)](https://os85.gitlab.io/http-2-next/coverage/#_AllFiles)
-
-**Attention!** This is a fork of the [http-2](https://github.com/igrigorik/http-2) gem.
+[![Gem Version](https://badge.fury.io/rb/http-2.svg)](http://rubygems.org/gems/http-2)
+[![Build status](https://github.com/igrigorik/http-2/actions/workflows/ci.yml/badge.svg)](https://github.com/igrigorik/http-2)
 
 Pure Ruby, framework and transport agnostic, implementation of HTTP/2 protocol and HPACK header compression with support for:
 
@@ -14,7 +11,7 @@ Pure Ruby, framework and transport agnostic, implementation of HTTP/2 protocol a
 * Connection and stream [flow control](https://hpbn.co/http2/#flow-control)
 * [Header compression](https://hpbn.co/http2/#header-compression) and [server push](https://hpbn.co/http2/#server-push)
 * Connection and stream management
-* And more... see [API docs](https://www.rubydoc.info/gems/http-2-next)
+* And more... see [API docs](https://www.rubydoc.info/gems/http-2)
 
 Protocol specifications:
 
@@ -25,7 +22,7 @@ Protocol specifications:
 ## Getting started
 
 ```bash
-$> gem install http-2-next
+$> gem install http-2
 ```
 
 This implementation makes no assumptions as how the data is delivered: it could be a regular Ruby TCP socket, your custom eventloop, or whatever other transport you wish to use - e.g. ZeroMQ, [avian carriers](http://www.ietf.org/rfc/rfc1149.txt), etc.

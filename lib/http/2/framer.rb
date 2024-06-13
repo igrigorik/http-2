@@ -103,9 +103,9 @@ module HTTP2
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff
     EBIT  = 0x80000000
-    UINT32 = 'N'
-    UINT16 = 'n'
-    UINT8  = 'C'
+    UINT32 = "N"
+    UINT16 = "n"
+    UINT8  = "C"
     HEADERPACK = (UINT8 + UINT16 + UINT8 + UINT8 + UINT32).freeze
     FRAME_LENGTH_HISHIFT = 16
     FRAME_LENGTH_LOMASK  = 0xFFFF
@@ -131,7 +131,7 @@ module HTTP2
 
       raise CompressionError, "Frame size is too large: #{frame[:length]}" if frame[:length] > @remote_max_frame_size
 
-      raise CompressionError, "Frame size is invalid: #{frame[:length]}" if (frame[:length]).negative?
+      raise CompressionError, "Frame size is invalid: #{frame[:length]}" if frame[:length] < 0
 
       raise CompressionError, "Stream ID (#{frame[:stream]}) is too large" if frame[:stream] > MAX_STREAM_ID
 
@@ -165,7 +165,7 @@ module HTTP2
       frame[:type], = FRAME_TYPES.find { |_t, pos| type == pos }
       if frame[:type]
         frame[:flags] = FRAME_FLAGS[frame[:type]].each_with_object([]) do |(name, pos), acc|
-          acc << name if (flags & (1 << pos)).positive?
+          acc << name if (flags & (1 << pos)) > 0
         end
       end
 
@@ -178,7 +178,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def generate(frame)
-      bytes  = ''.b
+      bytes  = "".b
       length = 0
 
       frame[:flags] ||= []
@@ -244,10 +244,7 @@ module HTTP2
         length += 4 + frame[:payload].bytesize
 
       when :ping
-        if frame[:payload].bytesize != 8
-          raise CompressionError,
-                "Invalid payload size (#{frame[:payload].size} != 8 bytes)"
-        end
+        raise CompressionError, "Invalid payload size (#{frame[:payload].size} != 8 bytes)" if frame[:payload].bytesize != 8
 
         bytes << frame[:payload]
         length += 8
@@ -274,7 +271,7 @@ module HTTP2
         pack([frame[:max_age], frame[:port]], UINT32 + UINT16, buffer: bytes)
         length += 6
         if frame[:proto]
-          raise CompressionError, 'Proto too long' if frame[:proto].bytesize > 255
+          raise CompressionError, "Proto too long" if frame[:proto].bytesize > 255
 
           pack([frame[:proto].bytesize], UINT8, buffer: bytes)
           bytes << frame[:proto]
@@ -284,7 +281,7 @@ module HTTP2
           length += 1
         end
         if frame[:host]
-          raise CompressionError, 'Host too long' if frame[:host].bytesize > 255
+          raise CompressionError, "Host too long" if frame[:host].bytesize > 255
 
           pack([frame[:host].bytesize], UINT8, buffer: bytes)
           bytes << frame[:host]
@@ -345,7 +342,7 @@ module HTTP2
       frame = read_common_header(buf)
       return if buf.size < 9 + frame[:length]
 
-      raise ProtocolError, 'payload too large' if frame[:length] > @local_max_frame_size
+      raise ProtocolError, "payload too large" if frame[:length] > @local_max_frame_size
 
       buf.read(9)
       payload = buf.read(frame[:length])
@@ -362,9 +359,9 @@ module HTTP2
         if padded
           padlen = payload.read(1).unpack1(UINT8)
           frame[:padding] = padlen + 1
-          raise ProtocolError, 'padding too long' if padlen > payload.bytesize
+          raise ProtocolError, "padding too long" if padlen > payload.bytesize
 
-          payload = payload.byteslice(0, payload.bytesize - padlen) if padlen.positive?
+          payload = payload.byteslice(0, payload.bytesize - padlen) if padlen > 0
           frame[:length] -= frame[:padding]
           frame[:flags].delete(:padded)
         end
@@ -401,7 +398,7 @@ module HTTP2
         # NOTE: frame[:length] might not match the number of frame[:payload]
         # because unknown extensions are ignored.
         frame[:payload] = []
-        raise ProtocolError, 'Invalid settings payload length' unless (frame[:length] % 6).zero?
+        raise ProtocolError, "Invalid settings payload length" unless (frame[:length] % 6).zero?
 
         raise ProtocolError, "Invalid stream ID (#{frame[:stream]})" if (frame[:stream]).nonzero?
 
@@ -422,7 +419,7 @@ module HTTP2
         frame[:error] = unpack_error payload.read_uint32
 
         size = frame[:length] - 8 # for last_stream and error
-        frame[:payload] = payload.read(size) if size.positive?
+        frame[:payload] = payload.read(size) if size > 0
       when :window_update
         if frame[:length] % 4 != 0
           raise FrameSizeError, "Invalid length for WINDOW_UPDATE (#{frame[:length]} not multiple of 4)"
@@ -434,11 +431,11 @@ module HTTP2
 
         len = payload.byteslice(0, 1).ord
         payload = payload.byteslice(1..-1)
-        frame[:proto] = payload.read(len) if len.positive?
+        frame[:proto] = payload.read(len) if len > 0
 
         len = payload.byteslice(0, 1).ord
         payload = payload.byteslice(1..-1)
-        frame[:host] = payload.read(len) if len.positive?
+        frame[:host] = payload.read(len) if len > 0
 
         frame[:origin] = payload.read(payload.size) unless payload.empty?
 
