@@ -4,7 +4,7 @@ module HTTP2
   module StringExtensions
     refine String do
       def read(n)
-        return "".b if n == 0
+        return ''.b if n.zero?
 
         chunk = byteslice(0..n - 1)
         remaining = byteslice(n..-1)
@@ -13,7 +13,7 @@ module HTTP2
       end
 
       def read_uint32
-        read(4).unpack1("N")
+        read(4).unpack1('N')
       end
 
       def shift_byte
@@ -25,7 +25,7 @@ module HTTP2
   # this mixin handles backwards-compatibility for the new packing options
   # shipping with ruby 3.3 (see https://docs.ruby-lang.org/en/3.3/packed_data_rdoc.html)
   module PackingExtensions
-    if RUBY_VERSION < "3.3.0"
+    if RUBY_VERSION < '3.3.0'
       def pack(array_to_pack, template, buffer:, offset: -1)
         packed_str = array_to_pack.pack(template)
         case offset
