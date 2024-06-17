@@ -5,6 +5,7 @@ require:
 
 AllCops:
   NewCops: enable
+  SuggestExtensions: false
   TargetRubyVersion: 2.7
   DisplayCopNames: true
   Exclude:
@@ -23,9 +24,6 @@ Metrics/BlockLength:
 
 Lint/EmptyWhen:
   Enabled: false
-
-Style/StringLiterals:
-  EnforcedStyle: double_quotes
 
 Style/NumericPredicate:
   Enabled: false
@@ -53,10 +51,6 @@ Style/HashTransformValues:
 Lint/ConstantDefinitionInBlock:
   Exclude:
     - 'spec/**/*'
-
-# TODO: remove this if min supported version of ruby is 2.3
-Style/HashSyntax:
-  Enabled: false
 
 Style/AndOr:
   Enabled: false

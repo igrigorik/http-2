@@ -91,10 +91,10 @@ module HTTP2
       return if frame[:ignore]
 
       if frame[:increment]
-        raise ProtocolError, "increment MUST be higher than zero" if frame[:increment].zero?
+        raise ProtocolError, 'increment MUST be higher than zero' if frame[:increment].zero?
 
         @remote_window += frame[:increment]
-        error(:flow_control_error, msg: "window size too large") if @remote_window > MAX_WINDOW_SIZE
+        error(:flow_control_error, msg: 'window size too large') if @remote_window > MAX_WINDOW_SIZE
       end
       send_data(nil, encode)
     end

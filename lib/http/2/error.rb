@@ -15,7 +15,7 @@ module HTTP2
 
         type = klass.name or return
 
-        type = type.split("::").last or return
+        type = type.split('::').last or return
 
         type = type.gsub(/([^\^])([A-Z])/, '\1_\2').downcase.to_sym
         HTTP2::Error.types[type] = klass

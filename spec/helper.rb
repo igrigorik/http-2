@@ -2,8 +2,8 @@
 
 GC.auto_compact = true if GC.respond_to?(:auto_compact=)
 
-if ENV.key?("CI")
-  require "simplecov"
+if ENV.key?('CI')
+  require 'simplecov'
   SimpleCov.command_name "#{RUBY_ENGINE}-#{RUBY_VERSION}"
   SimpleCov.coverage_dir "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}"
 end
@@ -11,10 +11,10 @@ end
 RSpec.configure(&:disable_monkey_patching!)
 RSpec::Expectations.configuration.warn_about_potential_false_positives = false
 
-require "json"
+require 'json'
 
 # rubocop: disable Style/MixinUsage
-require "http/2"
+require 'http/2'
 include HTTP2
 include HTTP2::Header
 include HTTP2::Error
@@ -36,7 +36,7 @@ module FrameHelpers
       type: :data,
       flags: [:end_stream],
       stream: 1,
-      payload: "text"
+      payload: 'text'
     }
   end
 
@@ -92,7 +92,7 @@ module FrameHelpers
     {
       stream: 0,
       type: :ping,
-      payload: "12345678"
+      payload: '12345678'
     }
   end
 
@@ -101,7 +101,7 @@ module FrameHelpers
       stream: 0,
       type: :ping,
       flags: [:ack],
-      payload: "12345678"
+      payload: '12345678'
     }
   end
 
@@ -110,7 +110,7 @@ module FrameHelpers
       type: :goaway,
       last_stream: 2,
       error: :no_error,
-      payload: "debug"
+      payload: 'debug'
     }
   end
 
@@ -125,7 +125,7 @@ module FrameHelpers
     {
       type: :continuation,
       flags: [:end_headers],
-      payload: "-second-block"
+      payload: '-second-block'
     }
   end
 
@@ -134,9 +134,9 @@ module FrameHelpers
       type: :altsvc,
       max_age: 1_402_290_402,           # 4
       port: 8080,                       # 2    reserved 1
-      proto: "h2-12",                   # 1 + 5
-      host: "www.example.com",          # 1 + 15
-      origin: "www.example.com"         # 15
+      proto: 'h2-12',                   # 1 + 5
+      host: 'www.example.com',          # 1 + 15
+      origin: 'www.example.com'         # 15
     }
   end
 
@@ -150,19 +150,19 @@ module FrameHelpers
   DATA_FRAMES = %w[headers continuation push_promise data].freeze
 
   def control_frames
-    methods.select { |meth| meth.to_s.end_with?("_frame") }
-           .reject { |meth| DATA_FRAMES.include?(meth.to_s.gsub(/_frame$/, "")) }
+    methods.select { |meth| meth.to_s.end_with?('_frame') }
+           .reject { |meth| DATA_FRAMES.include?(meth.to_s.gsub(/_frame$/, '')) }
            .map { |meth| __send__(meth) }
   end
 
   def frame_types
-    methods.select { |meth| meth.to_s.end_with?("_frame") }
+    methods.select { |meth| meth.to_s.end_with?('_frame') }
            .map { |meth| __send__(meth) }
   end
 end
 
 def set_stream_id(bytes, id)
-  scheme = "CnCCN"
+  scheme = 'CnCCN'
   head = bytes.slice!(0, 9).unpack(scheme)
   head[4] = id
 

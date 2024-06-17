@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative "helper"
-require "http_parser"
+require_relative 'helper'
+require 'http_parser'
 
 OptionParser.new do |opts|
-  opts.banner = "Usage: upgrade_client.rb [options]"
+  opts.banner = 'Usage: upgrade_client.rb [options]'
 end.parse!
 
-uri = URI.parse(ARGV[0] || "http://localhost:8080/")
+uri = URI.parse(ARGV[0] || 'http://localhost:8080/')
 sock = TCPSocket.new(uri.host, uri.port)
 
 conn = HTTP2::Client.new
@@ -15,7 +15,7 @@ conn = HTTP2::Client.new
 def request_header_hash
   Hash.new do |hash, key|
     k = key.to_s.downcase
-    k.tr! "_", "-"
+    k.tr! '_', '-'
     _, value = hash.find { |header_key, _| header_key.downcase == k }
     hash[key] = value if value
   end
@@ -51,7 +51,7 @@ RESP
     @conn = conn
     @sock = sock
     @headers = request_header_hash
-    @body = "".b
+    @body = ''.b
     @complete = false
     @parsing = false
     @parser = ::HTTP::Parser.new(self)
@@ -87,7 +87,7 @@ RESP
   end
 
   def on_message_complete
-    raise "could not upgrade to h2c" unless @parser.status_code == 101
+    raise 'could not upgrade to h2c' unless @parser.status_code == 101
 
     @parsing = false
     complete!
@@ -98,11 +98,11 @@ RESP
     log = Logger.new(stream.id)
 
     stream.on(:close) do
-      log.info "stream closed"
+      log.info 'stream closed'
     end
 
     stream.on(:half_close) do
-      log.info "closing client-end of the stream"
+      log.info 'closing client-end of the stream'
     end
 
     stream.on(:headers) do |h|
@@ -134,7 +134,7 @@ RESP
 end
 
 uh = UpgradeHandler.new(conn, sock)
-puts "Sending HTTP/1.1 upgrade request"
+puts 'Sending HTTP/1.1 upgrade request'
 uh.request(uri)
 
 while !sock.closed? && !sock.eof?

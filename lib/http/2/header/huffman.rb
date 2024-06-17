@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../error"
-require_relative "../extensions"
+require_relative '../error'
+require_relative '../extensions'
 
 module HTTP2
   # Implementation of huffman encoding for HPACK
@@ -26,8 +26,8 @@ module HTTP2
       # @return [String] binary string
       def encode(str)
         bitstring = str.each_byte.map { |chr| ENCODE_TABLE[chr] }.join
-        bitstring << ("1" * ((8 - bitstring.size) % 8))
-        [bitstring].pack("B*")
+        bitstring << ('1' * ((8 - bitstring.size) % 8))
+        [bitstring].pack('B*')
       end
 
       # Decodes provided Huffman coded string.
@@ -36,7 +36,7 @@ module HTTP2
       # @return [String] binary string
       # @raise [CompressionError] when Huffman coded string is malformed
       def decode(buf)
-        emit = "".b
+        emit = ''.b
         state = 0 # start state
 
         mask = (1 << BITS_AT_ONCE) - 1
@@ -49,14 +49,14 @@ module HTTP2
             #  [emit] character to be emitted on this transition, empty string, or EOS.
             #  [next] next state number.
             trans = MACHINE[state][branch]
-            raise CompressionError, "Huffman decode error (EOS found)" if trans.first == EOS
+            raise CompressionError, 'Huffman decode error (EOS found)' if trans.first == EOS
 
             emit << trans.first.chr if trans.first
             state = trans.last
           end
         end
         # Check whether partial input is correctly filled
-        raise CompressionError, "Huffman decode error (EOS invalid)" unless state <= MAX_FINAL_STATE
+        raise CompressionError, 'Huffman decode error (EOS invalid)' unless state <= MAX_FINAL_STATE
 
         emit.force_encoding(Encoding::BINARY)
       end
@@ -323,7 +323,7 @@ module HTTP2
         [0x3fffffff, 30]
       ].each(&:freeze).freeze
 
-      ENCODE_TABLE = CODES.map { |c, l| [c].pack("N").unpack1("B*")[-l..-1] }.each(&:freeze).freeze
+      ENCODE_TABLE = CODES.map { |c, l| [c].pack('N').unpack1('B*')[-l..-1] }.each(&:freeze).freeze
     end
   end
 end
