@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.name          = 'http-2'
   spec.version       = HTTP2::VERSION
   spec.authors       = ['Tiago Cardoso', 'Ilya Grigorik', 'Kaoru Maeda']
-  spec.email         = ['cardoso_tiago@hotmail.com']
+  spec.email         = %w[cardoso_tiago@hotmail.com ilya@igvita.com]
   spec.description   = 'Pure-ruby HTTP 2.0 protocol implementation'
   spec.summary       = spec.description
   spec.homepage      = 'https://github.com/igrigorik/http-2'
