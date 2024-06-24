@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
-require_relative 'helper'
+require_relative "helper"
 
 options = {}
 OptionParser.new do |opts|
-  opts.banner = 'Usage: client.rb [options]'
+  opts.banner = "Usage: client.rb [options]"
 
-  opts.on('-d', '--data [String]', 'HTTP payload') do |v|
+  opts.on("-d", "--data [String]", "HTTP payload") do |v|
     options[:payload] = v
   end
 end.parse!
 
-uri = URI.parse(ARGV[0] || 'http://localhost:8080/')
+uri = URI.parse(ARGV[0] || "http://localhost:8080/")
 tcp = TCPSocket.new(uri.host, uri.port)
 sock = nil
 
-if uri.scheme == 'https'
+if uri.scheme == "https"
   ctx = OpenSSL::SSL::SSLContext.new
   ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
@@ -75,12 +75,12 @@ conn.on(:altsvc) do |f|
 end
 
 stream.on(:close) do
-  log.info 'stream closed'
+  log.info "stream closed"
   conn.goaway
 end
 
 stream.on(:half_close) do
-  log.info 'closing client-end of the stream'
+  log.info "closing client-end of the stream"
 end
 
 stream.on(:headers) do |h|
@@ -96,23 +96,23 @@ stream.on(:altsvc) do |f|
 end
 
 head = {
-  ':scheme' => uri.scheme,
-  ':method' => (options[:payload].nil? ? 'GET' : 'POST'),
-  ':authority' => [uri.host, uri.port].join(':'),
-  ':path' => uri.path,
-  'accept' => '*/*'
+  ":scheme" => uri.scheme,
+  ":method" => (options[:payload].nil? ? "GET" : "POST"),
+  ":authority" => [uri.host, uri.port].join(":"),
+  ":path" => uri.path,
+  "accept" => "*/*"
 }
 
-puts 'Sending HTTP 2.0 request'
-if head[':method'] == 'GET'
+puts "Sending HTTP 2.0 request"
+if head[":method"] == "GET"
   stream.headers(head, end_stream: true)
 else
   stream.headers(head, end_stream: false)
   stream.data(options[:payload])
 end
 
-require 'memory_profiler'
-report = MemoryProfiler.report(allow_files: 'http-2') do
+require "memory_profiler"
+report = MemoryProfiler.report(allow_files: "http-2") do
   while !sock.closed? && !sock.eof?
     data = sock.read_nonblock(1024)
     # puts "Received bytes: #{data.unpack("H*").first}"

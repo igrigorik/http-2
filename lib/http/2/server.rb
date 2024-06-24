@@ -78,7 +78,7 @@ module HTTP2
       receive(CONNECTION_PREFACE_MAGIC)
 
       # Process received HTTP2-Settings payload
-      buf = ''.b
+      buf = "".b
       buf << Base64.urlsafe_decode64(settings.to_s)
       @framer.common_header(
         {

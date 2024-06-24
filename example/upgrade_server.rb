@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-require_relative 'helper'
-require 'http_parser'
+require_relative "helper"
+require "http_parser"
 
 options = { port: 8080 }
 OptionParser.new do |opts|
-  opts.banner = 'Usage: server.rb [options]'
+  opts.banner = "Usage: server.rb [options]"
 
-  opts.on('-s', '--secure', 'HTTPS mode') do |v|
+  opts.on("-s", "--secure", "HTTPS mode") do |v|
     options[:secure] = v
   end
 
-  opts.on('-p', '--port [Integer]', 'listen port') do |v|
+  opts.on("-p", "--port [Integer]", "listen port") do |v|
     options[:port] = v
   end
 end.parse!
@@ -21,8 +21,8 @@ server = TCPServer.new(options[:port])
 
 if options[:secure]
   ctx = OpenSSL::SSL::SSLContext.new
-  ctx.cert = OpenSSL::X509::Certificate.new(File.open('keys/server.crt'))
-  ctx.key = OpenSSL::PKey::RSA.new(File.open('keys/server.key'))
+  ctx.cert = OpenSSL::X509::Certificate.new(File.open("keys/server.crt"))
+  ctx.key = OpenSSL::PKey::RSA.new(File.open("keys/server.key"))
   ctx.npn_protocols = [DRAFT]
 
   server = OpenSSL::SSL::SSLServer.new(server, ctx)
@@ -31,7 +31,7 @@ end
 def request_header_hash
   Hash.new do |hash, key|
     k = key.to_s.downcase
-    k.tr! '_', '-'
+    k.tr! "_", "-"
     _, value = hash.find { |header_key, _| header_key.downcase == k }
     hash[key] = value if value
   end
@@ -54,7 +54,7 @@ RESP
     @complete = false
     @parsing = false
     @headers = request_header_hash
-    @body = ''
+    @body = ""
     @parser = ::HTTP::Parser.new(self)
   end
 
@@ -65,12 +65,12 @@ RESP
 
     @sock.write UPGRADE_RESPONSE
 
-    settings = headers['http2-settings']
+    settings = headers["http2-settings"]
     request = {
-      ':scheme' => 'http',
-      ':method' => @parser.http_method,
-      ':authority' => headers['Host'],
-      ':path' => @parser.request_url
+      ":scheme" => "http",
+      ":method" => @parser.http_method,
+      ":authority" => headers["Host"],
+      ":path" => @parser.request_url
     }.merge(headers)
 
     @conn.upgrade(settings, request, @body)
@@ -98,7 +98,7 @@ end
 
 loop do
   sock = server.accept
-  puts 'New TCP connection!'
+  puts "New TCP connection!"
 
   conn = HTTP2::Server.new
   conn.on(:frame) do |bytes|
@@ -115,11 +115,11 @@ loop do
   conn.on(:stream) do |stream|
     log = Logger.new(stream.id)
     req = request_header_hash
-    buffer = ''
+    buffer = ""
 
-    stream.on(:active) { log.info 'client opened new stream' }
+    stream.on(:active) { log.info "client opened new stream" }
     stream.on(:close) do
-      log.info 'stream closed'
+      log.info "stream closed"
     end
 
     stream.on(:headers) do |h|
@@ -133,34 +133,34 @@ loop do
     end
 
     stream.on(:half_close) do
-      log.info 'client closed its end of the stream'
+      log.info "client closed its end of the stream"
 
-      if req['Upgrade']
+      if req["Upgrade"]
         log.info "Processing h2c Upgrade request: #{req}"
-        if req[':method'] != 'OPTIONS' # Don't respond to OPTIONS...
-          response = 'Hello h2c world!'
+        if req[":method"] != "OPTIONS" # Don't respond to OPTIONS...
+          response = "Hello h2c world!"
           stream.headers({
-                           ':status' => '200',
-                           'content-length' => response.bytesize.to_s,
-                           'content-type' => 'text/plain'
+                           ":status" => "200",
+                           "content-length" => response.bytesize.to_s,
+                           "content-type" => "text/plain"
                          }, end_stream: false)
           stream.data(response)
         end
       else
 
         response = nil
-        if req[':method'] == 'POST'
+        if req[":method"] == "POST"
           log.info "Received POST request, payload: #{buffer}"
           response = "Hello HTTP 2.0! POST payload: #{buffer}"
         else
-          log.info 'Received GET request'
-          response = 'Hello HTTP 2.0! GET request'
+          log.info "Received GET request"
+          response = "Hello HTTP 2.0! GET request"
         end
 
         stream.headers({
-                         ':status' => '200',
-                         'content-length' => response.bytesize.to_s,
-                         'content-type' => 'text/plain'
+                         ":status" => "200",
+                         "content-length" => response.bytesize.to_s,
+                         "content-type" => "text/plain"
                        }, end_stream: false)
 
         # split response into multiple DATA frames

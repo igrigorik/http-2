@@ -52,12 +52,12 @@ module HTTP2
       # @return [String] UTF-8 encoded string
       # @raise [CompressionError] when input is malformed
       def string(buf)
-        raise CompressionError, 'invalid header block fragment' if buf.empty?
+        raise CompressionError, "invalid header block fragment" if buf.empty?
 
         huffman = (buf.getbyte(0) & 0x80) == 0x80
         len = integer(buf, 7)
         str = buf.read(len)
-        raise CompressionError, 'string too short' unless str.bytesize == len
+        raise CompressionError, "string too short" unless str.bytesize == len
 
         str = Huffman.new.decode(str) if huffman
         str.force_encoding(Encoding::UTF_8)
@@ -114,9 +114,9 @@ module HTTP2
             field, value = @cc.process(header(buf))
             next if field.nil?
 
-            is_pseudo_header = field.start_with? ':'
+            is_pseudo_header = field.start_with? ":"
             if !decoding_pseudo_headers && is_pseudo_header
-              raise ProtocolError, 'one or more pseudo headers encountered after regular headers'
+              raise ProtocolError, "one or more pseudo headers encountered after regular headers"
             end
 
             decoding_pseudo_headers = is_pseudo_header
@@ -124,13 +124,13 @@ module HTTP2
 
             if frame
               case field
-              when ':status'
+              when ":status"
                 frame[:status] = Integer(value)
-              when ':method'
+              when ":method"
                 frame[:method] = value
-              when 'content-length'
+              when "content-length"
                 frame[:content_length] = Integer(value)
-              when 'trailer'
+              when "trailer"
                 (frame[:trailer] ||= []) << value
               end
             end

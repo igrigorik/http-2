@@ -36,7 +36,7 @@ module HTTP2
       # @return [String] binary string
       def integer(i, n, buffer:, offset: 0)
         limit = (2**n) - 1
-        return pack([i], 'C', buffer: buffer, offset: offset) if i < limit
+        return pack([i], "C", buffer: buffer, offset: offset) if i < limit
 
         bytes = []
         bytes.push limit unless n.zero?
@@ -48,7 +48,7 @@ module HTTP2
         end
 
         bytes.push i
-        pack(bytes, 'C*', buffer: buffer, offset: offset)
+        pack(bytes, "C*", buffer: buffer, offset: offset)
       end
 
       # Encodes provided value via string literal representation.
@@ -91,7 +91,7 @@ module HTTP2
       # @param h [Hash] header command
       # @param buffer [String]
       # @return [Buffer]
-      def header(h, buffer = ''.b)
+      def header(h, buffer = "".b)
         rep = HEADREP[h[:type]]
 
         case h[:type]
@@ -122,8 +122,8 @@ module HTTP2
       # @param headers [Array] +[[name, value], ...]+
       # @return [Buffer]
       def encode(headers)
-        buffer = ''.b
-        pseudo_headers, regular_headers = headers.partition { |f, _| f.start_with? ':' }
+        buffer = "".b
+        pseudo_headers, regular_headers = headers.partition { |f, _| f.start_with? ":" }
         headers = [*pseudo_headers, *regular_headers]
         commands = @cc.encode(headers)
         commands.each do |cmd|
@@ -147,7 +147,7 @@ module HTTP2
       # @param str [String]
       # @return [String] binary string
       def plain_string(str)
-        plain = ''.b
+        plain = "".b
         integer(str.bytesize, 7, buffer: plain)
         plain << str.dup.force_encoding(Encoding::BINARY)
         plain

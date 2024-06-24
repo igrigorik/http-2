@@ -14,67 +14,67 @@ module HTTP2
       # Static table
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#appendix-A
       STATIC_TABLE = [
-        [':authority',                  ''],
-        [':method',                     'GET'],
-        [':method',                     'POST'],
-        [':path',                       '/'],
-        [':path',                       '/index.html'],
-        [':scheme',                     'http'],
-        [':scheme',                     'https'],
-        [':status',                     '200'],
-        [':status',                     '204'],
-        [':status',                     '206'],
-        [':status',                     '304'],
-        [':status',                     '400'],
-        [':status',                     '404'],
-        [':status',                     '500'],
-        ['accept-charset',              ''],
-        ['accept-encoding',             'gzip, deflate'],
-        ['accept-language',             ''],
-        ['accept-ranges',               ''],
-        ['accept',                      ''],
-        ['access-control-allow-origin', ''],
-        ['age',                         ''],
-        ['allow',                       ''],
-        ['authorization',               ''],
-        ['cache-control',               ''],
-        ['content-disposition',         ''],
-        ['content-encoding',            ''],
-        ['content-language',            ''],
-        ['content-length',              ''],
-        ['content-location',            ''],
-        ['content-range',               ''],
-        ['content-type',                ''],
-        ['cookie',                      ''],
-        ['date',                        ''],
-        ['etag',                        ''],
-        ['expect',                      ''],
-        ['expires',                     ''],
-        ['from',                        ''],
-        ['host',                        ''],
-        ['if-match',                    ''],
-        ['if-modified-since',           ''],
-        ['if-none-match',               ''],
-        ['if-range',                    ''],
-        ['if-unmodified-since',         ''],
-        ['last-modified',               ''],
-        ['link',                        ''],
-        ['location',                    ''],
-        ['max-forwards',                ''],
-        ['proxy-authenticate',          ''],
-        ['proxy-authorization',         ''],
-        ['range',                       ''],
-        ['referer',                     ''],
-        ['refresh',                     ''],
-        ['retry-after',                 ''],
-        ['server',                      ''],
-        ['set-cookie',                  ''],
-        ['strict-transport-security',   ''],
-        ['transfer-encoding',           ''],
-        ['user-agent',                  ''],
-        ['vary',                        ''],
-        ['via',                         ''],
-        ['www-authenticate',            '']
+        [":authority",                  ""],
+        [":method",                     "GET"],
+        [":method",                     "POST"],
+        [":path",                       "/"],
+        [":path",                       "/index.html"],
+        [":scheme",                     "http"],
+        [":scheme",                     "https"],
+        [":status",                     "200"],
+        [":status",                     "204"],
+        [":status",                     "206"],
+        [":status",                     "304"],
+        [":status",                     "400"],
+        [":status",                     "404"],
+        [":status",                     "500"],
+        ["accept-charset",              ""],
+        ["accept-encoding",             "gzip, deflate"],
+        ["accept-language",             ""],
+        ["accept-ranges",               ""],
+        ["accept",                      ""],
+        ["access-control-allow-origin", ""],
+        ["age",                         ""],
+        ["allow",                       ""],
+        ["authorization",               ""],
+        ["cache-control",               ""],
+        ["content-disposition",         ""],
+        ["content-encoding",            ""],
+        ["content-language",            ""],
+        ["content-length",              ""],
+        ["content-location",            ""],
+        ["content-range",               ""],
+        ["content-type",                ""],
+        ["cookie",                      ""],
+        ["date",                        ""],
+        ["etag",                        ""],
+        ["expect",                      ""],
+        ["expires",                     ""],
+        ["from",                        ""],
+        ["host",                        ""],
+        ["if-match",                    ""],
+        ["if-modified-since",           ""],
+        ["if-none-match",               ""],
+        ["if-range",                    ""],
+        ["if-unmodified-since",         ""],
+        ["last-modified",               ""],
+        ["link",                        ""],
+        ["location",                    ""],
+        ["max-forwards",                ""],
+        ["proxy-authenticate",          ""],
+        ["proxy-authorization",         ""],
+        ["range",                       ""],
+        ["referer",                     ""],
+        ["refresh",                     ""],
+        ["retry-after",                 ""],
+        ["server",                      ""],
+        ["set-cookie",                  ""],
+        ["strict-transport-security",   ""],
+        ["transfer-encoding",           ""],
+        ["user-agent",                  ""],
+        ["vary",                        ""],
+        ["via",                         ""],
+        ["www-authenticate",            ""]
       ].each { |pair| pair.each(&:freeze).freeze }.freeze
 
       STATIC_TABLE_BY_FIELD = STATIC_TABLE
@@ -139,7 +139,7 @@ module HTTP2
       def dereference(index)
         # NOTE: index is zero-based in this module.
         value = STATIC_TABLE[index] || @table[index - STATIC_TABLE_SIZE]
-        raise CompressionError, 'Index too large' unless value
+        raise CompressionError, "Index too large" unless value
 
         value
       end
@@ -155,13 +155,13 @@ module HTTP2
 
         case cmd[:type]
         when :changetablesize
-          raise CompressionError, 'tried to change table size after adding elements to table' if @_table_updated
+          raise CompressionError, "tried to change table size after adding elements to table" if @_table_updated
 
           # we can receive multiple table size change commands inside a header frame. However,
           # we should blow up if we receive another frame where the new table size is bigger.
           table_size_updated = @limit != @options[:table_size]
 
-          raise CompressionError, 'dynamic table size update exceed limit' if !table_size_updated && cmd[:value] > @limit
+          raise CompressionError, "dynamic table size update exceed limit" if !table_size_updated && cmd[:value] > @limit
 
           self.table_size = cmd[:value]
 
@@ -224,7 +224,7 @@ module HTTP2
           # Literal header names MUST be translated to lowercase before
           # encoding and transmission.
           field = field.downcase if UPPER.match?(field)
-          value = '/' if field == ':path' && value.empty?
+          value = "/" if field == ":path" && value.empty?
           cmd = addcmd(field, value)
           cmd[:type] = :noindex if noindex && cmd[:type] == :incremental
           commands << cmd

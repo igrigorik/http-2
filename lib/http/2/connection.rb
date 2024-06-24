@@ -96,7 +96,7 @@ module HTTP2
       @remote_window_limit = @remote_settings[:settings_initial_window_size]
       @remote_window = @remote_window_limit
 
-      @recv_buffer = ''.b
+      @recv_buffer = "".b
       @continuation = []
       @error = nil
 
@@ -118,7 +118,7 @@ module HTTP2
       raise ConnectionClosed if @state == :closed
       raise StreamLimitExceeded if @active_stream_count >= @remote_settings[:settings_max_concurrent_streams]
 
-      connection_error(:protocol_error, msg: 'id is smaller than previous') if @stream_id < @last_activated_stream
+      connection_error(:protocol_error, msg: "id is smaller than previous") if @stream_id < @last_activated_stream
 
       stream = activate_stream(id: @stream_id, **args)
       @last_activated_stream = stream.id
@@ -323,7 +323,7 @@ module HTTP2
               return
             end
 
-            connection_error(msg: 'missing parent ID') if parent.nil?
+            connection_error(msg: "missing parent ID") if parent.nil?
 
             unless parent.state == :open || parent.state == :half_closed_local
               # An endpoint might receive a PUSH_PROMISE frame after it sends
@@ -376,12 +376,12 @@ module HTTP2
               # (see Section 5.1).
               when :window_update
                 stream = @streams_recently_closed[frame[:stream]]
-                connection_error(:protocol_error, msg: 'sent window update on idle stream') unless stream
+                connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
                 process_window_update(frame: frame, encode: true)
               else
                 # An endpoint that receives an unexpected stream identifier
                 # MUST respond with a connection error of type PROTOCOL_ERROR.
-                connection_error(msg: 'stream does not exist')
+                connection_error(msg: "stream does not exist")
               end
             end
           end
@@ -720,7 +720,7 @@ module HTTP2
     # @param window [Integer]
     # @param parent [Stream]
     def activate_stream(id:, **args)
-      connection_error(msg: 'Stream ID already exists') if @streams.key?(id)
+      connection_error(msg: "Stream ID already exists") if @streams.key?(id)
 
       raise StreamLimitExceeded if @active_stream_count >= @local_settings[:settings_max_concurrent_streams]
 
@@ -750,7 +750,7 @@ module HTTP2
     def verify_stream_order(id)
       return unless id.odd?
 
-      connection_error(msg: 'Stream ID smaller than previous') if @last_stream_id > id
+      connection_error(msg: "Stream ID smaller than previous") if @last_stream_id > id
       @last_stream_id = id
     end
 
@@ -760,13 +760,13 @@ module HTTP2
 
       pseudo_headers = headers.take_while do |field, value|
         # use this loop to validate pseudo-headers
-        connection_error(:protocol_error, msg: 'path is empty') if field == ':path' && value.empty?
-        field.start_with?(':')
+        connection_error(:protocol_error, msg: "path is empty") if field == ":path" && value.empty?
+        field.start_with?(":")
       end.map(&:first)
       return if mandatory_headers.size == pseudo_headers.size &&
                 (mandatory_headers - pseudo_headers).empty?
 
-      connection_error(:protocol_error, msg: 'invalid pseudo-headers')
+      connection_error(:protocol_error, msg: "invalid pseudo-headers")
     end
 
     # Emit GOAWAY error indicating to peer that the connection is being
@@ -785,7 +785,7 @@ module HTTP2
 
       @state = :closed
       @error = error
-      msg ||= e ? e.message : 'protocol error'
+      msg ||= e ? e.message : "protocol error"
       backtrace = e ? e.backtrace : nil
       raise Error.types[error], msg, backtrace
     end
