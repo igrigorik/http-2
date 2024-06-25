@@ -124,6 +124,7 @@ module FrameHelpers
   def continuation_frame
     {
       type: :continuation,
+      stream: 1,
       flags: [:end_headers],
       payload: "-second-block"
     }

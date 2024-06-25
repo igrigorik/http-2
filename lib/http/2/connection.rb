@@ -235,7 +235,18 @@ module HTTP2
           connection_error unless frame[:type] == :continuation && frame[:stream] == @continuation.first[:stream]
 
           @continuation << frame
-          next unless frame[:flags].include? :end_headers
+          unless frame[:flags].include? :end_headers
+            buffered_payload = @continuation.sum { |f| f[:payload].bytesize }
+            # prevent HTTP/2 CONTINUATION FLOOD
+            # same heuristic as the one from HAProxy: https://www.haproxy.com/blog/haproxy-is-resilient-to-the-http-2-continuation-flood
+            # different mitigation (connection closed, instead of 400 response)
+            unless buffered_payload < @local_settings[:settings_max_frame_size]
+              connection_error(:protocol_error,
+                               msg: "too many continuations received")
+            end
+
+            next
+          end
 
           payload = @continuation.map { |f| f[:payload] }.join
 

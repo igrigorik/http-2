@@ -280,6 +280,35 @@ RSpec.shared_examples "a connection" do
   context "framing" do
     let(:conn) { connected_conn }
 
+    it "should chain continuation frames" do
+      headers = headers_frame
+      headers[:flags] = []
+      continuation = continuation_frame
+      continuation[:stream] = headers[:stream]
+      continuation[:flags] = []
+
+      conn << f.generate(headers)
+      conn << f.generate(continuation)
+      expect(conn.active_stream_count).to be_zero # stream not open yet
+    end
+
+    it "should refuse continuation frames which overflow the max frame size" do
+      max_frame_size = connected_conn.local_settings[:settings_max_frame_size]
+
+      headers = headers_frame
+      headers[:flags] = []
+
+      conn << f.generate(headers)
+      expect do
+        max_frame_size.times do
+          continuation = continuation_frame
+          continuation[:stream] = headers[:stream]
+          continuation[:flags] = []
+          conn << f.generate(continuation)
+        end
+      end.to raise_error(ProtocolError)
+    end
+
     it "should require that split header blocks are a contiguous sequence" do
       headers = headers_frame
       headers[:flags] = []
