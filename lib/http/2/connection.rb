@@ -38,6 +38,8 @@ module HTTP2
   REQUEST_MANDATORY_HEADERS = %w[:scheme :method :authority :path].freeze
   RESPONSE_MANDATORY_HEADERS = %w[:status].freeze
 
+  EMPTY = [].freeze
+
   # Connection encapsulates all of the connection, stream, flow-control,
   # error management, and other processing logic required for a well-behaved
   # HTTP 2.0 endpoint.
@@ -695,30 +697,34 @@ module HTTP2
     # @return [Array of Frame]
     def encode_headers(frame)
       payload = frame[:payload]
-      payload = @compressor.encode(payload) unless payload.is_a?(String)
-
-      frames = []
-
       begin
-        while payload && payload.bytesize > 0
-          cont = frame.dup
-          cont[:type] = :continuation
-          cont[:flags] = []
-          cont[:payload] = payload.byteslice(0, @remote_settings[:settings_max_frame_size])
-          payload = payload.byteslice(@remote_settings[:settings_max_frame_size]..-1)
-          frames << cont
-        end
-
-        if frames.empty?
-          frames << frame
-        else
-          frames.first[:type]  = frame[:type]
-          frames.first[:flags] = frame[:flags] - [:end_headers]
-          frames.last[:flags] << :end_headers
-        end
+        payload = frame[:payload] = @compressor.encode(payload) unless payload.is_a?(String)
       rescue StandardError => e
         connection_error(:compression_error, e: e)
       end
+
+      # if single frame, return immediately
+      return [frame] if payload.bytesize <= @remote_settings[:settings_max_frame_size]
+
+      frames = []
+
+      until payload.nil? || payload.empty?
+        cont = frame.dup
+
+        # first frame remains HEADERS
+        unless frames.empty?
+          cont[:type] = :continuation
+          cont[:flags] = EMPTY
+        end
+
+        cont[:payload] = payload.byteslice(0, @remote_settings[:settings_max_frame_size])
+        payload = payload.byteslice(@remote_settings[:settings_max_frame_size]..-1)
+
+        frames << cont
+      end
+
+      frames.first[:flags].delete(:end_headers)
+      frames.last[:flags] = [:end_headers]
 
       frames
     end
