@@ -744,6 +744,8 @@ module HTTP2
       stream = Stream.new(connection: self, id: id, **args)
 
       stream.once(:close) do
+        @streams.delete(id)
+
         # Store a reference to the closed stream, such that we can respond
         # to any in-flight frames while close is registered on both sides.
         # References to such streams will be purged whenever another stream
