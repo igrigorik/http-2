@@ -391,6 +391,13 @@ module HTTP2
                 stream = @streams_recently_closed[frame[:stream]]
                 connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
                 process_window_update(frame: frame, encode: true)
+              # Endpoints MUST ignore
+              # WINDOW_UPDATE or RST_STREAM frames received in this state (closed), though
+              # endpoints MAY choose to treat frames that arrive a significant
+              # time after sending END_STREAM as a connection error.
+              when :rst_stream
+                stream = @streams_recently_closed[frame[:stream]]
+                connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
               else
                 # An endpoint that receives an unexpected stream identifier
                 # MUST respond with a connection error of type PROTOCOL_ERROR.

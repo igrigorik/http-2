@@ -21,6 +21,9 @@ Layout/HeredocIndentation:
 Metrics/BlockLength:
   Enabled: false
 
+Metrics/PerceivedComplexity:
+  Enabled: false
+
 Lint/EmptyWhen:
   Enabled: false
 
