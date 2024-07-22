@@ -294,13 +294,13 @@ module HTTP2
             if stream.nil?
               verify_pseudo_headers(frame)
 
+              verify_stream_order(frame[:stream])
               stream = activate_stream(
                 id: frame[:stream],
                 weight: frame[:weight] || DEFAULT_WEIGHT,
                 dependency: frame[:dependency] || 0,
                 exclusive: frame[:exclusive] || false
               )
-              verify_stream_order(stream.id)
               emit(:stream, stream)
             end
 
@@ -354,8 +354,8 @@ module HTTP2
             end
 
             _verify_pseudo_headers(frame, REQUEST_MANDATORY_HEADERS)
+            verify_stream_order(pid)
             stream = activate_stream(id: pid, parent: parent)
-            verify_stream_order(stream.id)
             emit(:promise, stream)
             stream << frame
           else
@@ -776,7 +776,7 @@ module HTTP2
     def verify_stream_order(id)
       return unless id.odd?
 
-      connection_error(msg: "Stream ID smaller than previous") if @last_stream_id > id
+      connection_error(msg: "Stream ID smaller than previous") if @last_stream_id >= id
       @last_stream_id = id
     end
 
