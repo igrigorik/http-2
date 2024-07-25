@@ -118,8 +118,20 @@ RSpec.describe HTTP2::Server do
       stream.send data_frame
       stream.close
 
+      # WINDOW_UPDATE or RST_STREAM frames can be received in this state
+      # for a short period
       expect do
         srv << f.generate(rst_stream_frame.merge(stream: stream.id))
+      end.to_not raise_error
+
+      expect do
+        srv << f.generate(window_update_frame.merge(stream: stream.id))
+      end.to_not raise_error
+
+      # PRIORITY frames can be sent on closed streams to prioritize
+      # streams that are dependent on the closed stream.
+      expect do
+        srv << f.generate(priority_frame.merge(stream: stream.id))
       end.to_not raise_error
     end
   end

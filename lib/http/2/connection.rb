@@ -294,13 +294,13 @@ module HTTP2
             if stream.nil?
               verify_pseudo_headers(frame)
 
+              verify_stream_order(frame[:stream])
               stream = activate_stream(
                 id: frame[:stream],
                 weight: frame[:weight] || DEFAULT_WEIGHT,
                 dependency: frame[:dependency] || 0,
                 exclusive: frame[:exclusive] || false
               )
-              verify_stream_order(stream.id)
               emit(:stream, stream)
             end
 
@@ -354,8 +354,8 @@ module HTTP2
             end
 
             _verify_pseudo_headers(frame, REQUEST_MANDATORY_HEADERS)
+            verify_stream_order(pid)
             stream = activate_stream(id: pid, parent: parent)
-            verify_stream_order(stream.id)
             emit(:promise, stream)
             stream << frame
           else
@@ -391,6 +391,13 @@ module HTTP2
                 stream = @streams_recently_closed[frame[:stream]]
                 connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
                 process_window_update(frame: frame, encode: true)
+              # Endpoints MUST ignore
+              # WINDOW_UPDATE or RST_STREAM frames received in this state (closed), though
+              # endpoints MAY choose to treat frames that arrive a significant
+              # time after sending END_STREAM as a connection error.
+              when :rst_stream
+                stream = @streams_recently_closed[frame[:stream]]
+                connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
               else
                 # An endpoint that receives an unexpected stream identifier
                 # MUST respond with a connection error of type PROTOCOL_ERROR.
@@ -744,6 +751,8 @@ module HTTP2
       stream = Stream.new(connection: self, id: id, **args)
 
       stream.once(:close) do
+        @streams.delete(id)
+
         # Store a reference to the closed stream, such that we can respond
         # to any in-flight frames while close is registered on both sides.
         # References to such streams will be purged whenever another stream
@@ -767,7 +776,7 @@ module HTTP2
     def verify_stream_order(id)
       return unless id.odd?
 
-      connection_error(msg: "Stream ID smaller than previous") if @last_stream_id > id
+      connection_error(msg: "Stream ID smaller than previous") if @last_stream_id >= id
       @last_stream_id = id
     end
 

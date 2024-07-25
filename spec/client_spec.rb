@@ -205,7 +205,6 @@ RSpec.describe HTTP2::Client do
       it "should emit :altsvc" do
         s = client.new_stream
         s.send headers_frame
-        s.close
 
         frame = nil
         s.on(:altsvc) { |f| frame = f }
@@ -217,7 +216,6 @@ RSpec.describe HTTP2::Client do
       it "should not emit :alt_svc when the frame when contains a origin" do
         s = client.new_stream
         s.send headers_frame
-        s.close
 
         frame = nil
         s.on(:altsvc) { |f| frame = f }
@@ -270,7 +268,6 @@ RSpec.describe HTTP2::Client do
       it "should be ignored" do
         s = client.new_stream
         s.send headers_frame
-        s.close
 
         expect do
           client << set_stream_id(f.generate(orig_frame), s.id)
