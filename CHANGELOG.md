@@ -1,3 +1,14 @@
+## 1.0.1
+
+### Improvements
+
+* discard closed streams from the connection (reduces memory consumption).
+
+### Bugfixes
+
+* allow RST_STREAM frames to be ignored on closed streams.
+* prevent already closed streams from being initialized again.
+
 ## 1.0.0
 
 ### Breaking changes
