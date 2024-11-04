@@ -138,7 +138,7 @@ module HuffmanTable
           f.print "],\n"
         end
         f.print <<~TAILER
-                ].each { |arr| arr.each { |subarr| subarr.each(&:freeze) }.freeze }.freeze
+                ].each { |arr| arr.each { |subarr| subarr.freeze }.freeze }.freeze
               end
             end
           end
