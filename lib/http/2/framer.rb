@@ -4,10 +4,9 @@ module HTTP2
   # Performs encoding, decoding, and validation of binary HTTP/2 frames.
   #
   class Framer
-    using StringExtensions
-
     include Error
     include PackingExtensions
+    include BufferUtils
 
     # Default value of max frame size (16384 bytes)
     DEFAULT_MAX_FRAME_SIZE = 2 << 13
@@ -165,7 +164,7 @@ module HTTP2
       frame[:type], = FRAME_TYPES.find { |_t, pos| type == pos }
       if frame[:type]
         frame[:flags] = FRAME_FLAGS[frame[:type]].each_with_object([]) do |(name, pos), acc|
-          acc << name if (flags & (1 << pos)) > 0
+          acc << name if flags.anybits?((1 << pos))
         end
       end
 
@@ -344,8 +343,8 @@ module HTTP2
 
       raise ProtocolError, "payload too large" if frame[:length] > @local_max_frame_size
 
-      buf.read(9)
-      payload = buf.read(frame[:length])
+      read_str(buf, 9)
+      payload = read_str(buf, frame[:length])
 
       # Implementations MUST discard frames
       # that have unknown or unsupported types.
@@ -357,7 +356,7 @@ module HTTP2
       if FRAME_TYPES_WITH_PADDING.include?(frame[:type])
         padded = frame[:flags].include?(:padded)
         if padded
-          padlen = payload.read(1).unpack1(UINT8)
+          padlen = read_str(payload, 1).unpack1(UINT8)
           frame[:padding] = padlen + 1
           raise ProtocolError, "padding too long" if padlen > payload.bytesize
 
@@ -369,30 +368,30 @@ module HTTP2
 
       case frame[:type]
       when :data, :ping, :continuation
-        frame[:payload] = payload.read(frame[:length])
+        frame[:payload] = read_str(payload, frame[:length])
       when :headers
         if frame[:flags].include? :priority
-          e_sd = payload.read_uint32
+          e_sd = read_uint32(payload)
           frame[:dependency] = e_sd & RBIT
-          frame[:exclusive] = (e_sd & EBIT) != 0
+          frame[:exclusive] = e_sd.anybits?(EBIT)
           weight = payload.byteslice(0, 1).ord + 1
           frame[:weight] = weight
           payload = payload.byteslice(1..-1)
         end
-        frame[:payload] = payload.read(frame[:length])
+        frame[:payload] = read_str(payload, frame[:length])
       when :priority
         raise FrameSizeError, "Invalid length for PRIORITY_STREAM (#{frame[:length]} != 5)" if frame[:length] != 5
 
-        e_sd = payload.read_uint32
+        e_sd = read_uint32(payload)
         frame[:dependency] = e_sd & RBIT
-        frame[:exclusive] = (e_sd & EBIT) != 0
+        frame[:exclusive] = e_sd.anybits?(EBIT)
         weight = payload.byteslice(0, 1).ord + 1
         frame[:weight] = weight
         payload = payload.byteslice(1..-1)
       when :rst_stream
         raise FrameSizeError, "Invalid length for RST_STREAM (#{frame[:length]} != 4)" if frame[:length] != 4
 
-        frame[:error] = unpack_error payload.read_uint32
+        frame[:error] = unpack_error read_uint32(payload)
 
       when :settings
         # NOTE: frame[:length] might not match the number of frame[:payload]
@@ -403,8 +402,8 @@ module HTTP2
         raise ProtocolError, "Invalid stream ID (#{frame[:stream]})" if (frame[:stream]).nonzero?
 
         (frame[:length] / 6).times do
-          id  = payload.read(2).unpack1(UINT16)
-          val = payload.read_uint32
+          id  = read_str(payload, 2).unpack1(UINT16)
+          val = read_uint32(payload)
 
           # Unsupported or unrecognized settings MUST be ignored.
           # Here we send it along.
@@ -412,39 +411,39 @@ module HTTP2
           frame[:payload] << [name, val] if name
         end
       when :push_promise
-        frame[:promise_stream] = payload.read_uint32 & RBIT
-        frame[:payload] = payload.read(frame[:length])
+        frame[:promise_stream] = read_uint32(payload) & RBIT
+        frame[:payload] = read_str(payload, frame[:length])
       when :goaway
-        frame[:last_stream] = payload.read_uint32 & RBIT
-        frame[:error] = unpack_error payload.read_uint32
+        frame[:last_stream] = read_uint32(payload) & RBIT
+        frame[:error] = unpack_error read_uint32(payload)
 
         size = frame[:length] - 8 # for last_stream and error
-        frame[:payload] = payload.read(size) if size > 0
+        frame[:payload] = read_str(payload, size) if size > 0
       when :window_update
         if frame[:length] % 4 != 0
           raise FrameSizeError, "Invalid length for WINDOW_UPDATE (#{frame[:length]} not multiple of 4)"
         end
 
-        frame[:increment] = payload.read_uint32 & RBIT
+        frame[:increment] = read_uint32(payload) & RBIT
       when :altsvc
-        frame[:max_age], frame[:port] = payload.read(6).unpack(UINT32 + UINT16)
+        frame[:max_age], frame[:port] = read_str(payload, 6).unpack(UINT32 + UINT16)
 
         len = payload.byteslice(0, 1).ord
         payload = payload.byteslice(1..-1)
-        frame[:proto] = payload.read(len) if len > 0
+        frame[:proto] = read_str(payload, len) if len > 0
 
         len = payload.byteslice(0, 1).ord
         payload = payload.byteslice(1..-1)
-        frame[:host] = payload.read(len) if len > 0
+        frame[:host] = read_str(payload, len) if len > 0
 
-        frame[:origin] = payload.read(payload.size) unless payload.empty?
+        frame[:origin] = read_str(payload, payload.size) unless payload.empty?
 
       when :origin
         origins = []
 
         until payload.empty?
-          len = payload.read(2).unpack1(UINT16)
-          origins << payload.read(len)
+          len = read_str(payload, 2).unpack1(UINT16)
+          origins << read_str(payload, len)
         end
 
         frame[:payload] = origins

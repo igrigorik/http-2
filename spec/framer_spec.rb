@@ -3,8 +3,6 @@
 require "helper"
 
 RSpec.describe HTTP2::Framer do
-  using StringExtensions
-
   let(:f) { Framer.new }
 
   context "common header" do

@@ -1,6 +1,8 @@
 module HTTP2
   module Header
     class Decompressor
+      include BufferUtils
+
       @cc: EncodingContext
 
       def table_size=: (Integer) -> void

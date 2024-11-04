@@ -1,6 +1,7 @@
 module HTTP2
   class Framer
     include PackingExtensions
+    include BufferUtils
 
     DEFAULT_MAX_FRAME_SIZE: Integer
 

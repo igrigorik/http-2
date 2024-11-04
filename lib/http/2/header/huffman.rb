@@ -10,8 +10,6 @@ module HTTP2
   module Header
     # Huffman encoder/decoder
     class Huffman
-      using StringExtensions
-
       include Error
       include PackingExtensions
 

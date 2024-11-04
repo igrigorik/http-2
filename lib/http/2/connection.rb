@@ -52,8 +52,7 @@ module HTTP2
     include FlowBuffer
     include Emitter
     include Error
-
-    using StringExtensions
+    include BufferUtils
 
     # Connection state (:new, :closed).
     attr_reader :state
@@ -202,7 +201,7 @@ module HTTP2
           raise HandshakeError unless CONNECTION_PREFACE_MAGIC.start_with? @recv_buffer
 
           return # maybe next time
-        elsif @recv_buffer.read(24) == CONNECTION_PREFACE_MAGIC
+        elsif read_str(@recv_buffer, 24) == CONNECTION_PREFACE_MAGIC
           # MAGIC is OK.  Send our settings
           @state = :waiting_connection_preface
           payload = @local_settings.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }

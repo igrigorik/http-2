@@ -2,6 +2,7 @@ module HTTP2
   class Connection
     include FlowBuffer
     include Emitter
+    include BufferUtils
 
     REQUEST_MANDATORY_HEADERS: Array[String]
     RESPONSE_MANDATORY_HEADERS: Array[String]
