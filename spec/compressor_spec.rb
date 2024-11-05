@@ -3,8 +3,6 @@
 require "helper"
 
 RSpec.describe HTTP2::Header do
-  using StringExtensions
-
   let(:c) { Compressor.new }
   let(:d) { Decompressor.new }
 

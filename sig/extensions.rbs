@@ -1,4 +1,12 @@
 module HTTP2
+  module BufferUtils
+    def read_str: (String str, Integer n) -> String
+
+    def read_uint32: (String str) -> Integer
+
+    def shift_byte: (String str) -> Integer
+  end
+
   module PackingExtensions
     def pack: (Array[Integer] array_to_pack, String template, buffer: String, ?offset: Integer) -> String
   end

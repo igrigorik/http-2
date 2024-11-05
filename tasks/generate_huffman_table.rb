@@ -28,7 +28,7 @@ module HuffmanTable
       if len.zero?
         @emit = chr
       else
-        bit = (code & (1 << (len - 1))).zero? ? 0 : 1
+        bit = code.nobits?((1 << (len - 1))) ? 0 : 1
         node = @next[bit] ||= Node.new(@depth + 1)
         node.add(code, len - 1, chr)
       end
@@ -70,7 +70,7 @@ module HuffmanTable
           n = node
           emit = "".b
           (BITS_AT_ONCE - 1).downto(0) do |i|
-            bit = (input & (1 << i)).zero? ? 0 : 1
+            bit = input.nobits?((1 << i)) ? 0 : 1
             n = n.next[bit]
             next unless n.emit
 
@@ -138,7 +138,7 @@ module HuffmanTable
           f.print "],\n"
         end
         f.print <<~TAILER
-                ].each { |arr| arr.each { |subarr| subarr.each(&:freeze) }.freeze }.freeze
+                ].each { |arr| arr.each { |subarr| subarr.freeze }.freeze }.freeze
               end
             end
           end

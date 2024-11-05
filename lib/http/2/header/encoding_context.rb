@@ -75,12 +75,14 @@ module HTTP2
         ["vary",                        ""],
         ["via",                         ""],
         ["www-authenticate",            ""]
-      ].each { |pair| pair.each(&:freeze).freeze }.freeze
+      ].each(&:freeze).freeze
 
-      STATIC_TABLE_BY_FIELD = STATIC_TABLE
-                              .each_with_object({})
-                              .with_index { |((field, value), hs), idx| (hs[field] ||= []) << [idx, value] }
-                              .each { |pair| pair.each(&:freeze).freeze }.freeze
+      STATIC_TABLE_BY_FIELD =
+        STATIC_TABLE
+        .each_with_object({})
+        .with_index { |((field, value), hs), idx| (hs[field] ||= []) << [idx, value].freeze }
+        .each_value(&:freeze)
+        .freeze
 
       STATIC_TABLE_SIZE = STATIC_TABLE.size
 

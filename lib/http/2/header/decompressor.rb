@@ -2,7 +2,6 @@
 
 module HTTP2
   module Header
-    using StringExtensions
     # Responsible for decoding received headers and maintaining compression
     # context of the opposing peer. Decompressor must be initialized with
     # appropriate starting context based on local role: client or server.
@@ -12,6 +11,7 @@ module HTTP2
     #   client_role = Decompressor.new(:response)
     class Decompressor
       include Error
+      include BufferUtils
 
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(options = {})
@@ -31,15 +31,15 @@ module HTTP2
       # @return [Integer]
       def integer(buf, n)
         limit = (2**n) - 1
-        i = n.zero? ? 0 : (buf.shift_byte & limit)
+        i = n.zero? ? 0 : (shift_byte(buf) & limit)
 
         m = 0
         if i == limit
-          while (byte = buf.shift_byte)
+          while (byte = shift_byte(buf))
             i += ((byte & 127) << m)
             m += 7
 
-            break if (byte & 128).zero?
+            break if byte.nobits?(128)
           end
         end
 
@@ -54,9 +54,9 @@ module HTTP2
       def string(buf)
         raise CompressionError, "invalid header block fragment" if buf.empty?
 
-        huffman = (buf.getbyte(0) & 0x80) == 0x80
+        huffman = buf.getbyte(0).allbits?(0x80)
         len = integer(buf, 7)
-        str = buf.read(len)
+        str = read_str(buf, len)
         raise CompressionError, "string too short" unless str.bytesize == len
 
         str = Huffman.new.decode(str) if huffman
