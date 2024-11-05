@@ -47,6 +47,7 @@ jobs:
         with:
           name: coverage-${{matrix.ruby}}
           path: coverage/
+          include-hidden-files: true
 
   coverage:
     needs: test
