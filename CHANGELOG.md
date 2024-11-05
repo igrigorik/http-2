@@ -1,3 +1,10 @@
+## 1.0.2
+
+### Improvements
+
+* Freezing static tables (used for header huffman coding) correctly. This makes them shareable, which makes `http-2` usable across ractors.
+* Moved buffer helpers from String refinements into mixins. Refinements impose a relevant performance penalty, unfortunately, despite its cleaner API.
+
 ## 1.0.1
 
 ### Improvements
