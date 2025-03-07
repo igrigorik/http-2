@@ -86,6 +86,16 @@ module HTTP2
 
       STATIC_TABLE_SIZE = STATIC_TABLE.size
 
+      DEFAULT_OPTIONS = {
+        huffman: :shorter,
+        index: :all,
+        table_size: 4096
+      }.freeze
+
+      STATIC_ALL = %i[all static].freeze
+
+      STATIC_NEVER = %i[never static].freeze
+
       # Current table of header key-value pairs.
       attr_reader :table
 
@@ -104,13 +114,8 @@ module HTTP2
       #   :huffman     Symbol   :always, :never, :shorter
       #   :index       Symbol   :all, :static, :never
       def initialize(options = {})
-        default_options = {
-          huffman: :shorter,
-          index: :all,
-          table_size: 4096
-        }
         @table = []
-        @options = default_options.merge(options)
+        @options = DEFAULT_OPTIONS.merge(options)
         @limit = @options[:table_size]
         @_table_updated = false
       end
@@ -219,20 +224,19 @@ module HTTP2
       # @param headers [Array] +[[name, value], ...]+
       # @return [Array] array of commands
       def encode(headers)
-        commands = []
         # Literals commands are marked with :noindex when index is not used
-        noindex = %i[static never].include?(@options[:index])
-        headers.each do |field, value|
+        noindex = STATIC_NEVER.include?(@options[:index])
+
+        headers.map do |field, value|
           # Literal header names MUST be translated to lowercase before
           # encoding and transmission.
           field = field.downcase if UPPER.match?(field)
           value = "/" if field == ":path" && value.empty?
           cmd = addcmd(field, value)
           cmd[:type] = :noindex if noindex && cmd[:type] == :incremental
-          commands << cmd
           process(cmd)
+          cmd
         end
-        commands
       end
 
       # Emits command for a header.
@@ -245,30 +249,36 @@ module HTTP2
       #  :static  Use static table only.
       #  :all     Use all of them.
       #
-      # @param header [Array] +[name, value]+
+      # @param field [String] the header field
+      # @param value [String] the header value
       # @return [Hash] command
-      def addcmd(*header)
+      def addcmd(field, value)
+        # @type var exact: Integer?
         exact = nil
+        # @type var name_only: Integer?
         name_only = nil
 
-        if %i[all static].include?(@options[:index])
-          field, value = header
-          if (svalues = STATIC_TABLE_BY_FIELD[field])
-            svalues.each do |i, svalue|
-              name_only ||= i
-              if svalue == value
-                exact = i
-                break
-              end
+        index_type = @options[:index]
+
+        if STATIC_ALL.include?(index_type) &&
+           STATIC_TABLE_BY_FIELD.key?(field)
+          STATIC_TABLE_BY_FIELD[field].each do |i, svalue|
+            name_only ||= i
+            if value == svalue
+              exact = i
+              break
             end
           end
         end
-        if [:all].include?(@options[:index]) && !exact
-          @table.each_index do |i|
-            if @table[i] == header
-              exact ||= i + STATIC_TABLE_SIZE
+
+        if index_type == :all && !exact
+          @table.each_with_index do |(hfield, hvalue), i|
+            next unless field == hfield
+
+            if value == hvalue
+              exact = i + STATIC_TABLE_SIZE
               break
-            elsif @table[i].first == header.first
+            else
               name_only ||= i + STATIC_TABLE_SIZE
             end
           end
@@ -276,10 +286,8 @@ module HTTP2
 
         if exact
           { name: exact, type: :indexed }
-        elsif name_only
-          { name: name_only, value: header.last, type: :incremental }
         else
-          { name: header.first, value: header.last, type: :incremental }
+          { name: name_only || field, value: value, type: :incremental }
         end
       end
 
@@ -293,7 +301,7 @@ module HTTP2
       # Returns current table size in octets
       # @return [Integer]
       def current_table_size
-        @table.inject(0) { |r, (k, v)| r + k.bytesize + v.bytesize + 32 }
+        @table.sum { |k, v| k.bytesize + v.bytesize } + (@table.size * 32)
       end
 
       def listen_on_table

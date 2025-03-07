@@ -3,9 +3,26 @@ module HTTP2
     class EncodingContext
       STATIC_TABLE: Array[header_pair]
 
+      STATIC_TABLE_BY_FIELD: Hash[String, Array[[Integer, String]]]
+
+      STATIC_TABLE_SIZE: Integer
+
+      STATIC_ALL: Array[Symbol]
+
+      STATIC_NEVER: Array[Symbol]
+
+      DEFAULT_OPTIONS: context_hash
+
+      UPPER: Regexp
+
+
       attr_reader table: Array[header_pair]
 
       attr_reader options: context_hash
+
+      @limit: Integer
+
+      @_table_updated: bool
 
       def dup: () -> EncodingContext
 
@@ -15,7 +32,7 @@ module HTTP2
 
       def encode: (_Each[header_pair]) -> Array[header_command]
 
-      def addcmd: (String name, String value) -> header_command
+      def addcmd: (String name, String value) -> ({ name: Integer, type: :indexed } | { name: Integer | String, value: String, type: :incremental })
 
       def table_size=: (Integer) -> void
 
@@ -23,8 +40,7 @@ module HTTP2
 
       private
 
-      def initialize: (context_hash options) -> untyped
-                    | () -> untyped
+      def initialize: (?connection_opts options) -> void
 
       def add_to_table: (header_pair) -> void
 

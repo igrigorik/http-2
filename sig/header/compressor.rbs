@@ -17,7 +17,7 @@ module HTTP2
 
       private
 
-      def initialize: (?context_hash options) -> void
+      def initialize: (?connection_opts options) -> void
 
       def huffman_string: (String str) -> String
 

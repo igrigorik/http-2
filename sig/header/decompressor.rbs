@@ -17,8 +17,7 @@ module HTTP2
                 | (String) -> Array[header_pair]
       private
 
-      def initialize: (context_hash options) -> untyped
-                    | () -> untyped
+      def initialize: (?connection_opts options) -> void
     end
   end
 end

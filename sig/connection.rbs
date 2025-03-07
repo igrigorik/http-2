@@ -59,7 +59,7 @@ module HTTP2
     def receive: (string data) -> void
     alias << receive
 
-    def initialize: (?settings_hash) -> void
+    def initialize: (?connection_opts) -> void
 
     private
 
