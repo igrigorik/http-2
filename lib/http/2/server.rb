@@ -120,6 +120,12 @@ module HTTP2
       @state = :waiting_magic
     end
 
+    def activate_stream(**)
+      super.tap do |stream|
+        stream.on(:promise, &method(:promise))
+      end
+    end
+
     def origin_set=(origins)
       @origin_set = Array(origins).map(&:to_s)
       @origins_sent = @origin_set.empty?

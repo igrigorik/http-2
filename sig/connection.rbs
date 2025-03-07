@@ -5,7 +5,14 @@ module HTTP2
     include BufferUtils
 
     REQUEST_MANDATORY_HEADERS: Array[String]
+
     RESPONSE_MANDATORY_HEADERS: Array[String]
+
+    CONNECTION_FRAME_TYPES: Array[Symbol]
+
+    HEADERS_FRAME_TYPES: Array[Symbol]
+
+    STREAM_OPEN_STATES: Array[Symbol]
 
     attr_reader state: Symbol
 

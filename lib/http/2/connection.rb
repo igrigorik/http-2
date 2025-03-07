@@ -36,7 +36,14 @@ module HTTP2
   CONNECTION_PREFACE_MAGIC = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
   REQUEST_MANDATORY_HEADERS = %w[:scheme :method :authority :path].freeze
+
   RESPONSE_MANDATORY_HEADERS = %w[:status].freeze
+
+  CONNECTION_FRAME_TYPES = %i[settings ping goaway].freeze
+
+  HEADERS_FRAME_TYPES = %i[headers push_promise].freeze
+
+  STREAM_OPEN_STATES = %i[open half_closed_local].freeze
 
   EMPTY = [].freeze
 
@@ -212,14 +219,18 @@ module HTTP2
       end
 
       while (frame = @framer.parse(@recv_buffer))
+        # @type var stream_id: Integer
+        stream_id = frame[:stream]
+        frame_type = frame[:type]
+
         if is_a?(Client) && !@received_frame
-          connection_error(:protocol_error, msg: "didn't receive settings") if frame[:type] != :settings
+          connection_error(:protocol_error, msg: "didn't receive settings") if frame_type != :settings
           @received_frame = true
         end
 
         # Implementations MUST discard frames
         # that have unknown or unsupported types.
-        if frame[:type].nil?
+        if frame_type.nil?
           # However, extension frames that appear in
           # the middle of a header block (Section 4.3) are not permitted; these
           # MUST be treated as a connection error (Section 5.4.1) of type
@@ -233,7 +244,7 @@ module HTTP2
         # Header blocks MUST be transmitted as a contiguous sequence of frames
         # with no interleaved frames of any other type, or from any other stream.
         unless @continuation.empty?
-          connection_error unless frame[:type] == :continuation && frame[:stream] == @continuation.first[:stream]
+          connection_error unless frame_type == :continuation && stream_id == @continuation.first[:stream]
 
           @continuation << frame
           unless frame[:flags].include? :end_headers
@@ -252,6 +263,8 @@ module HTTP2
           payload = @continuation.map { |f| f[:payload] }.join
 
           frame = @continuation.shift
+          frame_type = frame[:type]
+
           @continuation.clear
 
           frame.delete(:length)
@@ -265,14 +278,14 @@ module HTTP2
         # anything other than 0x0, the endpoint MUST respond with a connection
         # error (Section 5.4.1) of type PROTOCOL_ERROR.
         if connection_frame?(frame)
-          connection_error(:protocol_error) unless frame[:stream].zero?
+          connection_error(:protocol_error) unless stream_id.zero?
           connection_management(frame)
         else
-          case frame[:type]
+          case frame_type
           when :headers
             # When server receives even-numbered stream identifier,
             # the endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
-            connection_error if frame[:stream].even? && is_a?(Server)
+            connection_error if stream_id.even? && is_a?(Server)
 
             # The last frame in a sequence of HEADERS/CONTINUATION
             # frames MUST have the END_HEADERS flag set.
@@ -289,13 +302,13 @@ module HTTP2
             decode_headers(frame)
             return if @state == :closed
 
-            stream = @streams[frame[:stream]]
+            stream = @streams[stream_id]
             if stream.nil?
               verify_pseudo_headers(frame)
 
-              verify_stream_order(frame[:stream])
+              verify_stream_order(stream_id)
               stream = activate_stream(
-                id: frame[:stream],
+                id: stream_id,
                 weight: frame[:weight] || DEFAULT_WEIGHT,
                 dependency: frame[:dependency] || 0,
                 exclusive: frame[:exclusive] || false
@@ -326,18 +339,18 @@ module HTTP2
             # that is not currently in the "idle" state) as a connection error
             # (Section 5.4.1) of type PROTOCOL_ERROR, unless the receiver
             # recently sent a RST_STREAM frame to cancel the associated stream.
-            parent = @streams[frame[:stream]]
+            parent = @streams[stream_id]
             pid = frame[:promise_stream]
 
             # if PUSH parent is recently closed, RST_STREAM the push
-            if @streams_recently_closed[frame[:stream]]
+            if @streams_recently_closed[stream_id]
               send(type: :rst_stream, stream: pid, error: :refused_stream)
               return
             end
 
             connection_error(msg: "missing parent ID") if parent.nil?
 
-            unless parent.state == :open || parent.state == :half_closed_local
+            unless STREAM_OPEN_STATES.include?(parent.state)
               # An endpoint might receive a PUSH_PROMISE frame after it sends
               # RST_STREAM.  PUSH_PROMISE causes a stream to become "reserved".
               # The RST_STREAM does not cancel any promised stream.  Therefore, if
@@ -358,21 +371,21 @@ module HTTP2
             emit(:promise, stream)
             stream << frame
           else
-            if (stream = @streams[frame[:stream]])
+            if (stream = @streams[stream_id])
               stream << frame
-              if frame[:type] == :data
+              if frame_type == :data
                 update_local_window(frame)
                 calculate_window_update(@local_window_limit)
               end
             else
-              case frame[:type]
+              case frame_type
               # The PRIORITY frame can be sent for a stream in the "idle" or
               # "closed" state. This allows for the reprioritization of a
               # group of dependent streams by altering the priority of an
               # unused or closed parent stream.
               when :priority
                 stream = activate_stream(
-                  id: frame[:stream],
+                  id: stream_id,
                   weight: frame[:weight] || DEFAULT_WEIGHT,
                   dependency: frame[:dependency] || 0,
                   exclusive: frame[:exclusive] || false
@@ -387,15 +400,17 @@ module HTTP2
               # "closed" stream. A receiver MUST NOT treat this as an error
               # (see Section 5.1).
               when :window_update
-                stream = @streams_recently_closed[frame[:stream]]
-                connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
+                unless @streams_recently_closed.key?(stream_id)
+                  connection_error(:protocol_error, msg: "sent window update on idle stream")
+                end
+                stream = @streams_recently_closed[stream_id]
                 process_window_update(frame: frame, encode: true)
               # Endpoints MUST ignore
               # WINDOW_UPDATE or RST_STREAM frames received in this state (closed), though
               # endpoints MAY choose to treat frames that arrive a significant
               # time after sending END_STREAM as a connection error.
               when :rst_stream
-                stream = @streams_recently_closed[frame[:stream]]
+                stream = @streams_recently_closed[stream_id]
                 connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
               else
                 # An endpoint that receives an unexpected stream identifier
@@ -425,15 +440,17 @@ module HTTP2
     # @note all frames are currently delivered in FIFO order.
     # @param frame [Hash]
     def send(frame)
+      frame_type = frame[:type]
+
       emit(:frame_sent, frame)
-      if frame[:type] == :data
+      if frame_type == :data
         send_data(frame, true)
 
-      elsif frame[:type] == :rst_stream && frame[:error] == :protocol_error
+      elsif frame_type == :rst_stream && frame[:error] == :protocol_error
         # An endpoint can end a connection at any time. In particular, an
         # endpoint MAY choose to treat a stream error as a connection error.
 
-        goaway(frame[:error])
+        goaway(:protocol_error)
       else
         # HEADERS and PUSH_PROMISE may generate CONTINUATION. Also send
         # RST_STREAM that are not protocol errors
@@ -447,7 +464,7 @@ module HTTP2
     # @param frame [Hash]
     # @return [Array of Buffer] encoded frame
     def encode(frame)
-      frames = if frame[:type] == :headers || frame[:type] == :push_promise
+      frames = if HEADERS_FRAME_TYPES.include?(frame[:type])
                  encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
                else
                  [frame] # otherwise one frame
@@ -462,10 +479,7 @@ module HTTP2
     # @param frame [Hash]
     # @return [Boolean]
     def connection_frame?(frame)
-      (frame[:stream]).zero? ||
-        frame[:type] == :settings ||
-        frame[:type] == :ping ||
-        frame[:type] == :goaway
+      (frame[:stream]).zero? || CONNECTION_FRAME_TYPES.include?(frame[:type])
     end
 
     # Process received connection frame (stream ID = 0).
@@ -476,6 +490,8 @@ module HTTP2
     #
     # @param frame [Hash]
     def connection_management(frame)
+      frame_type = frame[:type]
+
       case @state
       when :waiting_connection_preface
         # The first frame MUST be a SETTINGS frame at the start of a connection.
@@ -483,7 +499,7 @@ module HTTP2
         connection_settings(frame)
 
       when :connected
-        case frame[:type]
+        case frame_type
         when :settings
           connection_settings(frame)
         when :window_update
@@ -498,23 +514,24 @@ module HTTP2
           @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
         when :altsvc
+          origin = frame[:origin]
           # 4.  The ALTSVC HTTP/2 Frame
           # An ALTSVC frame on stream 0 with empty (length 0) "Origin"
           # information is invalid and MUST be ignored.
-          emit(frame[:type], frame) if frame[:origin] && !frame[:origin].empty?
+          emit(frame_type, frame) if origin && !origin.empty?
         when :origin
           return if @h2c_upgrade || !frame[:flags].empty?
 
           frame[:payload].each do |origin|
-            emit(frame[:type], origin)
+            emit(frame_type, origin)
           end
         when :blocked
-          emit(frame[:type], frame)
+          emit(frame_type, frame)
         else
           connection_error
         end
       when :closed
-        case frame[:type]
+        case frame_type
         when :goaway
           connection_error
         when :ping
@@ -766,9 +783,7 @@ module HTTP2
         @streams_recently_closed[id] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
 
-      stream.on(:promise, &method(:promise)) if is_a? Server
-      stream.on(:frame,   &method(:send))
-
+      stream.on(:frame, &method(:send))
       @streams[id] = stream
     end
 
