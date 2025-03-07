@@ -82,13 +82,13 @@ module HTTP2
 
         case header[:type]
         when :indexed
-          raise CompressionError if (header[:name]).zero?
+          raise CompressionError if header[:name].zero?
 
           header[:name] -= 1
         when :changetablesize
           header[:value] = header[:name]
         else
-          if (header[:name]).zero?
+          if header[:name].zero?
             header[:name] = string(buf)
           else
             header[:name] -= 1

@@ -479,7 +479,7 @@ module HTTP2
     # @param frame [Hash]
     # @return [Boolean]
     def connection_frame?(frame)
-      (frame[:stream]).zero? || CONNECTION_FRAME_TYPES.include?(frame[:type])
+      frame[:stream].zero? || CONNECTION_FRAME_TYPES.include?(frame[:type])
     end
 
     # Process received connection frame (stream ID = 0).
@@ -608,7 +608,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def connection_settings(frame)
-      connection_error unless frame[:type] == :settings && (frame[:stream]).zero?
+      connection_error unless frame[:type] == :settings && frame[:stream].zero?
 
       # Apply settings.
       #  side =

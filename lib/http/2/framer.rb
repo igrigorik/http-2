@@ -220,7 +220,7 @@ module HTTP2
         length += 4
 
       when :settings
-        raise CompressionError, "Invalid stream ID (#{frame[:stream]})" if (frame[:stream]).nonzero?
+        raise CompressionError, "Invalid stream ID (#{frame[:stream]})" if frame[:stream].nonzero?
 
         frame[:payload].each do |(k, v)|
           if k.is_a? Integer # rubocop:disable Style/GuardClause
@@ -398,7 +398,7 @@ module HTTP2
         frame[:payload] = []
         raise ProtocolError, "Invalid settings payload length" unless (frame[:length] % 6).zero?
 
-        raise ProtocolError, "Invalid stream ID (#{frame[:stream]})" if (frame[:stream]).nonzero?
+        raise ProtocolError, "Invalid stream ID (#{frame[:stream]})" if frame[:stream].nonzero?
 
         (frame[:length] / 6).times do
           id  = read_str(payload, 2).unpack1(UINT16)
