@@ -187,7 +187,7 @@ module HTTP2
     #
     # @param data [String] Binary encoded string
     def receive(data)
-      @recv_buffer << data
+      append_str(@recv_buffer, data)
 
       # Upon establishment of a TCP connection and determination that
       # HTTP/2.0 will be used by both peers, each endpoint MUST send a

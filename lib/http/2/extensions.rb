@@ -2,6 +2,26 @@
 
 module HTTP2
   module BufferUtils
+    if RUBY_VERSION > "3.4.0"
+      def append_str(str, data)
+        str.append_as_bytes(data)
+      end
+    else
+      def append_str(str, data)
+        enc = data.encoding
+        reset = false
+
+        if enc != Encoding::BINARY
+          reset = true
+          data = data.dup if data.frozen?
+          data.force_encoding(Encoding::BINARY)
+        end
+        str << data
+      ensure
+        data.force_encoding(enc) if reset
+      end
+    end
+
     def read_str(str, n)
       return "".b if n == 0
 
@@ -28,7 +48,7 @@ module HTTP2
         packed_str = array_to_pack.pack(template)
         case offset
         when -1
-          buffer << packed_str
+          append_str(buffer, packed_str)
         when 0
           buffer.prepend(packed_str)
         else

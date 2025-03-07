@@ -12,6 +12,7 @@ module HTTP2
     class Huffman
       include Error
       include PackingExtensions
+      include BufferUtils
 
       BITS_AT_ONCE = 4
       EOS = 256
@@ -24,7 +25,7 @@ module HTTP2
       # @return [String] binary string
       def encode(str)
         bitstring = str.each_byte.map { |chr| ENCODE_TABLE[chr] }.join
-        bitstring << ("1" * ((8 - bitstring.size) % 8))
+        append_str(bitstring, ("1" * ((8 - bitstring.size) % 8)))
         [bitstring].pack("B*")
       end
 
@@ -49,7 +50,7 @@ module HTTP2
             trans = MACHINE[state][branch]
             raise CompressionError, "Huffman decode error (EOS found)" if trans.first == EOS
 
-            emit << trans.first.chr if trans.first
+            append_str(emit, trans.first.chr) if trans.first
             state = trans.last
           end
         end

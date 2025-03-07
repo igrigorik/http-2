@@ -79,7 +79,7 @@ module HTTP2
 
       # Process received HTTP2-Settings payload
       buf = "".b
-      buf << Base64.urlsafe_decode64(settings.to_s)
+      append_str(buf, Base64.urlsafe_decode64(settings.to_s))
       @framer.common_header(
         {
           length: buf.bytesize,

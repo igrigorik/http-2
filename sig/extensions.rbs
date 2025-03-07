@@ -1,5 +1,7 @@
 module HTTP2
   module BufferUtils
+    def append_str: (String str, String data) -> void
+
     def read_str: (String str, Integer n) -> String
 
     def read_uint32: (String str) -> Integer

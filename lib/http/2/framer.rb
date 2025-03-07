@@ -185,8 +185,7 @@ module HTTP2
 
       case frame[:type]
       when :data
-        bytes << frame[:payload]
-        bytes.force_encoding(Encoding::BINARY)
+        append_str(bytes, frame[:payload])
         length += frame[:payload].bytesize
 
       when :headers
@@ -204,7 +203,7 @@ module HTTP2
           length += 5
         end
 
-        bytes << frame[:payload]
+        append_str(bytes, frame[:payload])
         length += frame[:payload].bytesize
 
       when :priority
@@ -239,13 +238,13 @@ module HTTP2
 
       when :push_promise
         pack([frame[:promise_stream] & RBIT], UINT32, buffer: bytes)
-        bytes << frame[:payload]
+        append_str(bytes, frame[:payload])
         length += 4 + frame[:payload].bytesize
 
       when :ping
         raise CompressionError, "Invalid payload size (#{frame[:payload].size} != 8 bytes)" if frame[:payload].bytesize != 8
 
-        bytes << frame[:payload]
+        append_str(bytes, frame[:payload])
         length += 8
 
       when :goaway
@@ -254,7 +253,7 @@ module HTTP2
         length += 8
 
         if frame[:payload]
-          bytes << frame[:payload]
+          append_str(bytes, frame[:payload])
           length += frame[:payload].bytesize
         end
 
@@ -263,7 +262,7 @@ module HTTP2
         length += 4
 
       when :continuation
-        bytes << frame[:payload]
+        append_str(bytes, frame[:payload])
         length += frame[:payload].bytesize
 
       when :altsvc
@@ -273,7 +272,7 @@ module HTTP2
           raise CompressionError, "Proto too long" if frame[:proto].bytesize > 255
 
           pack([frame[:proto].bytesize], UINT8, buffer: bytes)
-          bytes << frame[:proto]
+          append_str(bytes, frame[:proto])
           length += 1 + frame[:proto].bytesize
         else
           pack([0], UINT8, buffer: bytes)
@@ -283,21 +282,21 @@ module HTTP2
           raise CompressionError, "Host too long" if frame[:host].bytesize > 255
 
           pack([frame[:host].bytesize], UINT8, buffer: bytes)
-          bytes << frame[:host]
+          append_str(bytes, frame[:host])
           length += 1 + frame[:host].bytesize
         else
           pack([0], UINT8, buffer: bytes)
           length += 1
         end
         if frame[:origin]
-          bytes << frame[:origin]
+          append_str(bytes, frame[:origin])
           length += frame[:origin].bytesize
         end
 
       when :origin
         frame[:payload].each do |origin|
           pack([origin.bytesize], UINT16, buffer: bytes)
-          bytes << origin
+          append_str(bytes, origin)
           length += 2 + origin.bytesize
         end
 
@@ -324,7 +323,7 @@ module HTTP2
         # Padding:  Padding octets that contain no application semantic value.
         # Padding octets MUST be set to zero when sending and ignored when
         # receiving.
-        bytes << ("\0" * padlen)
+        append_str(bytes, ("\0" * padlen))
       end
 
       frame[:length] = length

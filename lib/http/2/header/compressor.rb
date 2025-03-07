@@ -5,6 +5,7 @@ module HTTP2
     # Responsible for encoding header key-value pairs using HPACK algorithm.
     class Compressor
       include PackingExtensions
+      include BufferUtils
 
       # @param options [Hash] encoding options
       def initialize(options = {})
@@ -104,10 +105,10 @@ module HTTP2
             integer(h[:name] + 1, rep[:prefix], buffer: buffer)
           else
             integer(0, rep[:prefix], buffer: buffer)
-            buffer << string(h[:name])
+            append_str(buffer, string(h[:name]))
           end
 
-          buffer << string(h[:value])
+          append_str(buffer, string(h[:value]))
         end
 
         # set header representation pattern on first byte
@@ -127,7 +128,7 @@ module HTTP2
         headers = [*pseudo_headers, *regular_headers]
         commands = @cc.encode(headers)
         commands.each do |cmd|
-          buffer << header(cmd)
+          append_str(buffer, header(cmd))
         end
 
         buffer
@@ -149,7 +150,7 @@ module HTTP2
       def plain_string(str)
         plain = "".b
         integer(str.bytesize, 7, buffer: plain)
-        plain << str.dup.force_encoding(Encoding::BINARY)
+        append_str(plain, str)
         plain
       end
     end
