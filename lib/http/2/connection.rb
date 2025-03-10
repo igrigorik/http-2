@@ -179,7 +179,6 @@ module HTTP2
     #
     # @param settings [Array or Hash]
     def settings(payload)
-      payload = payload.to_a
       validate_settings(@local_role, payload)
       @pending_settings << payload
       send(type: :settings, stream: 0, payload: payload)
@@ -612,13 +611,15 @@ module HTTP2
       #  side =
       #   local: previously sent and pended our settings should be effective
       #   remote: just received peer settings should immediately be effective
-      settings, side = if frame[:flags].include?(:ack)
-                         # Process pending settings we have sent.
-                         [@pending_settings.shift, :local]
-                       else
-                         validate_settings(@remote_role, frame[:payload])
-                         [frame[:payload], :remote]
-                       end
+      if frame[:flags].include?(:ack)
+        # Process pending settings we have sent.
+        settings = @pending_settings.shift
+        side = :local
+      else
+        validate_settings(@remote_role, frame[:payload])
+        settings = frame[:payload]
+        side = :remote
+      end
 
       settings.each do |key, v|
         case side
