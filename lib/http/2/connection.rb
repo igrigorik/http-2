@@ -45,8 +45,6 @@ module HTTP2
 
   STREAM_OPEN_STATES = %i[open half_closed_local].freeze
 
-  EMPTY = [].freeze
-
   # Connection encapsulates all of the connection, stream, flow-control,
   # error management, and other processing logic required for a well-behaved
   # HTTP 2.0 endpoint.
