@@ -492,6 +492,8 @@ module HTTP2
       case @state
       when :waiting_connection_preface
         # The first frame MUST be a SETTINGS frame at the start of a connection.
+        connection_error unless frame[:type] == :settings
+
         @state = :connected
         connection_settings(frame)
 
@@ -605,8 +607,6 @@ module HTTP2
     #
     # @param frame [Hash]
     def connection_settings(frame)
-      connection_error unless frame[:type] == :settings && frame[:stream].zero?
-
       # Apply settings.
       #  side =
       #   local: previously sent and pended our settings should be effective
