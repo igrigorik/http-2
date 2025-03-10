@@ -227,7 +227,7 @@ module HTTP2
         # Literals commands are marked with :noindex when index is not used
         noindex = STATIC_NEVER.include?(@options[:index])
 
-        headers.map do |field, value|
+        headers.each do |field, value|
           # Literal header names MUST be translated to lowercase before
           # encoding and transmission.
           field = field.downcase if UPPER.match?(field)
@@ -235,7 +235,7 @@ module HTTP2
           cmd = addcmd(field, value)
           cmd[:type] = :noindex if noindex && cmd[:type] == :incremental
           process(cmd)
-          cmd
+          yield cmd
         end
       end
 

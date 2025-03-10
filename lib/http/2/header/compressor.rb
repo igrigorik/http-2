@@ -124,11 +124,10 @@ module HTTP2
       # @return [Buffer]
       def encode(headers)
         buffer = "".b
-        pseudo_headers, regular_headers = headers.partition { |f, _| f.start_with? ":" }
-        headers = [*pseudo_headers, *regular_headers]
-        commands = @cc.encode(headers)
-        commands.each do |cmd|
-          append_str(buffer, header(cmd))
+        headers.partition { |f, _| f.start_with? ":" }.each do |hs|
+          @cc.encode(hs) do |cmd|
+            append_str(buffer, header(cmd))
+          end
         end
 
         buffer

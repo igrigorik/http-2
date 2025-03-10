@@ -247,13 +247,20 @@ RSpec.describe HTTP2::Header do
 
     context "encode" do
       it "downcases the field" do
-        expect(EncodingContext.new.encode([%w[Content-Length 5]]))
-          .to eq(EncodingContext.new.encode([%w[content-length 5]]))
+        uppercase_cmd = nil
+        EncodingContext.new.encode([%w[Content-Length 5]]) { |cmd| uppercase_cmd = cmd }
+        lowercase_cmd = nil
+        EncodingContext.new.encode([%w[content-Length 5]]) { |cmd| lowercase_cmd = cmd }
+
+        expect(uppercase_cmd).to eq(lowercase_cmd)
       end
 
       it "fills :path if empty" do
-        expect(EncodingContext.new.encode([[":path", ""]]))
-          .to eq(EncodingContext.new.encode([[":path", "/"]]))
+        no_path = nil
+        EncodingContext.new.encode([[":path", ""]]) { |cmd| no_path = cmd }
+        yes_path = nil
+        EncodingContext.new.encode([[":path", "/"]]) { |cmd| yes_path = cmd }
+        expect(no_path).to eq(yes_path)
       end
     end
   end
