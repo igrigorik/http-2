@@ -517,15 +517,15 @@ module HTTP2
           # 4.  The ALTSVC HTTP/2 Frame
           # An ALTSVC frame on stream 0 with empty (length 0) "Origin"
           # information is invalid and MUST be ignored.
-          emit(frame_type, frame) if origin && !origin.empty?
+          emit(:altsvc, frame) if origin && !origin.empty?
         when :origin
           return if @h2c_upgrade || !frame[:flags].empty?
 
-          frame[:payload].each do |origin|
-            emit(frame_type, origin)
+          frame[:payload].each do |orig|
+            emit(:origin, orig)
           end
         when :blocked
-          emit(frame_type, frame)
+          emit(:blocked, frame)
         else
           connection_error
         end
