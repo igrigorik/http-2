@@ -72,8 +72,6 @@ module HTTP2
       send_buffer << frame unless frame.nil?
 
       while (frame = send_buffer.retrieve(@remote_window))
-
-        # puts "#{self.class} -> #{@remote_window}"
         sent = frame[:payload].bytesize
 
         manage_state(frame) do
@@ -128,31 +126,27 @@ module HTTP2
       # in either flow control window.
       return if window_size <= 0 && !(frame_size == 0 && end_stream)
 
-      @buffer.shift
-
       if frame_size > window_size
-        payload = frame[:payload]
         chunk   = frame.dup
+        payload = frame[:payload]
 
         # Split frame so that it fits in the window
         # TODO: consider padding!
-        frame_bytes = payload.byteslice(0, window_size)
-        payload = payload.byteslice(window_size..-1)
 
-        frame[:payload] = frame_bytes
-        frame[:length] = frame_bytes.bytesize
-        chunk[:payload] = payload
-        chunk[:length]  = payload.bytesize
+        chunk[:payload] = payload.byteslice(0, window_size)
+        chunk[:length]  = window_size
+        frame[:payload] = payload.byteslice(window_size..-1)
+        frame[:length] = frame_size - window_size
 
         # if no longer last frame in sequence...
-        frame[:flags] -= [:end_stream] if end_stream
+        chunk[:flags] -= [:end_stream] if end_stream
 
-        @buffer.unshift(chunk)
         @bytesize -= window_size
+        chunk
       else
         @bytesize -= frame_size
+        @buffer.shift
       end
-      frame
     end
   end
 end
