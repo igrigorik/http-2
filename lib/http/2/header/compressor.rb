@@ -35,7 +35,7 @@ module HTTP2
       # @param buffer [String] buffer to pack bytes into
       # @param offset [Integer] offset to insert packed bytes in buffer
       # @return [String] binary string
-      def integer(i, n, buffer:, offset: 0)
+      def integer(i, n, buffer:, offset: buffer.size)
         limit = (2**n) - 1
         return pack([i], "C", buffer: buffer, offset: offset) if i < limit
 
@@ -94,6 +94,7 @@ module HTTP2
       # @return [Buffer]
       def header(h, buffer = "".b)
         rep = HEADREP[h[:type]]
+        offset = buffer.size
 
         case h[:type]
         when :indexed
@@ -112,8 +113,8 @@ module HTTP2
         end
 
         # set header representation pattern on first byte
-        fb = buffer.ord | rep[:pattern]
-        buffer.setbyte(0, fb)
+        fb = buffer[offset].ord | rep[:pattern]
+        buffer.setbyte(offset, fb)
 
         buffer
       end
@@ -126,7 +127,7 @@ module HTTP2
         buffer = "".b
         headers.partition { |f, _| f.start_with? ":" }.each do |hs|
           @cc.encode(hs) do |cmd|
-            append_str(buffer, header(cmd))
+            header(cmd, buffer)
           end
         end
 
