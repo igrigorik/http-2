@@ -451,23 +451,19 @@ module HTTP2
       else
         # HEADERS and PUSH_PROMISE may generate CONTINUATION. Also send
         # RST_STREAM that are not protocol errors
-        frames = encode(frame)
-        frames.each { |f| emit(:frame, f) }
+        encode(frame)
       end
     end
 
     # Applies HTTP 2.0 binary encoding to the frame.
     #
     # @param frame [Hash]
-    # @return [Array of Buffer] encoded frame
     def encode(frame)
-      frames = if HEADERS_FRAME_TYPES.include?(frame[:type])
-                 encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
-               else
-                 [frame] # otherwise one frame
-               end
-
-      frames.map { |f| @framer.generate(f) }
+      if HEADERS_FRAME_TYPES.include?(frame[:type])
+        encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
+      else
+        emit(:frame, @framer.generate(frame))
+      end
     end
 
     # Check if frame is a connection frame: SETTINGS, PING, GOAWAY, and any
@@ -715,40 +711,48 @@ module HTTP2
 
     # Encode headers payload and update connection compressor state.
     #
-    # @param frame [Hash]
-    # @return [Array of Frame]
-    def encode_headers(frame)
-      payload = frame[:payload]
+    # @param headers_frame [Hash]
+    def encode_headers(headers_frame)
+      payload = headers_frame[:payload]
       begin
-        payload = frame[:payload] = @compressor.encode(payload) unless payload.is_a?(String)
+        payload = headers_frame[:payload] = @compressor.encode(payload) unless payload.is_a?(String)
       rescue StandardError => e
         connection_error(:compression_error, e: e)
       end
 
+      max_frame_size = @remote_settings[:settings_max_frame_size]
+
       # if single frame, return immediately
-      return [frame] if payload.bytesize <= @remote_settings[:settings_max_frame_size]
-
-      frames = []
-
-      until payload.nil? || payload.empty?
-        cont = frame.dup
-
-        # first frame remains HEADERS
-        unless frames.empty?
-          cont[:type] = :continuation
-          cont[:flags] = EMPTY
-        end
-
-        cont[:payload] = payload.byteslice(0, @remote_settings[:settings_max_frame_size])
-        payload = payload.byteslice(@remote_settings[:settings_max_frame_size]..-1)
-
-        frames << cont
+      if payload.bytesize <= max_frame_size
+        emit(:frame, @framer.generate(headers_frame))
+        return
       end
 
-      frames.first[:flags].delete(:end_headers)
-      frames.last[:flags] = [:end_headers]
+      # split into multiple CONTINUATION frames
+      headers_frame[:flags].delete(:end_headers)
+      headers_frame[:payload] = payload.byteslice(0, max_frame_size)
+      payload = payload.byteslice(max_frame_size..-1)
 
-      frames
+      # emit first HEADERS frame
+      emit(:frame, @framer.generate(headers_frame))
+
+      loop do
+        continuation_frame = headers_frame.merge(
+          type: :continuation,
+          flags: EMPTY,
+          payload: payload.byteslice(0, max_frame_size)
+        )
+
+        payload = payload.byteslice(max_frame_size..-1)
+
+        if payload.nil? || payload.empty?
+          continuation_frame[:flags] = [:end_headers]
+          emit(:frame, @framer.generate(continuation_frame))
+          break
+        end
+
+        emit(:frame, @framer.generate(continuation_frame))
+      end
     end
 
     # Activates new incoming or outgoing stream and registers appropriate

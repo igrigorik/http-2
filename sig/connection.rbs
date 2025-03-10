@@ -75,9 +75,9 @@ module HTTP2
 
     private
 
-    def send: (frame) -> void
+    def send: (frame frame) -> void
 
-    def encode: (frame) -> Array[String]
+    def encode: (frame frame) -> void
 
     def connection_frame?: (frame) -> bool
 
@@ -91,7 +91,7 @@ module HTTP2
 
     def decode_headers: (frame) -> void
 
-    def encode_headers: (frame) -> Array[frame]
+    def encode_headers: (frame headers_frame) -> void
 
     def activate_stream: (id: Integer, **untyped) -> Stream
 

@@ -78,7 +78,7 @@ module HTTP2
 
         manage_state(frame) do
           if encode
-            encode(frame).each { |f| emit(:frame, f) }
+            encode(frame)
           else
             emit(:frame, frame)
           end
