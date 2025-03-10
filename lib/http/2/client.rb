@@ -26,6 +26,7 @@ module HTTP2
 
       @local_role   = :client
       @remote_role  = :server
+      @h2c_upgrade = nil
 
       super
     end

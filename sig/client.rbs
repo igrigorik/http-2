@@ -1,5 +1,7 @@
 module HTTP2
   class Client < Connection
+    @h2c_upgrade: Symbol?
+
     def upgrade: () -> Stream
 
     def send_connection_preface: () -> void

@@ -79,7 +79,7 @@ module HTTP2
 
     def process_priority: ({weight: Integer, dependency: Integer, exclusive: bool}) -> void
 
-    def end_frame?: () -> bool
+    def end_stream?: (frame frame) -> boolish
 
     def stream_error: (Symbol error, ?msg: String?) -> void
                     | () -> void
