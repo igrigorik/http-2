@@ -29,7 +29,6 @@ module HTTP2
 
     @stream_id: Integer
     @active_stream_count: Integer
-    @last_activated_stream: Integer
     @last_stream_id: Integer
 
     @streams: Hash[Integer, Stream]

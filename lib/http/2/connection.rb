@@ -89,7 +89,6 @@ module HTTP2
       @decompressor = Header::Decompressor.new(settings)
 
       @active_stream_count = 0
-      @last_activated_stream = 0
       @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
@@ -124,10 +123,10 @@ module HTTP2
       raise ConnectionClosed if @state == :closed
       raise StreamLimitExceeded if @active_stream_count >= @remote_settings[:settings_max_concurrent_streams]
 
-      connection_error(:protocol_error, msg: "id is smaller than previous") if @stream_id < @last_activated_stream
+      connection_error(:protocol_error, msg: "id is smaller than previous") if @stream_id < @last_stream_id
 
       stream = activate_stream(id: @stream_id, **args)
-      @last_activated_stream = stream.id
+      @last_stream_id = stream.id
 
       @stream_id += 2
 
@@ -154,13 +153,7 @@ module HTTP2
     # @param error [Symbol]
     # @param payload [String]
     def goaway(error = :no_error, payload = nil)
-      last_stream = if (max = @streams.max)
-                      max.first
-                    else
-                      0
-                    end
-
-      send(type: :goaway, last_stream: last_stream,
+      send(type: :goaway, last_stream: @last_stream_id,
            error: error, payload: payload)
       @state = :closed
       @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
