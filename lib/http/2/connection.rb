@@ -771,10 +771,17 @@ module HTTP2
         # is closed, with a minimum of 15s RTT time window.
         now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-        # TODO: use a drop_while! variant whenever there is one.
-        @streams_recently_closed = @streams_recently_closed.drop_while do |_, v|
-          (now - v) > 15
-        end.to_h
+        _, closed_since = @streams_recently_closed.first
+
+        # forego recently closed recycling if empty or the first element
+        # hasn't expired yet (it's ordered).
+        if closed_since && (now - closed_since) > 15
+          # discards all streams which have closed for a while.
+          # TODO: use a drop_while! variant whenever there is one.
+          @streams_recently_closed = @streams_recently_closed.drop_while do |_, since|
+            (now - since) > 15
+          end.to_h
+        end
 
         @streams_recently_closed[id] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end

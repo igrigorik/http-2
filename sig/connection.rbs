@@ -32,7 +32,7 @@ module HTTP2
     @last_stream_id: Integer
 
     @streams: Hash[Integer, Stream]
-    @streams_recently_closed: Hash[Integer, Stream]
+    @streams_recently_closed: Hash[Integer, Numeric]
 
     @framer: Framer
 
