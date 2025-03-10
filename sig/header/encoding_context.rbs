@@ -20,6 +20,8 @@ module HTTP2
 
       attr_reader options: context_hash
 
+      attr_reader current_table_size: Integer
+
       @limit: Integer
 
       @_table_updated: bool
@@ -36,15 +38,13 @@ module HTTP2
 
       def table_size=: (Integer) -> void
 
-      def current_table_size: () -> Integer
-
       private
 
       def initialize: (?connection_opts options) -> void
 
       def add_to_table: (string name, string value) -> void
 
-      def size_check: (header_pair?) -> bool
+      def size_check: (Integer cmdsize) -> bool
     end
   end
 end

@@ -106,6 +106,9 @@ module HTTP2
       #   :index       Symbol   :all, :static, :never
       attr_reader :options
 
+      # Current table size in octets
+      attr_reader :current_table_size
+
       # Initializes compression context with appropriate client/server
       # defaults and maximum size of the dynamic table.
       #
@@ -118,6 +121,7 @@ module HTTP2
         @options = DEFAULT_OPTIONS.merge(options)
         @limit = @options[:table_size]
         @_table_updated = false
+        @current_table_size = 0
       end
 
       # Duplicates current compression context
@@ -210,6 +214,7 @@ module HTTP2
           # add to table
           if cmd[:type] == :incremental && size_check(cmd[:name].bytesize + cmd[:value].bytesize + 32)
             @table.unshift(emit)
+            @current_table_size += cmd[:name].bytesize + cmd[:value].bytesize + 32
             @_table_updated = true
           end
         else
@@ -298,13 +303,7 @@ module HTTP2
       #  When the size is reduced, some headers might be evicted.
       def table_size=(size)
         @limit = size
-        size_check(nil)
-      end
-
-      # Returns current table size in octets
-      # @return [Integer]
-      def current_table_size
-        @table.sum { |k, v| k.bytesize + v.bytesize } + (@table.size * 32)
+        size_check(0)
       end
 
       def listen_on_table
@@ -318,17 +317,17 @@ module HTTP2
       # To keep the dynamic table size lower than or equal to @limit,
       # remove one or more entries at the end of the dynamic table.
       #
-      # @param cmd [Hash]
+      # @param cmdsize [Integer]
       # @return [Boolean] whether +cmd+ fits in the dynamic table.
-      def size_check(cmd)
-        cursize = current_table_size
-        cmdsize = cmd.nil? ? 0 : cmd[0].bytesize + cmd[1].bytesize + 32
+      def size_check(cmdsize)
+        unless @table.empty?
+          while @current_table_size + cmdsize > @limit
 
-        while cursize + cmdsize > @limit
-          break if @table.empty?
+            name, value = @table.pop
+            @current_table_size -= name.bytesize + value.bytesize + 32
+            break if @table.empty?
 
-          e = @table.pop
-          cursize -= e[0].bytesize + e[1].bytesize + 32
+          end
         end
 
         cmdsize <= @limit
