@@ -146,6 +146,13 @@ module HTTP2
         raise CompressionError, "Window increment (#{frame[:increment]}) is too large"
       end
 
+      header = buffer
+
+      if buffer.frozen?
+        header = String.new("", encoding: Encoding::BINARY, capacity: buffer.bytesize + 9) # header length
+        header << buffer
+      end
+
       pack([
              (length >> FRAME_LENGTH_HISHIFT),
              (length & FRAME_LENGTH_LOMASK),
@@ -157,7 +164,7 @@ module HTTP2
                acc | (1 << position)
              end,
              stream_id
-           ], HEADERPACK, buffer: buffer, offset: 0) # 8+16,8,8,32
+           ], HEADERPACK, buffer: header, offset: 0) # 8+16,8,8,32
     end
 
     # Decodes common 9-byte header.
@@ -187,52 +194,60 @@ module HTTP2
     #
     # @param frame [Hash]
     def generate(frame)
-      bytes  = "".b
       length = 0
-
-      frame[:flags] ||= []
-      frame[:stream] ||= 0
+      frame[:flags] ||= EMPTY
 
       case frame[:type]
-      when :data
-        append_str(bytes, frame[:payload])
-        length += frame[:payload].bytesize
+      when :data, :continuation
+        bytes = frame[:payload]
+        length = bytes.bytesize
 
       when :headers
+        headers = frame[:payload]
+
         if frame[:weight] || frame[:dependency] || !frame[:exclusive].nil?
           unless frame[:weight] && frame[:dependency] && !frame[:exclusive].nil?
             raise CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
           end
 
-          frame[:flags] += [:priority] unless frame[:flags].include? :priority
+          frame[:flags] += [:priority] unless frame[:flags].include?(:priority)
         end
 
-        if frame[:flags].include? :priority
+        if frame[:flags].include?(:priority)
+          length = 5 + headers.bytesize
+          bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
           pack([(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)], UINT32, buffer: bytes)
           pack([frame[:weight] - 1], UINT8, buffer: bytes)
-          length += 5
+          append_str(bytes, headers)
+        else
+          length = headers.bytesize
+          bytes = headers
         end
-
-        append_str(bytes, frame[:payload])
-        length += frame[:payload].bytesize
 
       when :priority
         unless frame[:weight] && frame[:dependency] && !frame[:exclusive].nil?
           raise CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
         end
 
+        length = 5
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
         pack([(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)], UINT32, buffer: bytes)
         pack([frame[:weight] - 1], UINT8, buffer: bytes)
-        length += 5
 
       when :rst_stream
+        length = 4
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
         pack_error(frame[:error], buffer: bytes)
-        length += 4
 
       when :settings
-        raise CompressionError, "Invalid stream ID (#{frame[:stream]})" if frame[:stream].nonzero?
+        if (stream_id = frame[:stream]) && stream_id.nonzero?
+          raise CompressionError, "Invalid stream ID (#{stream_id})"
+        end
 
-        frame[:payload].each do |(k, v)|
+        settings = frame[:payload]
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
+
+        settings.each do |(k, v)|
           if k.is_a? Integer # rubocop:disable Style/GuardClause
             DEFINED_SETTINGS.value?(k) || next
           else
@@ -247,37 +262,37 @@ module HTTP2
         end
 
       when :push_promise
+        length = 4 + frame[:payload].bytesize
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
         pack([frame[:promise_stream] & RBIT], UINT32, buffer: bytes)
         append_str(bytes, frame[:payload])
-        length += 4 + frame[:payload].bytesize
 
       when :ping
-        raise CompressionError, "Invalid payload size (#{frame[:payload].size} != 8 bytes)" if frame[:payload].bytesize != 8
+        bytes = frame[:payload]
+        raise CompressionError, "Invalid payload size (#{bytes.size} != 8 bytes)" if bytes.bytesize != 8
 
-        append_str(bytes, frame[:payload])
-        length += 8
+        length = 8
 
       when :goaway
+        data = frame[:payload]
+        length = 8
+        length += data.bytesize if data
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
+
         pack([frame[:last_stream] & RBIT], UINT32, buffer: bytes)
         pack_error(frame[:error], buffer: bytes)
-        length += 8
 
-        if frame[:payload]
-          append_str(bytes, frame[:payload])
-          length += frame[:payload].bytesize
-        end
+        append_str(bytes, data) if data
 
       when :window_update
+        length = 4
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
         pack([frame[:increment] & RBIT], UINT32, buffer: bytes)
-        length += 4
-
-      when :continuation
-        append_str(bytes, frame[:payload])
-        length += frame[:payload].bytesize
 
       when :altsvc
+        length = 6
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
         pack([frame[:max_age], frame[:port]], UINT32 + UINT16, buffer: bytes)
-        length += 6
         if frame[:proto]
           raise CompressionError, "Proto too long" if frame[:proto].bytesize > 255
 
@@ -304,12 +319,13 @@ module HTTP2
         end
 
       when :origin
-        frame[:payload].each do |origin|
+        origins = frame[:payload]
+        length = origins.sum(&:bytesize) + (2 * origins.size)
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
+        origins.each do |origin|
           pack([origin.bytesize], UINT16, buffer: bytes)
           append_str(bytes, origin)
-          length += 2 + origin.bytesize
         end
-
       end
 
       # Process padding.
@@ -328,7 +344,7 @@ module HTTP2
 
         length += padlen
         pack([padlen -= 1], UINT8, buffer: bytes, offset: 0)
-        frame[:flags] << :padded
+        frame[:flags] += [:padded]
 
         # Padding:  Padding octets that contain no application semantic value.
         # Padding octets MUST be set to zero when sending and ignored when

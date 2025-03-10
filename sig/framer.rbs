@@ -1,5 +1,6 @@
 module HTTP2
   class Framer
+    include Error
     include PackingExtensions
     include BufferUtils
 
@@ -10,6 +11,8 @@ module HTTP2
     MAX_WINDOWINC: Integer
 
     FRAME_TYPES: Hash[Symbol, Integer]
+
+    FRAME_TYPES_BY_NAME: Array[Symbol]
 
     FRAME_TYPES_WITH_PADDING: Array[Symbol]
 
@@ -37,6 +40,8 @@ module HTTP2
     attr_accessor remote_max_frame_size: Integer
 
     def common_header: (frame, buffer: String) -> String
+
+    def read_common_header: (String buf) -> frame
 
     def read_common_frame: (String) -> frame
 
