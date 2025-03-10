@@ -29,7 +29,7 @@ module HTTP2
 
     def update_local_window(frame)
       frame_size = frame[:payload].bytesize
-      frame_size += frame[:padding] || 0
+      frame_size += frame.fetch(:padding, 0)
       @local_window -= frame_size
     end
 

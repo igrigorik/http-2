@@ -40,6 +40,8 @@ module HTTP2
     include Emitter
     include Error
 
+    STREAM_OPEN_STATES = %i[open half_closed_local half_closing closing].freeze
+
     # Stream ID (odd for client initiated streams, even otherwise).
     attr_reader :id
 
@@ -88,7 +90,7 @@ module HTTP2
       @state  = state
       @error  = false
       @closed = false
-      @_method = @_content_length = @_status_code = nil
+      @_method = @_content_length = @_status_code = @_trailers = nil
       @_waiting_on_trailers = false
       @received_data = false
       @activated = false
@@ -113,9 +115,7 @@ module HTTP2
         # If a DATA frame is received whose stream is not in "open" or
         # "half closed (local)" state, the recipient MUST respond with a
         # stream error (Section 5.4.2) of type STREAM_CLOSED.
-        stream_error(:stream_closed) unless @state == :open ||
-                                            @state == :half_closed_local ||
-                                            @state == :half_closing || @state == :closing ||
+        stream_error(:stream_closed) unless STREAM_OPEN_STATES.include?(@state) ||
                                             (@state == :closed && @closed == :local_rst)
         @received_data = true
         calculate_content_length(frame[:length])
