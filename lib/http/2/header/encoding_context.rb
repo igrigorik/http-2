@@ -207,8 +207,11 @@ module HTTP2
 
           emit = [cmd[:name], cmd[:value]]
 
-          add_to_table(emit) if cmd[:type] == :incremental
-
+          # add to table
+          if cmd[:type] == :incremental && size_check(cmd[:name].bytesize + cmd[:value].bytesize + 32)
+            @table.unshift(emit)
+            @_table_updated = true
+          end
         else
           raise CompressionError, "Invalid type: #{cmd[:type]}"
         end
@@ -311,18 +314,6 @@ module HTTP2
       end
 
       private
-
-      # Add a name-value pair to the dynamic table.
-      # Older entries might have been evicted so that
-      # the new entry fits in the dynamic table.
-      #
-      # @param cmd [Array] +[name, value]+
-      def add_to_table(cmd)
-        return unless size_check(cmd)
-
-        @table.unshift(cmd)
-        @_table_updated = true
-      end
 
       # To keep the dynamic table size lower than or equal to @limit,
       # remove one or more entries at the end of the dynamic table.

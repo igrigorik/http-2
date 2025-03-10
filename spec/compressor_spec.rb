@@ -192,10 +192,8 @@ RSpec.describe HTTP2::Header do
       context "size bounds" do
         it "should drop headers from end of table" do
           cc = EncodingContext.new(table_size: 2048)
-          cc.instance_eval do
-            add_to_table(["test1", "1" * 1024])
-            add_to_table(["test2", "2" * 500])
-          end
+          cc.process(name: "test1", value: "1" * 1024, type: :incremental)
+          cc.process(name: "test2", value: "2" * 500, type: :incremental)
 
           original_table = cc.table.dup
           original_size = original_table.join.bytesize + (original_table.size * 32)
@@ -211,10 +209,8 @@ RSpec.describe HTTP2::Header do
 
       it "should clear table if entry exceeds table size" do
         cc = EncodingContext.new(table_size: 2048)
-        cc.instance_eval do
-          add_to_table(["test1", "1" * 1024])
-          add_to_table(["test2", "2" * 500])
-        end
+        cc.process(name: "test1", value: "1" * 1024, type: :incremental)
+        cc.process(name: "test2", value: "2" * 500, type: :incremental)
 
         h = { name: "x-custom", value: "a", index: 0, type: :incremental }
         e = { name: "large", value: "a" * 2048, index: 0 }
@@ -227,10 +223,8 @@ RSpec.describe HTTP2::Header do
       it "should shrink table if set smaller size" do
         cc = EncodingContext.new(table_size: 2048)
         cc.listen_on_table do
-          cc.instance_eval do
-            add_to_table(["test1", "1" * 1024])
-            add_to_table(["test2", "2" * 500])
-          end
+          cc.process(name: "test1", value: "1" * 1024, type: :incremental)
+          cc.process(name: "test2", value: "2" * 500, type: :incremental)
         end
 
         cc.process(type: :changetablesize, value: 1500)

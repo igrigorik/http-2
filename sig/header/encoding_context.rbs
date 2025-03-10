@@ -42,7 +42,7 @@ module HTTP2
 
       def initialize: (?connection_opts options) -> void
 
-      def add_to_table: (header_pair) -> void
+      def add_to_table: (string name, string value) -> void
 
       def size_check: (header_pair?) -> bool
     end
