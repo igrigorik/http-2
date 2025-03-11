@@ -26,7 +26,8 @@ module HTTP2
       # @param str [String]
       # @return [String] binary string
       def encode(str)
-        bitstring = str.each_byte.map { |chr| ENCODE_TABLE[chr] }.join
+        bitstring = String.new("", encoding: Encoding::BINARY, capacity: (str.bytesize * 30) + ((8 - str.size) % 8))
+        str.each_byte { |chr| append_str(bitstring, ENCODE_TABLE[chr]) }
         append_str(bitstring, ("1" * ((8 - bitstring.size) % 8)))
         [bitstring].pack("B*")
       end
