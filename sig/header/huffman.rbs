@@ -1,9 +1,25 @@
 module HTTP2
   module Header
-    class Huffman
-      def encode: (String str) -> String
+    module Huffman
+      include Error
+      extend PackingExtensions
+      extend BufferUtils
 
-      def decode: (String str) -> String
+      BITS_AT_ONCE: Integer
+
+      EOS: Integer
+
+      CODES: Array[[Integer, Integer]]
+
+      ENCODE_TABLE: Array[String]
+
+      MAX_FINAL_STATE: Integer
+
+      MACHINE: Array[Array[[Integer?, Integer]]]
+
+      def self?.encode: (String str) -> String
+
+      def self?.decode: (String str) -> String
     end
   end
 end

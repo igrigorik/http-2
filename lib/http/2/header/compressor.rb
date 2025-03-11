@@ -139,7 +139,7 @@ module HTTP2
       # @param str [String]
       # @return [String] binary string
       def huffman_string(str)
-        huffman = Huffman.new.encode(str)
+        huffman = Huffman.encode(str)
         integer(huffman.bytesize, 7, buffer: huffman, offset: 0)
         huffman.setbyte(0, huffman.ord | 0x80)
         huffman

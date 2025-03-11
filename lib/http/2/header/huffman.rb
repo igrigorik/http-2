@@ -9,10 +9,12 @@ module HTTP2
   # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10
   module Header
     # Huffman encoder/decoder
-    class Huffman
+    module Huffman
+      module_function
+
       include Error
-      include PackingExtensions
-      include BufferUtils
+      extend PackingExtensions
+      extend BufferUtils
 
       BITS_AT_ONCE = 4
       EOS = 256

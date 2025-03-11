@@ -59,7 +59,7 @@ module HTTP2
         str = read_str(buf, len)
         raise CompressionError, "string too short" unless str.bytesize == len
 
-        str = Huffman.new.decode(str) if huffman
+        str = Huffman.decode(str) if huffman
         str.force_encoding(Encoding::UTF_8)
       end
 

@@ -9,7 +9,7 @@ RSpec.describe HTTP2::Header::Huffman do
     ["Mon, 21 Oct 2013 20:13:21 GMT", "d07abe941054d444a8200595040b8166e082a62d1bff"]
   ]
   context "encode" do
-    let(:encoder) { HTTP2::Header::Huffman.new }
+    let(:encoder) { HTTP2::Header::Huffman }
     huffman_examples.each do |plain, encoded|
       it "should encode #{plain} into #{encoded}" do
         expect(encoder.encode(plain).unpack1("H*")).to eq encoded
@@ -17,7 +17,7 @@ RSpec.describe HTTP2::Header::Huffman do
     end
   end
   context "decode" do
-    let(:encoder) { HTTP2::Header::Huffman.new }
+    let(:encoder) { HTTP2::Header::Huffman }
     huffman_examples.each do |plain, encoded|
       it "should decode #{encoded} into #{plain}" do
         expect(encoder.decode([encoded].pack("H*"))).to eq plain
