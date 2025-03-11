@@ -17,7 +17,7 @@ module HTTP2
 
       MACHINE: Array[Array[[Integer?, Integer]]]
 
-      def self?.encode: (String str) -> String
+      def self?.encode: (String str, ?String buffer) -> String
 
       def self?.decode: (String str) -> String
     end

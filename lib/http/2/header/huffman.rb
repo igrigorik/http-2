@@ -24,12 +24,13 @@ module HTTP2
       # Length is not encoded in this method.
       #
       # @param str [String]
+      # @param buffer [String]
       # @return [String] binary string
-      def encode(str)
+      def encode(str, buffer = "".b)
         bitstring = String.new("", encoding: Encoding::BINARY, capacity: (str.bytesize * 30) + ((8 - str.size) % 8))
         str.each_byte { |chr| append_str(bitstring, ENCODE_TABLE[chr]) }
         append_str(bitstring, ("1" * ((8 - bitstring.size) % 8)))
-        [bitstring].pack("B*")
+        pack([bitstring], "B*", buffer: buffer)
       end
 
       # Decodes provided Huffman coded string.

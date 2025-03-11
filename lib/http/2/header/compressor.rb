@@ -71,19 +71,23 @@ module HTTP2
       #  :shorter Use Huffman when the result is strictly shorter
       #
       # @param str [String]
+      # @param buffer [String]
       # @return [String] binary string
-      def string(str)
+      def string(str, buffer = "".b)
         case @cc.options[:huffman]
         when :always
-          huffman_string(str)
+          huffman_string(str, buffer)
         when :never
-          plain_string(str)
+          plain_string(str, buffer)
         else
-          huffman = huffman_string(str)
-
-          plain = plain_string(str)
-
-          huffman.bytesize < plain.bytesize ? huffman : plain
+          huffman = Huffman.encode(str)
+          if huffman.bytesize < str.bytesize
+            huffman_offset = buffer.bytesize
+            append_str(buffer, huffman)
+            set_huffman_size(buffer, huffman_offset)
+          else
+            plain_string(str, buffer)
+          end
         end
       end
 
@@ -106,10 +110,10 @@ module HTTP2
             integer(h[:name] + 1, rep[:prefix], buffer: buffer)
           else
             integer(0, rep[:prefix], buffer: buffer)
-            append_str(buffer, string(h[:name]))
+            string(h[:name], buffer)
           end
 
-          append_str(buffer, string(h[:value]))
+          string(h[:value], buffer)
         end
 
         # set header representation pattern on first byte
@@ -137,21 +141,30 @@ module HTTP2
       private
 
       # @param str [String]
+      # @param buffer [String]
       # @return [String] binary string
-      def huffman_string(str)
-        huffman = Huffman.encode(str)
-        integer(huffman.bytesize, 7, buffer: huffman, offset: 0)
-        huffman.setbyte(0, huffman.ord | 0x80)
-        huffman
+      def huffman_string(str, buffer = "".b)
+        huffman_offset = buffer.bytesize
+        Huffman.encode(str, buffer)
+        set_huffman_size(buffer, huffman_offset)
       end
 
       # @param str [String]
+      # @param buffer [String]
       # @return [String] binary string
-      def plain_string(str)
-        plain = "".b
+      def plain_string(str, plain = "".b)
         integer(str.bytesize, 7, buffer: plain)
         append_str(plain, str)
         plain
+      end
+
+      # @param buffer [String]
+      # @param huffman_offset [Integer] buffer offset where huffman string was introduced
+      # @return [String] binary string
+      def set_huffman_size(buffer, huffman_offset)
+        integer(buffer.bytesize - huffman_offset, 7, buffer: buffer, offset: huffman_offset)
+        buffer.setbyte(huffman_offset, buffer[huffman_offset].ord | 0x80)
+        buffer
       end
     end
   end

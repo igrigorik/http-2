@@ -10,6 +10,6 @@ module HTTP2
   end
 
   module PackingExtensions
-    def pack: (Array[Integer] array_to_pack, String template, buffer: String, ?offset: Integer) -> String
+    def pack: (Array[Integer | String] array_to_pack, String template, buffer: String, ?offset: Integer) -> String
   end
 end
