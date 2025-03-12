@@ -70,33 +70,34 @@ module HTTP2
       def header(buf)
         peek = buf.getbyte(0)
 
-        header = {}
-        header[:type], type = HEADREP.find do |_t, desc|
+        header_type, type = HEADREP.find do |_, desc|
           mask = (peek >> desc[:prefix]) << desc[:prefix]
           mask == desc[:pattern]
         end
 
-        raise CompressionError unless header[:type]
+        raise CompressionError unless header_type && type
 
-        header[:name] = integer(buf, type[:prefix])
+        header_name = integer(buf, type[:prefix])
 
-        case header[:type]
+        case header_type
         when :indexed
-          raise CompressionError if header[:name].zero?
+          raise CompressionError if header_name.zero?
 
-          header[:name] -= 1
+          header_name -= 1
+
+          { type: header_type, name: header_name }
         when :changetablesize
-          header[:value] = header[:name]
+          { type: header_type, name: header_name, value: header_name }
         else
-          if header[:name].zero?
-            header[:name] = string(buf)
+          if header_name.zero?
+            header_name = string(buf)
           else
-            header[:name] -= 1
+            header_name -= 1
           end
-          header[:value] = string(buf)
-        end
+          header_value = string(buf)
 
-        header
+          { type: header_type, name: header_name, value: header_value }
+        end
       end
 
       FORBIDDEN_HEADERS = %w[connection te].freeze
