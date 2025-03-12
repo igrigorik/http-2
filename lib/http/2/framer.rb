@@ -181,8 +181,8 @@ module HTTP2
 
       {
         type: type,
-        flags: FRAME_FLAGS[type].each_with_object([]) do |(name, pos), acc|
-          acc << name if flags.anybits?((1 << pos))
+        flags: FRAME_FLAGS[type].filter_map do |name, pos|
+          name if flags.anybits?((1 << pos))
         end,
         length: length,
         stream: stream & RBIT
