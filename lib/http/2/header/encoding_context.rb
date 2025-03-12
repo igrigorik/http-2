@@ -162,7 +162,11 @@ module HTTP2
       # @return [Array, nil] +[name, value]+ header field that is added to the decoded header list,
       #                                      or nil if +cmd[:type]+ is +:changetablesize+
       def process(cmd)
-        case cmd[:type]
+        type = cmd[:type]
+        name = cmd[:name]
+        value = cmd[:value]
+
+        case type
         when :changetablesize
           raise CompressionError, "tried to change table size after adding elements to table" if @_table_updated
 
@@ -170,9 +174,9 @@ module HTTP2
           # we should blow up if we receive another frame where the new table size is bigger.
           table_size_updated = @limit != @options[:table_size]
 
-          raise CompressionError, "dynamic table size update exceed limit" if !table_size_updated && cmd[:value] > @limit
+          raise CompressionError, "dynamic table size update exceed limit" if !table_size_updated && value > @limit
 
-          self.table_size = cmd[:value]
+          self.table_size = value
 
           nil
         when :indexed
@@ -181,7 +185,7 @@ module HTTP2
           # o  The header field corresponding to the referenced entry in either
           # the static table or dynamic table is added to the decoded header
           # list.
-          dereference(cmd[:name])
+          dereference(name)
         when :incremental, :noindex, :neverindexed
           # A _literal representation_ that is _not added_ to the dynamic table
           # entails the following action:
@@ -191,9 +195,6 @@ module HTTP2
           # entails the following actions:
           # o  The header field is added to the decoded header list.
           # o  The header field is inserted at the beginning of the dynamic table.
-
-          name = cmd[:name]
-          value = cmd[:value]
 
           case name
           when Integer
@@ -207,7 +208,7 @@ module HTTP2
           emit = [name, value]
 
           # add to table
-          if cmd[:type] == :incremental && size_check(name.bytesize + value.bytesize + 32)
+          if type == :incremental && size_check(name.bytesize + value.bytesize + 32)
             @table.unshift(emit)
             @current_table_size += name.bytesize + value.bytesize + 32
             @_table_updated = true
@@ -215,7 +216,7 @@ module HTTP2
 
           emit
         else
-          raise CompressionError, "Invalid type: #{cmd[:type]}"
+          raise CompressionError, "Invalid type: #{type}"
         end
       end
 
