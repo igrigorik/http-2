@@ -69,19 +69,37 @@ module HTTP2
     # @param frame [Hash]
     # @param encode [Boolean] set to true by connection
     def send_data(frame = nil, encode = false)
-      send_buffer << frame unless frame.nil?
+      if frame
+        if send_buffer.empty?
+          frame_size = frame[:payload].bytesize
+          end_stream = frame[:flags].include?(:end_stream)
+          # if buffer is empty, and frame is either end 0 length OR
+          # is within available window size, skip buffering and send immediately.
+          if @remote_window.positive?
+            return send_frame(frame, encode) if frame_size <= @remote_window
+          elsif frame_size.zero? && end_stream
+            return send_frame(frame, encode)
+          end
+        end
+
+        send_buffer << frame
+      end
 
       while (frame = send_buffer.retrieve(@remote_window))
-        sent = frame[:payload].bytesize
+        send_frame(frame, encode)
+      end
+    end
 
-        manage_state(frame) do
-          if encode
-            encode(frame)
-          else
-            emit(:frame, frame)
-          end
-          @remote_window -= sent
+    def send_frame(frame, encode)
+      sent = frame[:payload].bytesize
+
+      manage_state(frame) do
+        if encode
+          encode(frame)
+        else
+          emit(:frame, frame)
         end
+        @remote_window -= sent
       end
     end
 
@@ -112,19 +130,19 @@ module HTTP2
     end
 
     def empty?
-      @bytesize.zero?
+      @buffer.empty?
     end
 
     def retrieve(window_size)
       frame = @buffer.first or return
 
       frame_size = frame[:payload].bytesize
-      end_stream = frame[:flags].include? :end_stream
+      end_stream = frame[:flags].include?(:end_stream)
 
       # Frames with zero length with the END_STREAM flag set (that
       # is, an empty DATA frame) MAY be sent if there is no available space
       # in either flow control window.
-      return if window_size <= 0 && !(frame_size == 0 && end_stream)
+      return if window_size <= 0 && !(frame_size.zero? && end_stream)
 
       if frame_size > window_size
         chunk   = frame.dup

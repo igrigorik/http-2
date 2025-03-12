@@ -16,6 +16,8 @@ module HTTP2
 
     def send_data: (?frame? frame, ?bool encode) -> void
 
+    def send_frame: (frame frame, bool encode) -> void
+
     def process_window_update: (frame: frame, ?encode: bool) -> void
   end
 end
