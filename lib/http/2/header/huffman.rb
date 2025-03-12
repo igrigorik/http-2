@@ -51,11 +51,10 @@ module HTTP2
             # Each transition is [emit, next]
             #  [emit] character to be emitted on this transition, empty string, or EOS.
             #  [next] next state number.
-            trans = MACHINE[state][branch]
-            raise CompressionError, "Huffman decode error (EOS found)" if trans.first == EOS
+            first, state = MACHINE.dig(state, branch)
+            raise CompressionError, "Huffman decode error (EOS found)" if first == EOS
 
-            append_str(emit, trans.first.chr) if trans.first
-            state = trans.last
+            append_str(emit, first.chr) if first
           end
         end
         # Check whether partial input is correctly filled
