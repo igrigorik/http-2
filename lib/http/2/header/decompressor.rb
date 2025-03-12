@@ -13,6 +13,8 @@ module HTTP2
       include Error
       include BufferUtils
 
+      FORBIDDEN_HEADERS = %w[connection te].freeze
+
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(options = {})
         @cc = EncodingContext.new(options)
@@ -100,8 +102,6 @@ module HTTP2
         end
       end
 
-      FORBIDDEN_HEADERS = %w[connection te].freeze
-
       # Decodes and processes header commands within provided buffer.
       #
       # @param buf [Buffer]
@@ -115,7 +115,7 @@ module HTTP2
             field, value = @cc.process(header(buf))
             next if field.nil?
 
-            is_pseudo_header = field.start_with? ":"
+            is_pseudo_header = field.start_with?(":")
             if !decoding_pseudo_headers && is_pseudo_header
               raise ProtocolError, "one or more pseudo headers encountered after regular headers"
             end

@@ -3,6 +3,8 @@ module HTTP2
     class Decompressor
       include BufferUtils
 
+      FORBIDDEN_HEADERS: Array[String]
+
       @cc: EncodingContext
 
       def table_size=: (Integer) -> void

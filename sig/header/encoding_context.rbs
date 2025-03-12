@@ -34,7 +34,7 @@ module HTTP2
 
       def encode: (_Each[header_pair]) { (header_command) -> void } -> void
 
-      def addcmd: (String name, String value) -> ({ name: Integer, type: :indexed } | { name: Integer | String, value: String, type: :incremental })
+      def addcmd: (String name, String value) -> header_command
 
       def table_size=: (Integer) -> void
 

@@ -9,9 +9,13 @@ module HTTP2
      table_size: Integer
     }
 
-    type header_command = Hash[header_key, header_value]
+    type header_type = :indexed | :incremental | :noindex | :neverindexed | :changetablesize
 
-    HEADREP: Hash[Symbol, Hash[Symbol, Integer]]
+    type header_command = { type: :indexed , name: Integer } |
+                          { type: (:incremental | :noindex | :neverindexed), name: Integer | String, value: String } |
+                          { type: :changetablesize, ?name: Integer, value: Integer }
+
+    HEADREP: Hash[header_type, { prefix: Integer, pattern: Integer }]
 
     NAIVE: Hash[Symbol, Symbol]
     LINEAR: Hash[Symbol, Symbol]
