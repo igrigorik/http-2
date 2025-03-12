@@ -162,8 +162,6 @@ module HTTP2
       # @return [Array, nil] +[name, value]+ header field that is added to the decoded header list,
       #                                      or nil if +cmd[:type]+ is +:changetablesize+
       def process(cmd)
-        emit = nil
-
         case cmd[:type]
         when :changetablesize
           raise CompressionError, "tried to change table size after adding elements to table" if @_table_updated
@@ -176,17 +174,14 @@ module HTTP2
 
           self.table_size = cmd[:value]
 
+          nil
         when :indexed
           # Indexed Representation
           # An _indexed representation_ entails the following actions:
           # o  The header field corresponding to the referenced entry in either
           # the static table or dynamic table is added to the decoded header
           # list.
-          idx = cmd[:name]
-
-          k, v = dereference(idx)
-          emit = [k, v]
-
+          dereference(cmd[:name])
         when :incremental, :noindex, :neverindexed
           # A _literal representation_ that is _not added_ to the dynamic table
           # entails the following action:
@@ -197,31 +192,31 @@ module HTTP2
           # o  The header field is added to the decoded header list.
           # o  The header field is inserted at the beginning of the dynamic table.
 
-          case cmd[:name]
-          when Integer
-            k, v = dereference(cmd[:name])
+          name = cmd[:name]
+          value = cmd[:value]
 
-            cmd = cmd.dup
-            cmd[:index] ||= cmd[:name]
-            cmd[:value] ||= v
-            cmd[:name] = k
+          case name
+          when Integer
+            name, v = dereference(name)
+
+            value ||= v
           when UPPER
-            raise ProtocolError, "Invalid uppercase key: #{cmd[:name]}"
+            raise ProtocolError, "Invalid uppercase key: #{name}"
           end
 
-          emit = [cmd[:name], cmd[:value]]
+          emit = [name, value]
 
           # add to table
-          if cmd[:type] == :incremental && size_check(cmd[:name].bytesize + cmd[:value].bytesize + 32)
+          if cmd[:type] == :incremental && size_check(name.bytesize + value.bytesize + 32)
             @table.unshift(emit)
-            @current_table_size += cmd[:name].bytesize + cmd[:value].bytesize + 32
+            @current_table_size += name.bytesize + value.bytesize + 32
             @_table_updated = true
           end
+
+          emit
         else
           raise CompressionError, "Invalid type: #{cmd[:type]}"
         end
-
-        emit
       end
 
       # Plan header compression according to +@options [:index]+
