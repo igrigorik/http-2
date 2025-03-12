@@ -37,12 +37,18 @@ module HTTP2
 
         m = 0
         if i == limit
-          while (byte = shift_byte(buf))
+          offset = 0
+
+          buf.each_byte.with_index do |byte, idx|
+            offset = idx
+            # while (byte = shift_byte(buf))
             i += ((byte & 127) << m)
             m += 7
 
             break if byte.nobits?(128)
           end
+
+          read_str(buf, offset + 1)
         end
 
         i
