@@ -107,6 +107,10 @@ module HTTP2
       @h2c_upgrade = nil
       @closed_since = nil
       @received_frame = false
+
+      # from mixins
+      @listeners = Hash.new { |hash, key| hash[key] = [] }
+      @send_buffer = FrameBuffer.new
     end
 
     def closed?

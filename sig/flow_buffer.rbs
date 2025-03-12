@@ -2,13 +2,13 @@ module HTTP2
   module FlowBuffer
     MAX_WINDOW_SIZE: Integer
 
+    attr_reader send_buffer: FrameBuffer
+
     def buffered_amount: () -> Integer
 
     def flush: () -> void
 
     private
-
-    def send_buffer: () -> FrameBuffer
 
     def update_local_window: (frame) -> void
 

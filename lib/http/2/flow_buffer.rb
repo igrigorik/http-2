@@ -7,6 +7,8 @@ module HTTP2
   module FlowBuffer
     include Error
 
+    attr_reader :send_buffer
+
     MAX_WINDOW_SIZE = (2 << 30) - 1
 
     # Amount of buffered data. Only DATA payloads are subject to flow stream
@@ -14,7 +16,7 @@ module HTTP2
     #
     # @return [Integer]
     def buffered_amount
-      send_buffer.bytesize
+      @send_buffer.bytesize
     end
 
     def flush
@@ -22,10 +24,6 @@ module HTTP2
     end
 
     private
-
-    def send_buffer
-      @send_buffer ||= FrameBuffer.new
-    end
 
     def update_local_window(frame)
       frame_size = frame[:payload].bytesize
@@ -70,7 +68,7 @@ module HTTP2
     # @param encode [Boolean] set to true by connection
     def send_data(frame = nil, encode = false)
       if frame
-        if send_buffer.empty?
+        if @send_buffer.empty?
           frame_size = frame[:payload].bytesize
           end_stream = frame[:flags].include?(:end_stream)
           # if buffer is empty, and frame is either end 0 length OR
@@ -82,10 +80,10 @@ module HTTP2
           end
         end
 
-        send_buffer << frame
+        @send_buffer << frame
       end
 
-      while (frame = send_buffer.retrieve(@remote_window))
+      while (frame = @send_buffer.retrieve(@remote_window))
         send_frame(frame, encode)
       end
     end
