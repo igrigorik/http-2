@@ -581,7 +581,7 @@ module HTTP2
           # allowed frame size (2^24-1 or 16,777,215 octets), inclusive.
           # Values outside this range MUST be treated as a connection error
           # (Section 5.4.1) of type PROTOCOL_ERROR.
-          next if v >= 16_384 && v <= 16_777_215
+          next if v.between?(16_384, 16_777_215)
 
           connection_error(:protocol_error, msg: "invalid #{key} value")
           # when :settings_max_concurrent_streams
