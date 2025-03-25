@@ -149,10 +149,13 @@ module HTTP2
       # @return [Array] +[key, value]+
       def dereference(index)
         # NOTE: index is zero-based in this module.
-        value = STATIC_TABLE[index] || @table[index - STATIC_TABLE_SIZE]
-        raise CompressionError, "Index too large" unless value
+        return STATIC_TABLE[index] if index < STATIC_TABLE_SIZE
 
-        value
+        idx = index - STATIC_TABLE_SIZE
+
+        raise CompressionError, "Index too large" if idx >= @table.size
+
+        @table[index - STATIC_TABLE_SIZE]
       end
 
       # Header Block Processing
