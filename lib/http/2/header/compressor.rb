@@ -36,7 +36,7 @@ module HTTP2
       # @param offset [Integer] offset to insert packed bytes in buffer
       # @return [String] binary string
       def integer(i, n, buffer:, offset: buffer.size)
-        limit = (2**n) - 1
+        limit = (1 << n) - 1
         return pack([i], "C", buffer: buffer, offset: offset) if i < limit
 
         bytes = []

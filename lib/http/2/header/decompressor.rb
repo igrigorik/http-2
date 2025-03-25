@@ -32,7 +32,7 @@ module HTTP2
       # @param n [Integer] number of available bits
       # @return [Integer]
       def integer(buf, n)
-        limit = (2**n) - 1
+        limit = (1 << n) - 1
         i = n.zero? ? 0 : (shift_byte(buf) & limit)
 
         m = 0
