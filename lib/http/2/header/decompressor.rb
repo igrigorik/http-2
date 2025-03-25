@@ -13,6 +13,8 @@ module HTTP2
       include Error
       include BufferUtils
 
+      FORBIDDEN_HEADERS = %w[connection te].freeze
+
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(options = {})
         @cc = EncodingContext.new(options)
@@ -30,17 +32,23 @@ module HTTP2
       # @param n [Integer] number of available bits
       # @return [Integer]
       def integer(buf, n)
-        limit = (2**n) - 1
+        limit = (1 << n) - 1
         i = n.zero? ? 0 : (shift_byte(buf) & limit)
 
         m = 0
         if i == limit
-          while (byte = shift_byte(buf))
+          offset = 0
+
+          buf.each_byte.with_index do |byte, idx|
+            offset = idx
+            # while (byte = shift_byte(buf))
             i += ((byte & 127) << m)
             m += 7
 
             break if byte.nobits?(128)
           end
+
+          read_str(buf, offset + 1)
         end
 
         i
@@ -59,7 +67,7 @@ module HTTP2
         str = read_str(buf, len)
         raise CompressionError, "string too short" unless str.bytesize == len
 
-        str = Huffman.new.decode(str) if huffman
+        str = Huffman.decode(str) if huffman
         str.force_encoding(Encoding::UTF_8)
       end
 
@@ -70,36 +78,35 @@ module HTTP2
       def header(buf)
         peek = buf.getbyte(0)
 
-        header = {}
-        header[:type], type = HEADREP.find do |_t, desc|
+        header_type, type = HEADREP.find do |_, desc|
           mask = (peek >> desc[:prefix]) << desc[:prefix]
           mask == desc[:pattern]
         end
 
-        raise CompressionError unless header[:type]
+        raise CompressionError unless header_type && type
 
-        header[:name] = integer(buf, type[:prefix])
+        header_name = integer(buf, type[:prefix])
 
-        case header[:type]
+        case header_type
         when :indexed
-          raise CompressionError if (header[:name]).zero?
+          raise CompressionError if header_name.zero?
 
-          header[:name] -= 1
+          header_name -= 1
+
+          { type: header_type, name: header_name }
         when :changetablesize
-          header[:value] = header[:name]
+          { type: header_type, name: header_name, value: header_name }
         else
-          if (header[:name]).zero?
-            header[:name] = string(buf)
+          if header_name.zero?
+            header_name = string(buf)
           else
-            header[:name] -= 1
+            header_name -= 1
           end
-          header[:value] = string(buf)
+          header_value = string(buf)
+
+          { type: header_type, name: header_name, value: header_value }
         end
-
-        header
       end
-
-      FORBIDDEN_HEADERS = %w[connection te].freeze
 
       # Decodes and processes header commands within provided buffer.
       #
@@ -114,7 +121,7 @@ module HTTP2
             field, value = @cc.process(header(buf))
             next if field.nil?
 
-            is_pseudo_header = field.start_with? ":"
+            is_pseudo_header = field.start_with?(":")
             if !decoding_pseudo_headers && is_pseudo_header
               raise ProtocolError, "one or more pseudo headers encountered after regular headers"
             end

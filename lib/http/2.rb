@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 require "http/2/version"
+
+module HTTP2
+  EMPTY = [].freeze
+end
+
 require "http/2/extensions"
 require "http/2/base64"
 require "http/2/error"

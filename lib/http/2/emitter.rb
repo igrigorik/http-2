@@ -12,7 +12,7 @@ module HTTP2
     def on(event, &block)
       raise ArgumentError, "must provide callback" unless block
 
-      listeners(event.to_sym).push block
+      @listeners[event] << block
     end
 
     # Subscribe to next event (at most once) for specified type.
@@ -32,16 +32,9 @@ module HTTP2
     # @param args [Array] arguments to be passed to the callbacks
     # @param block [Proc] callback function
     def emit(event, *args, &block)
-      listeners(event).delete_if do |cb|
+      @listeners[event].delete_if do |cb|
         :delete == cb.call(*args, &block) # rubocop:disable Style/YodaCondition
       end
-    end
-
-    private
-
-    def listeners(event)
-      @listeners ||= Hash.new { |hash, key| hash[key] = [] }
-      @listeners[event]
     end
   end
 end

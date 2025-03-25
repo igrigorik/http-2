@@ -3,6 +3,8 @@ module HTTP2
     class Decompressor
       include BufferUtils
 
+      FORBIDDEN_HEADERS: Array[String]
+
       @cc: EncodingContext
 
       def table_size=: (Integer) -> void
@@ -17,8 +19,7 @@ module HTTP2
                 | (String) -> Array[header_pair]
       private
 
-      def initialize: (context_hash options) -> untyped
-                    | () -> untyped
+      def initialize: (?connection_opts options) -> void
     end
   end
 end

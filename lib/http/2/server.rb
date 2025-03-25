@@ -79,7 +79,7 @@ module HTTP2
 
       # Process received HTTP2-Settings payload
       buf = "".b
-      buf << Base64.urlsafe_decode64(settings.to_s)
+      append_str(buf, Base64.urlsafe_decode64(settings.to_s))
       @framer.common_header(
         {
           length: buf.bytesize,
@@ -118,6 +118,12 @@ module HTTP2
 
       # Transition back to :waiting_magic and wait for client's preface
       @state = :waiting_magic
+    end
+
+    def activate_stream(**)
+      super.tap do |stream|
+        stream.on(:promise, &method(:promise))
+      end
     end
 
     def origin_set=(origins)

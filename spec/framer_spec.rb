@@ -317,7 +317,10 @@ RSpec.describe HTTP2::Framer do
 
       bytes = f.generate(frame)
       expect(bytes).to eq [0, 0x4, 0x8, 0x0, 0x0, 0xa].pack("CnCCNN")
-      expect(f.parse(bytes)).to eq frame
+      parsed_frame = f.parse(bytes)
+      frame.each do |k, v|
+        expect(parsed_frame[k]).to eq(v)
+      end
     end
 
     it "should break when the increment is too large" do

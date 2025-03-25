@@ -33,3 +33,10 @@ group :types do
     end
   end
 end
+
+group :benchmark do
+  platform :mri do
+    gem "memory_profiler"
+    gem "singed"
+  end
+end

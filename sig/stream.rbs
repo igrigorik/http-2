@@ -3,6 +3,8 @@ module HTTP2
     include FlowBuffer
     include Emitter
 
+    STREAM_OPEN_STATES: Array[Symbol]
+
     attr_reader id: Integer
     attr_reader state: Symbol
     attr_reader parent: Stream?
@@ -19,6 +21,7 @@ module HTTP2
     @_content_length: Integer?
     @_status_code: Integer?
     @_waiting_on_trailers: bool
+    @_trailers: Array[String]?
     @received_data: bool
     @activated: bool
 
@@ -79,7 +82,7 @@ module HTTP2
 
     def process_priority: ({weight: Integer, dependency: Integer, exclusive: bool}) -> void
 
-    def end_frame?: () -> bool
+    def end_stream?: (frame frame) -> boolish
 
     def stream_error: (Symbol error, ?msg: String?) -> void
                     | () -> void

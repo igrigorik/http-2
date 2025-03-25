@@ -5,7 +5,14 @@ module HTTP2
     include BufferUtils
 
     REQUEST_MANDATORY_HEADERS: Array[String]
+
     RESPONSE_MANDATORY_HEADERS: Array[String]
+
+    CONNECTION_FRAME_TYPES: Array[Symbol]
+
+    HEADERS_FRAME_TYPES: Array[Symbol]
+
+    STREAM_OPEN_STATES: Array[Symbol]
 
     attr_reader state: Symbol
 
@@ -22,13 +29,17 @@ module HTTP2
 
     @stream_id: Integer
     @active_stream_count: Integer
-    @last_activated_stream: Integer
     @last_stream_id: Integer
 
     @streams: Hash[Integer, Stream]
-    @streams_recently_closed: Hash[Integer, Stream]
+    @streams_recently_closed: Hash[Integer, Numeric]
 
     @framer: Framer
+
+    type role_type = :client | :server
+
+    @local_role: role_type
+    @remote_role: role_type
 
     @local_window_limit: Integer
     @remote_window_limit: Integer
@@ -40,6 +51,7 @@ module HTTP2
     @recv_buffer: String
     @continuation: Array[frame]
 
+    @h2c_upgrade: Symbol?
     @closed_since: Float?
     @received_frame: bool
 
@@ -54,18 +66,18 @@ module HTTP2
 
     def window_update: (Integer increment) -> void
 
-    def settings: (settings_enum) -> void
+    def settings: (settings_enum payload) -> void
 
     def receive: (string data) -> void
     alias << receive
 
-    def initialize: (?settings_hash) -> void
+    def initialize: (?connection_opts) -> void
 
     private
 
-    def send: (frame) -> void
+    def send: (frame frame) -> void
 
-    def encode: (frame) -> Array[String]
+    def encode: (frame frame) -> void
 
     def connection_frame?: (frame) -> bool
 
@@ -73,13 +85,13 @@ module HTTP2
 
     def ping_management: (frame) -> void
 
-    def validate_settings: (:client | :server, settings_enum) -> void
+    def validate_settings: (role_type, settings_enum) -> void
 
     def connection_settings: (frame) -> void
 
     def decode_headers: (frame) -> void
 
-    def encode_headers: (frame) -> Array[frame]
+    def encode_headers: (frame headers_frame) -> void
 
     def activate_stream: (id: Integer, **untyped) -> Stream
 

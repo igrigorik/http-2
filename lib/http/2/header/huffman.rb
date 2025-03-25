@@ -9,9 +9,12 @@ module HTTP2
   # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10
   module Header
     # Huffman encoder/decoder
-    class Huffman
+    module Huffman
+      module_function
+
       include Error
-      include PackingExtensions
+      extend PackingExtensions
+      extend BufferUtils
 
       BITS_AT_ONCE = 4
       EOS = 256
@@ -21,11 +24,13 @@ module HTTP2
       # Length is not encoded in this method.
       #
       # @param str [String]
+      # @param buffer [String]
       # @return [String] binary string
-      def encode(str)
-        bitstring = str.each_byte.map { |chr| ENCODE_TABLE[chr] }.join
-        bitstring << ("1" * ((8 - bitstring.size) % 8))
-        [bitstring].pack("B*")
+      def encode(str, buffer = "".b)
+        bitstring = String.new("", encoding: Encoding::BINARY, capacity: (str.bytesize * 30) + ((8 - str.size) % 8))
+        str.each_byte { |chr| append_str(bitstring, ENCODE_TABLE[chr]) }
+        append_str(bitstring, ("1" * ((8 - bitstring.size) % 8)))
+        pack([bitstring], "B*", buffer: buffer)
       end
 
       # Decodes provided Huffman coded string.
@@ -46,11 +51,10 @@ module HTTP2
             # Each transition is [emit, next]
             #  [emit] character to be emitted on this transition, empty string, or EOS.
             #  [next] next state number.
-            trans = MACHINE[state][branch]
-            raise CompressionError, "Huffman decode error (EOS found)" if trans.first == EOS
+            first, state = MACHINE.dig(state, branch)
+            raise CompressionError, "Huffman decode error (EOS found)" if first == EOS
 
-            emit << trans.first.chr if trans.first
-            state = trans.last
+            append_str(emit, first.chr) if first
           end
         end
         # Check whether partial input is correctly filled

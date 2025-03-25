@@ -455,10 +455,10 @@ RSpec.shared_examples "a connection" do
     it ".settings should emit SETTINGS frames" do
       expect(conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :settings
-        expect(frame[:payload]).to eq([
-                                        [:settings_max_concurrent_streams, 10],
-                                        [:settings_initial_window_size, 0x7fffffff]
-                                      ])
+        expect(frame[:payload].to_a).to eq([
+                                             [:settings_max_concurrent_streams, 10],
+                                             [:settings_initial_window_size, 0x7fffffff]
+                                           ])
         expect(frame[:stream]).to eq 0
       end
 

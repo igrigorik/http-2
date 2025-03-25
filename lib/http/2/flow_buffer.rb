@@ -7,6 +7,8 @@ module HTTP2
   module FlowBuffer
     include Error
 
+    attr_reader :send_buffer
+
     MAX_WINDOW_SIZE = (2 << 30) - 1
 
     # Amount of buffered data. Only DATA payloads are subject to flow stream
@@ -14,7 +16,7 @@ module HTTP2
     #
     # @return [Integer]
     def buffered_amount
-      send_buffer.bytesize
+      @send_buffer.bytesize
     end
 
     def flush
@@ -23,13 +25,9 @@ module HTTP2
 
     private
 
-    def send_buffer
-      @send_buffer ||= FrameBuffer.new
-    end
-
     def update_local_window(frame)
       frame_size = frame[:payload].bytesize
-      frame_size += frame[:padding] || 0
+      frame_size += frame.fetch(:padding, 0)
       @local_window -= frame_size
     end
 
@@ -69,31 +67,47 @@ module HTTP2
     # @param frame [Hash]
     # @param encode [Boolean] set to true by connection
     def send_data(frame = nil, encode = false)
-      send_buffer << frame unless frame.nil?
-
-      while (frame = send_buffer.retrieve(@remote_window))
-
-        # puts "#{self.class} -> #{@remote_window}"
-        sent = frame[:payload].bytesize
-
-        manage_state(frame) do
-          if encode
-            encode(frame).each { |f| emit(:frame, f) }
-          else
-            emit(:frame, frame)
+      if frame
+        if @send_buffer.empty?
+          frame_size = frame[:payload].bytesize
+          end_stream = frame[:flags].include?(:end_stream)
+          # if buffer is empty, and frame is either end 0 length OR
+          # is within available window size, skip buffering and send immediately.
+          if @remote_window.positive?
+            return send_frame(frame, encode) if frame_size <= @remote_window
+          elsif frame_size.zero? && end_stream
+            return send_frame(frame, encode)
           end
-          @remote_window -= sent
         end
+
+        @send_buffer << frame
+      end
+
+      while (frame = @send_buffer.retrieve(@remote_window))
+        send_frame(frame, encode)
+      end
+    end
+
+    def send_frame(frame, encode)
+      sent = frame[:payload].bytesize
+
+      manage_state(frame) do
+        if encode
+          encode(frame)
+        else
+          emit(:frame, frame)
+        end
+        @remote_window -= sent
       end
     end
 
     def process_window_update(frame:, encode: false)
       return if frame[:ignore]
 
-      if frame[:increment]
-        raise ProtocolError, "increment MUST be higher than zero" if frame[:increment].zero?
+      if (increment = frame[:increment])
+        raise ProtocolError, "increment MUST be higher than zero" if increment.zero?
 
-        @remote_window += frame[:increment]
+        @remote_window += increment
         error(:flow_control_error, msg: "window size too large") if @remote_window > MAX_WINDOW_SIZE
       end
       send_data(nil, encode)
@@ -114,45 +128,41 @@ module HTTP2
     end
 
     def empty?
-      @bytesize.zero?
+      @buffer.empty?
     end
 
     def retrieve(window_size)
       frame = @buffer.first or return
 
       frame_size = frame[:payload].bytesize
-      end_stream = frame[:flags].include? :end_stream
+      end_stream = frame[:flags].include?(:end_stream)
 
       # Frames with zero length with the END_STREAM flag set (that
       # is, an empty DATA frame) MAY be sent if there is no available space
       # in either flow control window.
-      return if window_size <= 0 && !(frame_size == 0 && end_stream)
-
-      @buffer.shift
+      return if window_size <= 0 && !(frame_size.zero? && end_stream)
 
       if frame_size > window_size
-        payload = frame[:payload]
         chunk   = frame.dup
+        payload = frame[:payload]
 
         # Split frame so that it fits in the window
         # TODO: consider padding!
-        frame_bytes = payload.byteslice(0, window_size)
-        payload = payload.byteslice(window_size..-1)
 
-        frame[:payload] = frame_bytes
-        frame[:length] = frame_bytes.bytesize
-        chunk[:payload] = payload
-        chunk[:length]  = payload.bytesize
+        chunk[:payload] = payload.byteslice(0, window_size)
+        chunk[:length]  = window_size
+        frame[:payload] = payload.byteslice(window_size..-1)
+        frame[:length] = frame_size - window_size
 
         # if no longer last frame in sequence...
-        frame[:flags] -= [:end_stream] if end_stream
+        chunk[:flags] -= [:end_stream] if end_stream
 
-        @buffer.unshift(chunk)
         @bytesize -= window_size
+        chunk
       else
         @bytesize -= frame_size
+        @buffer.shift
       end
-      frame
     end
   end
 end

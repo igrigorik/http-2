@@ -8,7 +8,7 @@
 
 module HTTP2
   module Header
-    class Huffman
+    module Huffman
       # :nodoc:
       MAX_FINAL_STATE = 7
       MACHINE = [

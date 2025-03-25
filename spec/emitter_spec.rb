@@ -5,6 +5,9 @@ require "helper"
 RSpec.describe HTTP2::Emitter do
   class Worker
     include Emitter
+    def initialize
+      @listeners = Hash.new { |hash, key| hash[key] = [] }
+    end
   end
 
   let(:w) { Worker.new }
