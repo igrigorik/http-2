@@ -97,20 +97,22 @@ module HTTP2
       # @param buffer [String]
       # @return [Buffer]
       def header(h, buffer = "".b)
-        rep = HEADREP[h[:type]]
+        type = h[:type]
+        rep = HEADREP[type]
         offset = buffer.size
 
-        case h[:type]
+        case type
         when :indexed
           integer(h[:name] + 1, rep[:prefix], buffer: buffer)
         when :changetablesize
           integer(h[:value], rep[:prefix], buffer: buffer)
         else
-          if h[:name].is_a? Integer
-            integer(h[:name] + 1, rep[:prefix], buffer: buffer)
+          name = h[:name]
+          if name.is_a? Integer
+            integer(name + 1, rep[:prefix], buffer: buffer)
           else
             integer(0, rep[:prefix], buffer: buffer)
-            string(h[:name], buffer)
+            string(name, buffer)
           end
 
           string(h[:value], buffer)
