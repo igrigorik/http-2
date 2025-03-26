@@ -7,7 +7,7 @@ on:
       - master
 
 env:
-  ruby_version: 3.3
+  ruby_version: 3.4
 
 jobs:
   test:
