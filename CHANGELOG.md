@@ -1,3 +1,11 @@
+## 1.1.0
+
+Several changes which improved performance for the common cases. A few highlights:
+
+* Opting into ruby 3.4 features when possible (such as `String#append_as_bytes` instead of `String#<<`)
+* reducing string and array allocations on several places (connection management, frame generation, hpack header compression, etc)
+* "streams recently closed" not having to regenerate the list when not necessary
+
 ## 1.0.2
 
 ### Improvements
