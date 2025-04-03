@@ -10,14 +10,14 @@ module HTTP2
 
     private
 
-    def update_local_window: (frame) -> void
+    def update_local_window: (data_frame frame) -> void
 
     def calculate_window_update: (Integer) -> void
 
-    def send_data: (?frame? frame, ?bool encode) -> void
+    def send_data: (?data_frame? frame, ?bool encode) -> void
 
-    def send_frame: (frame frame, bool encode) -> void
+    def send_frame: (data_frame frame, bool encode) -> void
 
-    def process_window_update: (frame: frame, ?encode: bool) -> void
+    def process_window_update: (frame: window_update_frame, ?encode: bool) -> void
   end
 end
