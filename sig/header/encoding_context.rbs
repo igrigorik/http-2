@@ -38,6 +38,8 @@ module HTTP2
 
       def table_size=: (Integer) -> void
 
+      def listen_on_table: { () -> void } -> void
+
       private
 
       def initialize: (?connection_opts options) -> void

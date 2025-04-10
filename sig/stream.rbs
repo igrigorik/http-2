@@ -29,15 +29,15 @@ module HTTP2
 
     def closed?: () -> bool
 
-    def receive: (frame) -> void
+    def receive: (frame frame) -> void
 
     alias << receive
 
-    def verify_trailers: (frame) -> void
+    def verify_trailers: (headers_frame frame) -> void
 
     def calculate_content_length: (Integer?) -> void
 
-    def send: (frame) -> void
+    def send: (frame frame) -> void
 
     def headers: (Enumerable[header_pair] headers, ?end_headers: bool, ?end_stream: bool) -> void
 
@@ -80,7 +80,7 @@ module HTTP2
 
     def complete_transition: (frame) -> void
 
-    def process_priority: ({weight: Integer, dependency: Integer, exclusive: bool}) -> void
+    def process_priority: (priority_frame frame) -> void
 
     def end_stream?: (frame frame) -> boolish
 
