@@ -271,7 +271,7 @@ module HTTP2
         append_str(bytes, frame[:payload])
 
       when :ping
-        bytes = frame[:payload]
+        bytes = frame[:payload].b
         raise CompressionError, "Invalid payload size (#{bytes.size} != 8 bytes)" if bytes.bytesize != 8
 
         length = 8
