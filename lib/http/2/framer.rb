@@ -148,9 +148,12 @@ module HTTP2
 
       header = buffer
 
+      # make sure the buffer is binary and unfrozen
       if buffer.frozen?
         header = String.new("", encoding: Encoding::BINARY, capacity: buffer.bytesize + 9) # header length
-        header << buffer
+        append_str(header, buffer)
+      else
+        header.force_encoding(Encoding::BINARY)
       end
 
       pack([
@@ -340,6 +343,13 @@ module HTTP2
 
         if padlen <= 0 || padlen > 256 || padlen + length > @remote_max_frame_size
           raise CompressionError, "Invalid padding #{padlen}"
+        end
+
+        # make sure the buffer is binary and unfrozen
+        if bytes.frozen?
+          bytes = bytes.b
+        else
+          bytes.force_encoding(Encoding::BINARY)
         end
 
         length += padlen
