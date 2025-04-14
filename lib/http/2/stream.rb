@@ -405,19 +405,19 @@ module HTTP2
       # WINDOW_UPDATE on a stream in this state MUST be treated as a
       # connection error (Section 5.4.1) of type PROTOCOL_ERROR.
       when :reserved_local
-        @state = if sending
-                   case frame[:type]
-                   when :headers     then event(:half_closed_remote)
-                   when :rst_stream  then event(:local_rst)
-                   else stream_error
-                   end
-                 else
-                   case frame[:type]
-                   when :rst_stream then event(:remote_rst)
-                   when :priority, :window_update then @state
-                   else stream_error
-                   end
-                 end
+        if sending
+          case frame[:type]
+          when :headers     then event(:half_closed_remote)
+          when :rst_stream  then event(:local_rst)
+          else stream_error
+          end
+        else
+          case frame[:type]
+          when :rst_stream then event(:remote_rst)
+          when :priority, :window_update
+          else stream_error
+          end
+        end
 
       # A stream in the "reserved (remote)" state has been reserved by a
       # remote peer.
@@ -434,19 +434,19 @@ module HTTP2
       # PRIORITY on a stream in this state MUST be treated as a connection
       # error (Section 5.4.1) of type PROTOCOL_ERROR.
       when :reserved_remote
-        @state = if sending
-                   case frame[:type]
-                   when :rst_stream then event(:local_rst)
-                   when :priority, :window_update then @state
-                   else stream_error
-                   end
-                 else
-                   case frame[:type]
-                   when :headers then event(:half_closed_local)
-                   when :rst_stream then event(:remote_rst)
-                   else stream_error
-                   end
-                 end
+        if sending
+          case frame[:type]
+          when :rst_stream then event(:local_rst)
+          when :priority, :window_update
+          else stream_error
+          end
+        else
+          case frame[:type]
+          when :headers then event(:half_closed_local)
+          when :rst_stream then event(:remote_rst)
+          else stream_error
+          end
+        end
 
       # A stream in the "open" state may be used by both peers to send
       # frames of any type.  In this state, sending peers observe
