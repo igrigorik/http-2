@@ -1,3 +1,15 @@
+## 1.1.1
+
+### Bugfixes
+
+* frame buffer was accidentally changing encoding before header packing, which raise invalid compatible encoding errors, due to usage of "String#". this was fixed by using internal `append_str´, which does not touch encoding, and calling `String.force_encoding` in case the buffer is a mutable string passed by the user.
+* dup PING frame payload passed by the user; while not really resulting in invalid encoding, the change of the input string could surprise the caller, since this would be expected to be stored somewhere so the peer PING frame can be matched on receive.
+
+
+### Improvements
+
+Simplified `String#transition`, making sure it only does state machine transitions (the rest is handled outside of it).
+
 ## 1.1.0
 
 Several changes which improved performance for the common cases. A few highlights:

@@ -403,8 +403,9 @@ module HTTP2
               # endpoints MAY choose to treat frames that arrive a significant
               # time after sending END_STREAM as a connection error.
               when :rst_stream
-                stream = @streams_recently_closed[stream_id]
-                connection_error(:protocol_error, msg: "sent window update on idle stream") unless stream
+                unless @streams_recently_closed.key?(stream_id)
+                  connection_error(:protocol_error, msg: "sent window update on idle stream")
+                end
               else
                 # An endpoint that receives an unexpected stream identifier
                 # MUST respond with a connection error of type PROTOCOL_ERROR.

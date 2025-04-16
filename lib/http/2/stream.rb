@@ -197,21 +197,18 @@ module HTTP2
     #
     # @param frame [Hash]
     def send(frame)
-      process_priority(frame) if frame[:type] == :priority
-
       case frame[:type]
       when :data
-        # @remote_window is maintained in send_data
-        send_data(frame)
+        # stream state management is maintained in send_data
+        return send_data(frame)
       when :window_update
-        manage_state(frame) do
-          @local_window += frame[:increment]
-          emit(:frame, frame)
-        end
-      else
-        manage_state(frame) do
-          emit(:frame, frame)
-        end
+        @local_window += frame[:increment]
+      when :priority
+        process_priority(frame)
+      end
+
+      manage_state(frame) do
+        emit(:frame, frame)
       end
     end
 
@@ -384,7 +381,7 @@ module HTTP2
             else
               event(:open)
             end
-          when :priority then process_priority(frame)
+          when :priority
           else stream_error(:protocol_error)
           end
         end
@@ -405,19 +402,20 @@ module HTTP2
       # WINDOW_UPDATE on a stream in this state MUST be treated as a
       # connection error (Section 5.4.1) of type PROTOCOL_ERROR.
       when :reserved_local
-        @state = if sending
-                   case frame[:type]
-                   when :headers     then event(:half_closed_remote)
-                   when :rst_stream  then event(:local_rst)
-                   else stream_error
-                   end
-                 else
-                   case frame[:type]
-                   when :rst_stream then event(:remote_rst)
-                   when :priority, :window_update then @state
-                   else stream_error
-                   end
-                 end
+        if sending
+          case frame[:type]
+          when :headers     then event(:half_closed_remote)
+          when :rst_stream  then event(:local_rst)
+          when :priority
+          else stream_error
+          end
+        else
+          case frame[:type]
+          when :rst_stream then event(:remote_rst)
+          when :priority, :window_update
+          else stream_error
+          end
+        end
 
       # A stream in the "reserved (remote)" state has been reserved by a
       # remote peer.
@@ -434,19 +432,20 @@ module HTTP2
       # PRIORITY on a stream in this state MUST be treated as a connection
       # error (Section 5.4.1) of type PROTOCOL_ERROR.
       when :reserved_remote
-        @state = if sending
-                   case frame[:type]
-                   when :rst_stream then event(:local_rst)
-                   when :priority, :window_update then @state
-                   else stream_error
-                   end
-                 else
-                   case frame[:type]
-                   when :headers then event(:half_closed_local)
-                   when :rst_stream then event(:remote_rst)
-                   else stream_error
-                   end
-                 end
+        if sending
+          case frame[:type]
+          when :rst_stream then event(:local_rst)
+          when :priority, :window_update
+          else stream_error
+          end
+        else
+          case frame[:type]
+          when :headers then event(:half_closed_local)
+          when :rst_stream then event(:remote_rst)
+          when :priority
+          else stream_error
+          end
+        end
 
       # A stream in the "open" state may be used by both peers to send
       # frames of any type.  In this state, sending peers observe
@@ -465,12 +464,14 @@ module HTTP2
           when :data, :headers, :continuation
             event(:half_closed_local) if end_stream?(frame)
           when :rst_stream then event(:local_rst)
+          when :priority
           end
         else
           case frame[:type]
           when :data, :headers, :continuation
             event(:half_closed_remote) if end_stream?(frame)
           when :rst_stream then event(:remote_rst)
+          when :priority
           end
         end
 
@@ -490,10 +491,7 @@ module HTTP2
           case frame[:type]
           when :rst_stream
             event(:local_rst)
-          when :priority
-            process_priority(frame)
-          when :window_update
-            # nop here
+          when :priority, :window_update
           else
             stream_error
           end
@@ -502,10 +500,7 @@ module HTTP2
           when :data, :headers, :continuation
             event(:remote_closed) if end_stream?(frame)
           when :rst_stream then event(:remote_rst)
-          when :priority
-            process_priority(frame)
-          when :window_update
-            # nop here
+          when :priority, :window_update
           end
         end
 
@@ -534,9 +529,7 @@ module HTTP2
         else
           case frame[:type]
           when :rst_stream then event(:remote_rst)
-          when :priority
-            process_priority(frame)
-          when :window_update
+          when :priority, :window_update
             # nop
           else
             stream_error(:stream_closed)
@@ -584,19 +577,15 @@ module HTTP2
       when :closed
         if sending
           case frame[:type]
-          when :rst_stream # ignore
-          when :priority
-            process_priority(frame)
+          when :rst_stream, :priority
           else
             stream_error(:stream_closed) unless frame[:type] == :rst_stream
           end
-        elsif frame[:type] == :priority
-          process_priority(frame)
         else
           case @closed
           when :remote_rst, :remote_closed
             case frame[:type]
-            when :rst_stream, :window_update # nop here
+            when :priority, :rst_stream, :window_update # nop here
             else
               stream_error(:stream_closed)
             end

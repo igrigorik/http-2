@@ -57,7 +57,7 @@ RSpec.describe HTTP2::Stream do
       end
 
       it "should raise error if sending invalid frames" do
-        frame_types.reject { |frame| %i[headers rst_stream].include?(frame[:type]) }.each do |type|
+        frame_types.reject { |frame| %i[headers rst_stream priority].include?(frame[:type]) }.each do |type|
           expect { stream.dup.send type }.to raise_error InternalError
         end
       end
@@ -114,7 +114,7 @@ RSpec.describe HTTP2::Stream do
       end
 
       it "should raise error on receipt of invalid frames" do
-        frame_types.reject { |frame| %i[headers rst_stream].include?(frame[:type]) }.each do |type|
+        frame_types.reject { |frame| %i[headers rst_stream priority].include?(frame[:type]) }.each do |type|
           expect { stream.dup.receive type }.to raise_error InternalError
         end
       end
