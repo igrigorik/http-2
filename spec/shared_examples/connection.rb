@@ -135,6 +135,16 @@ RSpec.shared_examples "a connection" do
       expect(pong).to eq "12345678"
     end
 
+    it "should not fire callback on PONG if connection is closed" do
+      conn << f.generate(settings_frame)
+      conn << f.generate(goaway_frame)
+
+      pong = nil
+      conn.ping("12345678") { |d| pong = d }
+      conn << f.generate(pong_frame)
+      expect(pong).to be_nil
+    end
+
     it "should fire callback on receipt of GOAWAY" do
       last_stream, payload, error = nil
       conn << f.generate(settings_frame)
