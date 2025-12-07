@@ -173,11 +173,13 @@ RSpec.shared_examples "a connection" do
       expect { conn << f.generate(ping_frame) }.not_to raise_error(ProtocolError)
     end
 
-    it "should respond with protocol error when receiving goaway" do
+    it "should ignore additional goaway" do
+      expect { conn << f.generate(settings_frame) }.not_to raise_error(ProtocolError)
+
       conn.goaway
       expect(conn).to be_closed
 
-      expect { conn << f.generate(goaway_frame) }.to raise_error(ProtocolError)
+      expect { conn << f.generate(goaway_frame) }.not_to raise_error(ProtocolError)
     end
 
     it "should raise error on frame for invalid stream ID" do
