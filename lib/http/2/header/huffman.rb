@@ -29,7 +29,7 @@ module HTTP2
       def encode(str, buffer = "".b)
         bitstring = String.new("", encoding: Encoding::BINARY, capacity: (str.bytesize * 30) + ((8 - str.size) % 8))
         str.each_byte { |chr| append_str(bitstring, ENCODE_TABLE[chr]) }
-        append_str(bitstring, ("1" * ((8 - bitstring.size) % 8)))
+        append_str(bitstring, "1" * ((8 - bitstring.size) % 8))
         pack([bitstring], "B*", buffer: buffer)
       end
 

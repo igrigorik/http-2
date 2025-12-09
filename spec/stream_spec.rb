@@ -4,6 +4,7 @@ require "helper"
 
 RSpec.describe HTTP2::Stream do
   include FrameHelpers
+
   let(:f) { Framer.new }
   let(:client) { Client.new }
   let(:stream) { client.new_stream }
