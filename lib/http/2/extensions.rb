@@ -25,7 +25,7 @@ module HTTP2
     def read_str(str, n)
       return "".b if n == 0
 
-      chunk = str.byteslice(0..n - 1)
+      chunk = str.byteslice(0..(n - 1))
       remaining = str.byteslice(n..-1)
       remaining ? str.replace(remaining) : str.clear
       chunk

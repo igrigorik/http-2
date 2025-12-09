@@ -4,6 +4,7 @@ require "helper"
 
 RSpec.describe HTTP2::Connection do
   include FrameHelpers
+
   let(:conn) { Client.new }
   let(:f) { Framer.new }
 

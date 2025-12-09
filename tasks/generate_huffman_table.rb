@@ -28,7 +28,7 @@ module HuffmanTable
       if len.zero?
         @emit = chr
       else
-        bit = code.nobits?((1 << (len - 1))) ? 0 : 1
+        bit = code.nobits?(1 << (len - 1)) ? 0 : 1
         node = @next[bit] ||= Node.new(@depth + 1)
         node.add(code, len - 1, chr)
       end
@@ -70,7 +70,7 @@ module HuffmanTable
           n = node
           emit = "".b
           (BITS_AT_ONCE - 1).downto(0) do |i|
-            bit = input.nobits?((1 << i)) ? 0 : 1
+            bit = input.nobits?(1 << i) ? 0 : 1
             n = n.next[bit]
             next unless n.emit
 
@@ -123,7 +123,7 @@ module HuffmanTable
         id.times do |i|
           n = id_state[i]
           f.print "        ["
-          string = Array.new((1 << 4)) do |t|
+          string = Array.new(1 << 4) do |t|
             transition = n.transitions.fetch(t)
             emit = transition.emit
             unless emit == EOS

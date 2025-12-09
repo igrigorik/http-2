@@ -525,7 +525,8 @@ module HTTP2
       when :closed
         case frame_type
         when :goaway
-          connection_error
+          #  6.8. GOAWAY
+          # An endpoint MAY send multiple GOAWAY frames if circumstances change.
         when :ping
           ping_management(frame)
         else

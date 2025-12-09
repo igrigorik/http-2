@@ -211,7 +211,7 @@ module HTTP2
           emit = [name, value]
 
           # add to table
-          if type == :incremental && size_check(name.bytesize + value.bytesize + 32)
+          if type == :incremental && size_check?(name.bytesize + value.bytesize + 32)
             @table.unshift(emit)
             @current_table_size += name.bytesize + value.bytesize + 32
             @_table_updated = true
@@ -302,7 +302,7 @@ module HTTP2
       #  When the size is reduced, some headers might be evicted.
       def table_size=(size)
         @limit = size
-        size_check(0)
+        resize_table(0)
       end
 
       def listen_on_table
@@ -313,22 +313,25 @@ module HTTP2
 
       private
 
+      def resize_table(cmdsize)
+        return if @table.empty?
+
+        while @current_table_size + cmdsize > @limit
+
+          name, value = @table.pop
+          @current_table_size -= name.bytesize + value.bytesize + 32
+          break if @table.empty?
+
+        end
+      end
+
       # To keep the dynamic table size lower than or equal to @limit,
       # remove one or more entries at the end of the dynamic table.
       #
       # @param cmdsize [Integer]
       # @return [Boolean] whether +cmd+ fits in the dynamic table.
-      def size_check(cmdsize)
-        unless @table.empty?
-          while @current_table_size + cmdsize > @limit
-
-            name, value = @table.pop
-            @current_table_size -= name.bytesize + value.bytesize + 32
-            break if @table.empty?
-
-          end
-        end
-
+      def size_check?(cmdsize)
+        resize_table(cmdsize)
         cmdsize <= @limit
       end
     end

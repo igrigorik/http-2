@@ -46,7 +46,9 @@ module HTTP2
 
       def add_to_table: (string name, string value) -> void
 
-      def size_check: (Integer cmdsize) -> bool
+      def resize_table: (Integer cmdsize) -> void
+
+      def size_check?: (Integer cmdsize) -> bool
     end
   end
 end
