@@ -662,6 +662,57 @@ RSpec.describe HTTP2::Stream do
     end
   end
 
+  context "prioritization" do
+    it "should order based on dependency" do
+      # 5.3.1
+      # if streams B and C are dependent on stream A, and if stream
+      # D is created with a dependency on stream A, this results in a
+      # dependency order of A followed by B, C, and D in any order.
+      a_stream = client.new_stream
+      b_stream = client.new_stream(dependency: a_stream.id)
+      c_stream = client.new_stream(dependency: a_stream.id)
+      d_stream = client.new_stream(dependency: a_stream.id)
+
+      expect([b_stream, c_stream, d_stream, a_stream].sort).to eq(
+        [a_stream, b_stream, c_stream, d_stream]
+      )
+      expect([b_stream, d_stream, c_stream, a_stream].sort).to eq(
+        [a_stream, b_stream, d_stream, c_stream]
+      )
+    end
+
+    it "should push exclusive streams up the stack" do
+      # he exclusive flag causes the stream to become the
+      # sole dependency of its parent stream, causing other dependencies to
+      # become dependent on the exclusive stream.  In the previous example,
+      # if stream D is created with an exclusive dependency on stream A, this
+      # results in D becoming the dependency parent of B and C.
+      a_stream = client.new_stream
+      b_stream = client.new_stream(dependency: a_stream.id)
+      c_stream = client.new_stream(dependency: a_stream.id)
+      d_stream = client.new_stream(dependency: a_stream.id, exclusive: true)
+
+      expect([b_stream, c_stream, d_stream, a_stream].sort).to eq(
+        [a_stream, d_stream, b_stream, c_stream]
+      )
+    end
+
+    it "should prioritze based on weight" do
+      # Streams with the same parent SHOULD be allocated resources
+      # proportionally based on their weight.  Thus, if stream B depends on
+      # stream A with weight 4, stream C depends on stream A with weight 12,
+      # and no progress can be made on stream A, stream B ideally receives
+      # one-third of the resources allocated to stream C.
+      a_stream = client.new_stream
+      b_stream = client.new_stream(dependency: a_stream.id, weight: 4)
+      c_stream = client.new_stream(dependency: a_stream.id, weight: 12)
+
+      expect([b_stream, c_stream, a_stream].sort).to eq(
+        [a_stream, c_stream, b_stream]
+      )
+    end
+  end
+
   context "client API" do
     it ".reprioritize should emit PRIORITY frame" do
       expect(stream).to receive(:send) do |frame|
