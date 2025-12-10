@@ -34,6 +34,7 @@ module HTTP2
 
     @local_max_frame_size: Integer
     @remote_max_frame_size: Integer
+    @streams: Hash[Integer, Stream]
 
     attr_accessor local_max_frame_size: Integer
 
@@ -47,11 +48,13 @@ module HTTP2
 
     def generate: (frame) -> String
 
-    def parse: (String) -> frame?
+    def parse: (String buf) -> frame?
 
     private
 
     def initialize: (?Integer local_max_frame_size, ?Integer remote_max_frame_size) -> untyped
+
+    def decode_frame: (String buf) -> frame?
 
     def pack_error: (Integer | Symbol error, buffer: String) -> String
 

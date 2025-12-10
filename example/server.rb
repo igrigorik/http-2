@@ -62,10 +62,7 @@ loop do
   end
 
   conn.on(:goaway) do
-    Thread.start do
-      sleep(1)
-      sock.close
-    end
+    sock.close
   end
 
   conn.on(:stream) do |stream|

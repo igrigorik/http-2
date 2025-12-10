@@ -119,6 +119,7 @@ module HTTP2
                    remote_max_frame_size = DEFAULT_MAX_FRAME_SIZE)
       @local_max_frame_size = local_max_frame_size
       @remote_max_frame_size = remote_max_frame_size
+      @frames = []
     end
 
     # Generates common 9-byte frame header.
@@ -371,6 +372,21 @@ module HTTP2
     #
     # @param buf [Buffer]
     def parse(buf)
+      while (frame = decode_frame(buf))
+        if frame[:type] == :ping
+          # PING responses SHOULD be given higher priority than any other frame.
+          @frames.unshift(frame)
+        else
+          @frames << frame
+        end
+      end
+
+      @frames.shift
+    end
+
+    private
+
+    def decode_frame(buf)
       return if buf.size < 9
 
       frame = read_common_header(buf)
@@ -490,8 +506,6 @@ module HTTP2
 
       frame
     end
-
-    private
 
     def pack_error(error, buffer:)
       unless error.is_a? Integer

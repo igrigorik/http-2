@@ -527,8 +527,6 @@ module HTTP2
         when :goaway
           #  6.8. GOAWAY
           # An endpoint MAY send multiple GOAWAY frames if circumstances change.
-        when :ping
-          ping_management(frame)
         else
           connection_error if (Process.clock_gettime(Process::CLOCK_MONOTONIC) - @closed_since) > 15
         end
