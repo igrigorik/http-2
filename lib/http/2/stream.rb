@@ -53,7 +53,14 @@ module HTTP2
 
     # Stream priority as set by initiator.
     attr_reader :weight
-    attr_reader :dependency, :remote_window
+
+    # whether the stream is exclusive in the dependency tree
+    attr_reader :exclusive
+
+    # the parent stream
+    attr_reader :dependency
+
+    attr_reader :remote_window
 
     # Size of current stream flow control window.
     attr_reader :local_window
@@ -82,6 +89,7 @@ module HTTP2
       @id = id
       @weight = weight
       @dependency = dependency
+      @exclusive = exclusive
 
       # from mixins
       @listeners = Hash.new { |hash, key| hash[key] = [] }
@@ -102,6 +110,28 @@ module HTTP2
 
       on(:window) { |v| @remote_window = v }
       on(:local_window) { |v| @local_window_max_size = @local_window = v }
+    end
+
+    def <=>(other)
+      if !@dependency.zero?
+        if @dependency == other.id
+          # parent stream processed before
+          return 1
+        elsif @dependency == other.dependency
+          if @exclusive
+            # exclusive streams from the same dep come first
+            return -1
+          elsif other.exclusive
+            return 1
+          else
+            return other.weight <=> @weight
+          end
+        end
+      elsif !other.dependency.zero?
+        return -1 if @id == other.dependency
+      end
+
+      other.weight <=> @weight
     end
 
     def closed?
@@ -647,6 +677,7 @@ module HTTP2
     def process_priority(frame)
       @weight = frame[:weight]
       @dependency = frame[:dependency]
+      @exclusive = frame[:exclusive]
       emit(
         :priority,
         weight: frame[:weight],

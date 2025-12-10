@@ -93,7 +93,7 @@ module HTTP2
       @streams_recently_closed = {}
       @pending_settings = []
 
-      @framer = Framer.new(@local_settings[:settings_max_frame_size])
+      @framer = Framer.new(@streams, @local_settings[:settings_max_frame_size])
 
       @local_window_limit = @local_settings[:settings_initial_window_size]
       @local_window = @local_window_limit

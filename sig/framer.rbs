@@ -35,6 +35,7 @@ module HTTP2
     @local_max_frame_size: Integer
     @remote_max_frame_size: Integer
     @streams: Hash[Integer, Stream]
+    @frames: Array[frame]
 
     attr_accessor local_max_frame_size: Integer
 
@@ -52,7 +53,7 @@ module HTTP2
 
     private
 
-    def initialize: (?Integer local_max_frame_size, ?Integer remote_max_frame_size) -> untyped
+    def initialize: (?Hash[Integer, Stream] streams, ?Integer local_max_frame_size, ?Integer remote_max_frame_size) -> untyped
 
     def decode_frame: (String buf) -> frame?
 
