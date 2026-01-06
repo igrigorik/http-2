@@ -10,6 +10,7 @@ module HTTP2
     attr_reader parent: Stream?
     attr_reader weight: Integer
     attr_reader dependency: Integer
+    attr_reader exclusive: bool
     attr_reader remote_window: Integer
     attr_reader local_window: Integer
     attr_reader closed: Symbol?
@@ -32,6 +33,8 @@ module HTTP2
     def receive: (frame frame) -> void
 
     alias << receive
+
+    def <=>: (Stream other) -> Integer
 
     def verify_trailers: (headers_frame frame) -> void
 
