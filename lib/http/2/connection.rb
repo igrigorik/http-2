@@ -129,7 +129,6 @@ module HTTP2
       connection_error(:protocol_error, msg: "id is smaller than previous") if @stream_id < @last_stream_id
 
       stream = activate_stream(id: @stream_id, **args)
-      @last_stream_id = stream.id
 
       @stream_id += 2
 
@@ -766,6 +765,7 @@ module HTTP2
       raise StreamLimitExceeded if @active_stream_count >= @local_settings[:settings_max_concurrent_streams]
 
       stream = Stream.new(connection: self, id: id, **args)
+      @last_stream_id = id
 
       stream.once(:close) do
         @streams.delete(id)
@@ -799,7 +799,6 @@ module HTTP2
       return unless id.odd?
 
       connection_error(msg: "Stream ID smaller than previous") if @last_stream_id >= id
-      @last_stream_id = id
     end
 
     def _verify_pseudo_headers(frame, mandatory_headers)
