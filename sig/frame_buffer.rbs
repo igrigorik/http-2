@@ -4,6 +4,8 @@ module HTTP2
 
     @buffer: Array[data_frame]
 
+    def clear: () -> void
+
     def <<: (data_frame frame) -> void
 
     def empty?: () -> bool

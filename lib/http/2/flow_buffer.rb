@@ -122,6 +122,11 @@ module HTTP2
       @bytesize = 0
     end
 
+    def clear
+      @buffer.clear
+      @bytesize = 0
+    end
+
     def <<(frame)
       @buffer << frame
       @bytesize += frame[:payload].bytesize
