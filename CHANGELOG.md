@@ -1,3 +1,7 @@
+## 1.1.2
+
+* allow sending and receiving multiple GOAWAY frames, as per RFC 9113, section 6.8
+
 ## 1.1.1
 
 ### Bugfixes
