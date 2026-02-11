@@ -115,10 +115,15 @@ module HTTP2
 
     # Initializes new framer object.
     #
-    def initialize(local_max_frame_size = DEFAULT_MAX_FRAME_SIZE,
-                   remote_max_frame_size = DEFAULT_MAX_FRAME_SIZE)
+    def initialize(
+      streams = {},
+      local_max_frame_size = DEFAULT_MAX_FRAME_SIZE,
+      remote_max_frame_size = DEFAULT_MAX_FRAME_SIZE
+    )
+      @streams = streams
       @local_max_frame_size = local_max_frame_size
       @remote_max_frame_size = remote_max_frame_size
+      @frames = []
     end
 
     # Generates common 9-byte frame header.
@@ -371,6 +376,38 @@ module HTTP2
     #
     # @param buf [Buffer]
     def parse(buf)
+      decoded = false
+
+      while (frame = decode_frame(buf))
+        if frame[:type] == :ping
+          # PING responses SHOULD be given higher priority than any other frame.
+          @frames.unshift(frame)
+        else
+          @frames << frame
+        end
+        decoded = true
+      end
+
+      # TODO: support stream prioritization
+      # WIP
+      if decoded
+        @frames.sort! do |f1, f2|
+          next(0) unless f1.key?(:stream) && f2.key?(:stream)
+
+          s1 = @streams[f1[:stream]] or next(0)
+
+          s2 = @streams[f2[:stream]] or next(0)
+
+          s1 <=> s2
+        end
+      end
+
+      @frames.shift
+    end
+
+    private
+
+    def decode_frame(buf)
       return if buf.size < 9
 
       frame = read_common_header(buf)
@@ -490,8 +527,6 @@ module HTTP2
 
       frame
     end
-
-    private
 
     def pack_error(error, buffer:)
       unless error.is_a? Integer
