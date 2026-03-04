@@ -24,8 +24,8 @@ server = TCPServer.new(options[:port])
 
 if options[:secure]
   ctx = OpenSSL::SSL::SSLContext.new
-  ctx.cert = OpenSSL::X509::Certificate.new(File.open("keys/server.crt"))
-  ctx.key = OpenSSL::PKey::RSA.new(File.open("keys/server.key"))
+  ctx.cert = OpenSSL::X509::Certificate.new(File.read("keys/server.crt"))
+  ctx.key = OpenSSL::PKey::RSA.new(File.read("keys/server.key"))
 
   ctx.ssl_version = :TLSv1_2
   ctx.options = OpenSSL::SSL::SSLContext::DEFAULT_PARAMS[:options]

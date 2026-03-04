@@ -1,3 +1,9 @@
+## 1.1.3
+
+HTTP2::FrameBuffer#clear: clears the buffered data chunks
+
+this API is useful for clients which want to react to a peer GOAWAY frame by cleaning the buffer before closing the stream
+
 ## 1.1.2
 
 * allow sending and receiving multiple GOAWAY frames, as per RFC 9113, section 6.8
