@@ -83,23 +83,25 @@ module HTTP2
       settings_max_header_list_size: 6
     }.freeze
 
-    # Default error types as defined by the spec
-    DEFINED_ERRORS = {
-      no_error: 0,
-      protocol_error: 1,
-      internal_error: 2,
-      flow_control_error: 3,
-      settings_timeout: 4,
-      stream_closed: 5,
-      frame_size_error: 6,
-      refused_stream: 7,
-      cancel: 8,
-      compression_error: 9,
-      connect_error: 10,
-      enhance_your_calm: 11,
-      inadequate_security: 12,
-      http_1_1_required: 13
-    }.freeze
+    DEFINED_SETTINGS_BY_ID = DEFINED_SETTINGS.invert.freeze
+
+    # Default error types as defined by the spec (the code is the array index)
+    DEFINED_ERRORS = %i[
+      no_error
+      protocol_error
+      internal_error
+      flow_control_error
+      settings_timeout
+      stream_closed
+      frame_size_error
+      refused_stream
+      cancel
+      compression_error
+      connect_error
+      enhance_your_calm
+      inadequate_security
+      http_1_1_required
+    ].freeze
 
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff
@@ -447,8 +449,9 @@ module HTTP2
 
           # Unsupported or unrecognized settings MUST be ignored.
           # Here we send it along.
-          name, = DEFINED_SETTINGS.find { |_name, v| v == id }
-          frame[:payload] << [name, val] if name
+          if (name = DEFINED_SETTINGS_BY_ID[id])
+            frame[:payload] << [name, val]
+          end
         end
       when :push_promise
         frame[:promise_stream] = read_uint32(payload) & RBIT
@@ -495,7 +498,7 @@ module HTTP2
 
     def pack_error(error, buffer:)
       unless error.is_a? Integer
-        error = DEFINED_ERRORS[error]
+        error = DEFINED_ERRORS.index(error)
 
         raise CompressionError, "Unknown error ID for #{error}" unless error
       end
@@ -504,7 +507,7 @@ module HTTP2
     end
 
     def unpack_error(error)
-      DEFINED_ERRORS.key(error) || error
+      DEFINED_ERRORS.fetch(error, error)
     end
   end
 end
