@@ -248,7 +248,7 @@ module HTTP2
         end
 
         settings = frame[:payload]
-        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
+        bytes = String.new("", encoding: Encoding::BINARY, capacity: settings.size * 6)
 
         settings.each do |(k, v)|
           if k.is_a? Integer # rubocop:disable Style/GuardClause
