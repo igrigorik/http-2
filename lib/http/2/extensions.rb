@@ -44,10 +44,6 @@ module HTTP2
     def read_uint32(str)
       read_str(str, 4).unpack1("N")
     end
-
-    def shift_byte(str)
-      read_str(str, 1).ord
-    end
   end
 
   # this mixin handles backwards-compatibility for the new packing options
