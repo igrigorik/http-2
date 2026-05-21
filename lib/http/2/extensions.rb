@@ -22,13 +22,23 @@ module HTTP2
       end
     end
 
-    def read_str(str, n)
-      return "".b if n == 0
+    if String.method_defined?(:bytesplice)
+      def read_str(str, n)
+        return "".b if n == 0
 
-      chunk = str.byteslice(0..(n - 1))
-      remaining = str.byteslice(n..-1)
-      remaining ? str.replace(remaining) : str.clear
-      chunk
+        chunk = str.byteslice(0, n)
+        str.bytesplice(0, chunk.length, "")
+        chunk
+      end
+    else
+      def read_str(str, n)
+        return "".b if n == 0
+
+        chunk = str.byteslice(0, n)
+        remaining = str.byteslice(n, str.size - n)
+        remaining ? str.replace(remaining) : str.clear
+        chunk
+      end
     end
 
     def read_uint32(str)
