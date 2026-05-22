@@ -715,12 +715,15 @@ module HTTP2
     #
     # @param headers_frame [Hash]
     def encode_headers(headers_frame)
-      payload = headers_frame[:payload]
+      headers_payload = headers_frame[:payload]
       begin
-        payload = headers_frame[:payload] = @compressor.encode(payload) unless payload.is_a?(String)
+        payload = headers_payload.is_a?(String) ? headers_payload : @compressor.encode(headers_payload)
       rescue StandardError => e
         connection_error(:compression_error, e: e)
       end
+
+      #: @type var payload: String
+      headers_frame[:payload] = payload
 
       max_frame_size = @remote_settings[:settings_max_frame_size]
 
@@ -731,29 +734,27 @@ module HTTP2
       end
 
       # split into multiple CONTINUATION frames
+      total = payload.bytesize
       headers_frame[:flags] ^= END_HEADERS
       headers_frame[:payload] = payload.byteslice(0, max_frame_size)
-      payload = payload.byteslice(max_frame_size..-1)
+      # payload = payload.byteslice(max_frame_size..-1)
+      offset = max_frame_size
 
       # emit first HEADERS frame
       encode(headers_frame)
 
-      loop do
+      while offset < total
+        chunk_end = offset + max_frame_size
+        is_last = chunk_end >= total
+
         continuation_frame = headers_frame.merge(
           type: :continuation,
-          flags: 0,
-          payload: payload.byteslice(0, max_frame_size)
+          flags: is_last ? END_HEADERS : 0,
+          payload: payload.byteslice(offset, max_frame_size)
         ) #: continuation_frame
 
-        payload = payload.byteslice(max_frame_size..-1)
-
-        if payload.nil? || payload.empty?
-          continuation_frame[:flags] |= END_HEADERS
-          encode(continuation_frame)
-          break
-        end
-
         encode(continuation_frame)
+        offset = chunk_end
       end
     end
 
