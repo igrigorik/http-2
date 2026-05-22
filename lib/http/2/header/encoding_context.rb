@@ -118,6 +118,8 @@ module HTTP2
       #   :index       Symbol   :all, :static, :never
       def initialize(options = {})
         @table = []
+        @table_by_field = Hash.new { |hs, k| hs[k] = [] }
+        @unshifts = 0
         @options = DEFAULT_OPTIONS.merge(options)
         @limit = @options[:table_size]
         @_table_updated = false
@@ -129,9 +131,13 @@ module HTTP2
       def dup
         other = EncodingContext.new(@options)
         t = @table
+        tbf = @table_by_field.transform_values(&:dup)
+        unshifts = @unshifts
         l = @limit
         other.instance_eval do
           @table = t.dup # shallow copy
+          @table_by_field = tbf
+          @unshifts = unshifts
           @limit = l
         end
         other
@@ -213,6 +219,8 @@ module HTTP2
           # add to table
           if type == :incremental && size_check?(name.bytesize + value.bytesize + 32)
             @table.unshift(emit)
+            @unshifts += 1
+            @table_by_field[name].unshift([value, @unshifts])
             @current_table_size += name.bytesize + value.bytesize + 32
             @_table_updated = true
           end
@@ -279,14 +287,14 @@ module HTTP2
         end
 
         if index_type == :all && !exact
-          @table.each_with_index do |(hfield, hvalue), i|
-            next unless field == hfield
+          field_entries = @table_by_field[field]
 
+          field_entries&.each do |hvalue, unshift_id|
+            abs_index = (@unshifts - unshift_id) + STATIC_TABLE_SIZE
+            name_only ||= abs_index
             if value == hvalue
-              exact = i + STATIC_TABLE_SIZE
+              exact = abs_index
               break
-            else
-              name_only ||= i + STATIC_TABLE_SIZE
             end
           end
         end
@@ -317,9 +325,13 @@ module HTTP2
         return if @table.empty?
 
         while @current_table_size + cmdsize > @limit
-
           name, value = @table.pop
           @current_table_size -= name.bytesize + value.bytesize + 32
+
+          field_arr = @table_by_field[name]
+          field_arr.pop
+          @table_by_field.delete(name) if field_arr.empty?
+
           break if @table.empty?
 
         end
