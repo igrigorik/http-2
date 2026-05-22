@@ -102,6 +102,7 @@ module HTTP2
 
       @recv_buffer = "".b
       @continuation = []
+      @continuation_size = 0
       @error = nil
 
       @h2c_upgrade = nil
@@ -236,15 +237,16 @@ module HTTP2
         # Header blocks MUST be transmitted as a contiguous sequence of frames
         # with no interleaved frames of any other type, or from any other stream.
         unless @continuation.empty?
+          # @type var frame: continuation_frame
           connection_error unless frame_type == :continuation && stream_id == @continuation.first[:stream]
 
           @continuation << frame
+          @continuation_size += frame[:payload].bytesize
           unless frame[:flags].anybits?(END_HEADERS)
-            buffered_payload = @continuation.sum { |f| f[:payload].bytesize }
             # prevent HTTP/2 CONTINUATION FLOOD
             # same heuristic as the one from HAProxy: https://www.haproxy.com/blog/haproxy-is-resilient-to-the-http-2-continuation-flood
             # different mitigation (connection closed, instead of 400 response)
-            unless buffered_payload < @local_settings[:settings_max_frame_size]
+            unless @continuation_size < @local_settings[:settings_max_frame_size]
               connection_error(:protocol_error,
                                msg: "too many continuations received")
             end
@@ -258,6 +260,7 @@ module HTTP2
           frame_type = frame[:type]
 
           @continuation.clear
+          @continuation_size = 0
 
           frame.delete(:length)
           frame[:payload] = payload

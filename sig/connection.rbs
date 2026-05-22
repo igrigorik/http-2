@@ -50,6 +50,7 @@ module HTTP2
 
     @recv_buffer: String
     @continuation: Array[frame]
+    @continuation_size: Integer
 
     @h2c_upgrade: Symbol?
     @closed_since: Float?
