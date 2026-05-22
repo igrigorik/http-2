@@ -422,19 +422,18 @@ module HTTP2
       when :settings
         # NOTE: frame[:length] might not match the number of frame[:payload]
         # because unknown extensions are ignored.
-        frame[:payload] = []
         raise ProtocolError, "Invalid settings payload length" unless (length % 6).zero?
 
         raise ProtocolError, "Invalid stream ID (#{frame[:stream]})" if frame[:stream].nonzero?
 
-        (frame[:length] / 6).times do
+        frame[:payload] = (frame[:length] / 6).times.filter_map do
           id  = read_str(payload, 2).unpack1(UINT16)
           val = read_uint32(payload)
 
           # Unsupported or unrecognized settings MUST be ignored.
           # Here we send it along.
           if (name = DEFINED_SETTINGS_BY_ID[id])
-            frame[:payload] << [name, val]
+            [name, val]
           end
         end
       when :push_promise
