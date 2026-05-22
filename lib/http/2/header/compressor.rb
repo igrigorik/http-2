@@ -83,8 +83,9 @@ module HTTP2
           huffman = Huffman.encode(str)
           if huffman.bytesize < str.bytesize
             huffman_offset = buffer.bytesize
+            integer(huffman.bytesize, 7, buffer: buffer)
+            buffer.setbyte(huffman_offset, buffer.getbyte(huffman_offset) | 0x80)
             append_str(buffer, huffman)
-            set_huffman_size(buffer, huffman_offset)
           else
             plain_string(str, buffer)
           end
@@ -147,8 +148,17 @@ module HTTP2
       # @return [String] binary string
       def huffman_string(str, buffer = "".b)
         huffman_offset = buffer.bytesize
+        buffer << "\x00".b
         Huffman.encode(str, buffer)
-        set_huffman_size(buffer, huffman_offset)
+        size = buffer.bytesize - huffman_offset - 1
+
+        if size < 127
+          buffer.setbyte(huffman_offset, 0x80 | size)
+        else
+          buffer.slice!(huffman_offset, 1)
+          set_huffman_size(buffer, huffman_offset)
+        end
+        buffer
       end
 
       # @param str [String]
