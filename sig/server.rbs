@@ -7,6 +7,6 @@ module HTTP2
 
     private
 
-    def promise: (Stream parent, Enumerable[header_pair] headers, Array[Symbol] flags) { (Stream) -> void } -> void
+    def promise: (Stream parent, Enumerable[header_pair] headers, frame_control_flags flags) { (Stream) -> void } -> void
   end
 end

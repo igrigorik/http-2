@@ -36,10 +36,18 @@ module HTTP2
 
   RESPONSE_MANDATORY_HEADERS: Array[String]
 
+  # Frame flags
+  END_STREAM: Integer
+  ACK: Integer
+  RESERVED: Integer
+  END_HEADERS: Integer
+  PADDED: Integer
+  PRIORITY: Integer
+
   type header_pair = [string, string]
 
   # # FRAMES
-  type frame_control_flags = Array[:end_headers | :end_stream]
+  type frame_control_flags = Integer
 
   type common_frame = { stream: Integer }
 
@@ -56,7 +64,7 @@ module HTTP2
   type push_promise_frame = { type: :push_promise, promise_stream: Integer, flags: frame_control_flags, ?method: Symbol, ?trailer: Array[String], ?content_length: Integer, payload: Enumerable[header_pair], ?padding: Integer }
 
   # # SETTINGS
-  type settings_frame = { type: :settings, payload: Array[[Symbol | Integer, Integer]] }
+  type settings_frame = { type: :settings, ?payload: Array[[Symbol | Integer, Integer]], ?flags: frame_control_flags }
 
   # # WINDOW_UPDATE
   type window_update_frame = { type: :window_update, increment: Integer }
@@ -71,7 +79,7 @@ module HTTP2
   type origin_frame = { type: :origin, origin: Array[String] }
 
   # # PING
-  type ping_frame = { type: :ping, payload: String, length: Integer }
+  type ping_frame = { type: :ping, payload: String, length: Integer, ?flags: frame_control_flags }
 
   # # GOAWAY
   type goaway_frame = { type: :goaway, last_stream: Integer, error: Symbol? }

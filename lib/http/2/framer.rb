@@ -1,6 +1,25 @@
 # frozen_string_literal: true
 
 module HTTP2
+  # Frame flags as defined by the spec (max 255 bits)
+  # DATA:          ( X X COMPRESSED X PADDED X X END_STREAM )
+  # HEADERS:       ( X X PRIORITY X PADDED END_HEADERS X END_STREAM )
+  # PRIORITY:      ( X X X X X X X X )
+  # RST_STREAM:    ( X X X X X X X X )
+  # SETTINGS:      ( X X X X X X X ACK )
+  # PUSH_PROMISE:  ( X X X X PADDED END_HEADERS X X )
+  # PING:          ( X X X X X X X ACK )
+  # GOAWAY:        ( X X X X X X X X )
+  # WINDOW_UPDATE: ( X X X X X X X X )
+  # CONTINUATION:  ( X X X X X END_HEADERS X X )
+  # ALTSVC:        ( X X X X X X X X )
+  # ORIGIN:        ( RESERVED4 X X RESERVED3 X RESERVED2 RESERVED X )
+  END_STREAM = ACK = 0b0001 # 1
+  RESERVED = 0b0010 # 2
+  END_HEADERS = 0b0100 # 4
+  PADDED = 0b1000 # 8
+  PRIORITY = 0b0010_0000 # 32
+
   # Performs encoding, decoding, and validation of binary HTTP/2 frames.
   #
   class Framer
@@ -39,39 +58,6 @@ module HTTP2
     FRAME_TYPES_BY_NAME = FRAME_TYPES.invert.freeze
 
     FRAME_TYPES_WITH_PADDING = %i[data headers push_promise].freeze
-
-    # Per frame flags as defined by the spec
-    FRAME_FLAGS = {
-      data: {
-        end_stream: 0,
-        padded: 3,
-        compressed: 5
-      },
-      headers: {
-        end_stream: 0,
-        end_headers: 2,
-        padded: 3,
-        priority: 5
-      },
-      priority: {},
-      rst_stream: {},
-      settings: { ack: 0 },
-      push_promise: {
-        end_headers: 2,
-        padded: 3
-      },
-      ping: { ack: 0 },
-      goaway: {},
-      window_update: {},
-      continuation: { end_headers: 2 },
-      altsvc: {},
-      origin: {
-        reserved: 1,
-        reserved2: 2,
-        reserved3: 4,
-        reserved4: 8
-      }
-    }.each_value(&:freeze).freeze
 
     # Default settings as defined by the spec
     DEFINED_SETTINGS = {
@@ -148,6 +134,10 @@ module HTTP2
         raise CompressionError, "Window increment (#{frame[:increment]}) is too large"
       end
 
+      flags = frame[:flags]
+
+      raise CompressionError, "Invalid frame flag (#{flags}) for #{type}" unless flags.between?(0, 255)
+
       header = buffer
 
       # make sure the buffer is binary and unfrozen
@@ -162,12 +152,7 @@ module HTTP2
              (length >> FRAME_LENGTH_HISHIFT),
              (length & FRAME_LENGTH_LOMASK),
              FRAME_TYPES[type],
-             frame[:flags].reduce(0) do |acc, f|
-               position = FRAME_FLAGS[type][f]
-               raise CompressionError, "Invalid frame flag (#{f}) for #{type}" unless position
-
-               acc | (1 << position)
-             end,
+             flags,
              stream_id
            ], HEADERPACK, buffer: header, offset: 0) # 8+16,8,8,32
     end
@@ -186,9 +171,7 @@ module HTTP2
 
       {
         type: type,
-        flags: FRAME_FLAGS[type].filter_map do |name, pos|
-          name if flags.anybits?(1 << pos)
-        end,
+        flags: flags,
         length: length,
         stream: stream & RBIT
       }
@@ -200,7 +183,7 @@ module HTTP2
     # @param frame [Hash]
     def generate(frame)
       length = 0
-      frame[:flags] ||= EMPTY
+      frame[:flags] ||= 0
 
       case frame[:type]
       when :data, :continuation
@@ -215,10 +198,10 @@ module HTTP2
             raise CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
           end
 
-          frame[:flags] += [:priority] unless frame[:flags].include?(:priority)
+          frame[:flags] |= PRIORITY
         end
 
-        if frame[:flags].include?(:priority)
+        if frame[:flags].anybits?(PRIORITY)
           length = 5 + headers.bytesize
           bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
           pack([(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)], UINT32, buffer: bytes)
@@ -356,7 +339,7 @@ module HTTP2
 
         length += padlen
         pack([padlen -= 1], UINT8, buffer: bytes, offset: 0)
-        frame[:flags] += [:padded]
+        frame[:flags] |= PADDED
 
         # Padding:  Padding octets that contain no application semantic value.
         # Padding octets MUST be set to zero when sending and ignored when
@@ -396,7 +379,7 @@ module HTTP2
       # Process padding
       padlen = 0
       if FRAME_TYPES_WITH_PADDING.include?(type)
-        padded = flags.include?(:padded)
+        padded = flags.anybits?(PADDED)
         if padded
           padlen = read_str(payload, 1).unpack1(UINT8)
           frame[:padding] = padlen + 1
@@ -404,7 +387,7 @@ module HTTP2
 
           payload = payload.byteslice(0, payload.bytesize - padlen) if padlen > 0
           frame[:length] -= frame[:padding]
-          flags.delete(:padded)
+          frame[:flags] ^= PADDED
         end
       end
 
@@ -412,7 +395,7 @@ module HTTP2
       when :data, :ping, :continuation
         frame[:payload] = read_str(payload, length)
       when :headers
-        if flags.include?(:priority)
+        if flags.anybits?(PRIORITY)
           e_sd = read_uint32(payload)
           frame[:dependency] = e_sd & RBIT
           frame[:exclusive] = e_sd.anybits?(EBIT)

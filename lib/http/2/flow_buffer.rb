@@ -70,7 +70,7 @@ module HTTP2
       if frame
         if @send_buffer.empty?
           frame_size = frame[:payload].bytesize
-          end_stream = frame[:flags].include?(:end_stream)
+          end_stream = frame[:flags].anybits?(END_STREAM)
           # if buffer is empty, and frame is either end 0 length OR
           # is within available window size, skip buffering and send immediately.
           if @remote_window.positive?
@@ -140,7 +140,7 @@ module HTTP2
       frame = @buffer.first or return
 
       frame_size = frame[:payload].bytesize
-      end_stream = frame[:flags].include?(:end_stream)
+      end_stream = frame[:flags].anybits?(END_STREAM)
 
       # Frames with zero length with the END_STREAM flag set (that
       # is, an empty DATA frame) MAY be sent if there is no available space
@@ -160,7 +160,7 @@ module HTTP2
         frame[:length] = frame_size - window_size
 
         # if no longer last frame in sequence...
-        chunk[:flags] -= [:end_stream] if end_stream
+        chunk[:flags] ^= END_STREAM if end_stream
 
         @bytesize -= window_size
         chunk

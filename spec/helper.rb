@@ -34,7 +34,7 @@ module FrameHelpers
   def data_frame
     {
       type: :data,
-      flags: [:end_stream],
+      flags: END_STREAM,
       stream: 1,
       payload: "text"
     }
@@ -43,7 +43,7 @@ module FrameHelpers
   def headers_frame
     {
       type: :headers,
-      flags: [:end_headers].freeze,
+      flags: END_HEADERS,
       stream: 1,
       payload: Compressor.new.encode(REQUEST_HEADERS)
     }
@@ -81,7 +81,7 @@ module FrameHelpers
   def push_promise_frame
     {
       type: :push_promise,
-      flags: [:end_headers],
+      flags: END_HEADERS,
       stream: 1,
       promise_stream: 2,
       payload: Compressor.new.encode(REQUEST_HEADERS)
@@ -100,7 +100,7 @@ module FrameHelpers
     {
       stream: 0,
       type: :ping,
-      flags: [:ack],
+      flags: ACK,
       payload: "12345678"
     }
   end
@@ -125,7 +125,7 @@ module FrameHelpers
     {
       type: :continuation,
       stream: 1,
-      flags: [:end_headers],
+      flags: END_HEADERS,
       payload: "-second-block"
     }
   end

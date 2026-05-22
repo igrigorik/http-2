@@ -219,9 +219,8 @@ module HTTP2
     # @param end_headers [Boolean] indicates that no more headers will be sent
     # @param end_stream [Boolean] indicates that no payload will be sent
     def headers(headers, end_headers: true, end_stream: false)
-      flags = []
-      flags << :end_headers if end_headers
-      flags << :end_stream  if end_stream || @_method == "HEAD"
+      flags = end_headers ? END_HEADERS : 0
+      flags |= END_STREAM  if end_stream || @_method == "HEAD"
 
       send(type: :headers, flags: flags, payload: headers)
     end
@@ -229,7 +228,7 @@ module HTTP2
     def promise(headers, end_headers: true, &block)
       raise ArgumentError, "must provide callback" unless block
 
-      flags = end_headers ? [:end_headers] : []
+      flags = end_headers ? END_HEADERS : 0
       emit(:promise, self, headers, flags, &block)
     end
 
@@ -254,12 +253,12 @@ module HTTP2
 
       if payload.bytesize > max_size
         payload = chunk_data(payload, max_size) do |chunk|
-          send(type: :data, flags: [], payload: chunk)
+          send(type: :data, flags: 0, payload: chunk)
         end
       end
 
-      flags = []
-      flags << :end_stream if end_stream
+      flags = 0
+      flags |= END_STREAM if end_stream
       send(type: :data, flags: flags, payload: payload)
     end
 
@@ -663,7 +662,7 @@ module HTTP2
     def end_stream?(frame)
       case frame[:type]
       when :data, :headers, :continuation
-        frame[:flags] && frame[:flags].include?(:end_stream)
+        frame[:flags] && frame[:flags].anybits?(END_STREAM)
       else false
       end
     end

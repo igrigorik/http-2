@@ -240,7 +240,7 @@ module HTTP2
           connection_error unless frame_type == :continuation && stream_id == @continuation.first[:stream]
 
           @continuation << frame
-          unless frame[:flags].include? :end_headers
+          unless frame[:flags].anybits?(END_HEADERS)
             buffered_payload = @continuation.sum { |f| f[:payload].bytesize }
             # prevent HTTP/2 CONTINUATION FLOOD
             # same heuristic as the one from HAProxy: https://www.haproxy.com/blog/haproxy-is-resilient-to-the-http-2-continuation-flood
@@ -262,7 +262,7 @@ module HTTP2
 
           frame.delete(:length)
           frame[:payload] = payload
-          frame[:flags] << :end_headers
+          frame[:flags] |= END_HEADERS
         end
 
         # SETTINGS frames always apply to a connection, never a single stream.
@@ -282,7 +282,7 @@ module HTTP2
 
             # The last frame in a sequence of HEADERS/CONTINUATION
             # frames MUST have the END_HEADERS flag set.
-            unless frame[:flags].include? :end_headers
+            unless frame[:flags].anybits?(END_HEADERS)
               @continuation << frame
               next
             end
@@ -314,7 +314,7 @@ module HTTP2
           when :push_promise
             # The last frame in a sequence of PUSH_PROMISE/CONTINUATION
             # frames MUST have the END_HEADERS flag set
-            unless frame[:flags].include? :end_headers
+            unless frame[:flags].anybits?(END_HEADERS)
               @continuation << frame
               return
             end
@@ -512,7 +512,7 @@ module HTTP2
           # information is invalid and MUST be ignored.
           emit(:altsvc, frame) if origin && !origin.empty?
         when :origin
-          return if @h2c_upgrade || !frame[:flags].empty?
+          return if @h2c_upgrade || !frame[:flags].zero?
 
           frame[:payload].each do |orig|
             emit(:origin, orig)
@@ -538,11 +538,10 @@ module HTTP2
     end
 
     def ping_management(frame)
-      if frame[:flags].include? :ack
+      if frame[:flags].anybits?(ACK)
         emit(:ack, frame[:payload])
       else
-        send(type: :ping, stream: 0,
-             flags: [:ack], payload: frame[:payload])
+        send(type: :ping, stream: 0, flags: ACK, payload: frame[:payload])
       end
     end
 
@@ -605,7 +604,7 @@ module HTTP2
       #  side =
       #   local: previously sent and pended our settings should be effective
       #   remote: just received peer settings should immediately be effective
-      if frame[:flags].include?(:ack)
+      if frame[:flags].anybits?(ACK)
         # Process pending settings we have sent.
         settings = @pending_settings.shift
         side = :local
@@ -681,7 +680,7 @@ module HTTP2
       when :remote
         unless @state == :closed || @h2c_upgrade == :start
           # Send ack to peer
-          send(type: :settings, stream: 0, payload: [], flags: [:ack])
+          send(type: :settings, stream: 0, payload: EMPTY, flags: ACK)
           # when initial window size changes, we try to flush any buffered
           # data.
           @streams.each_value(&:flush)
@@ -727,7 +726,7 @@ module HTTP2
       end
 
       # split into multiple CONTINUATION frames
-      headers_frame[:flags].delete(:end_headers)
+      headers_frame[:flags] ^= END_HEADERS
       headers_frame[:payload] = payload.byteslice(0, max_frame_size)
       payload = payload.byteslice(max_frame_size..-1)
 
@@ -737,14 +736,14 @@ module HTTP2
       loop do
         continuation_frame = headers_frame.merge(
           type: :continuation,
-          flags: EMPTY,
+          flags: 0,
           payload: payload.byteslice(0, max_frame_size)
         )
 
         payload = payload.byteslice(max_frame_size..-1)
 
         if payload.nil? || payload.empty?
-          continuation_frame[:flags] = [:end_headers]
+          continuation_frame[:flags] |= END_HEADERS
           emit(:frame, @framer.generate(continuation_frame))
           break
         end

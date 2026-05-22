@@ -85,7 +85,7 @@ module HTTP2
           length: buf.bytesize,
           type: :settings,
           stream: 0,
-          flags: []
+          flags: 0
         },
         buffer: buf
       )
@@ -97,7 +97,7 @@ module HTTP2
 
       headers_frame = {
         type: :headers,
-        flags: [:end_headers],
+        flags: END_HEADERS,
         stream: 1,
         weight: DEFAULT_WEIGHT,
         dependency: 0,
@@ -106,11 +106,11 @@ module HTTP2
       }
 
       if body.empty?
-        headers_frame[:flags] << [:end_stream]
+        headers_frame[:flags] |= END_HEADERS
         stream << headers_frame
       else
         stream << headers_frame
-        stream << { type: :data, stream: 1, payload: body, flags: [:end_stream] }
+        stream << { type: :data, stream: 1, payload: body, flags: END_STREAM }
       end
 
       # Mark h2c upgrade as finished
@@ -135,7 +135,7 @@ module HTTP2
 
     def connection_settings(frame)
       super
-      return unless frame[:flags].include?(:ack) && !@origins_sent
+      return unless frame[:flags].anybits?(ACK) && !@origins_sent
 
       send(type: :origin, stream: 0, payload: @origin_set)
     end
@@ -148,7 +148,7 @@ module HTTP2
     #
     # @param parent [Stream]
     # @param headers [Enumerable[String, String]]
-    # @param flags [Array[Symbol]]
+    # @param flags Integer
     # @param callback [Proc]
     def promise(parent, headers, flags)
       promise = new_stream(parent: parent)

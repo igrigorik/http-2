@@ -10,7 +10,7 @@ RSpec.describe HTTP2::Framer do
       {
         length: 4,
         type: :headers,
-        flags: %i[end_stream end_headers],
+        flags: END_HEADERS | END_STREAM,
         stream: 15
       }
     end
@@ -31,7 +31,7 @@ RSpec.describe HTTP2::Framer do
       frame = {
         length: (2**18) + (2**16) + 17,
         type: :headers,
-        flags: %i[end_stream end_headers],
+        flags: END_HEADERS | END_STREAM,
         stream: 15
       }
       bytes = [5, 17, 0x01, 0x5, 0x0000000F].pack("CnCCN")
@@ -55,7 +55,7 @@ RSpec.describe HTTP2::Framer do
 
     it "should raise exception on invalid frame flag" do
       expect do
-        frame[:flags] = [:bogus]
+        frame[:flags] = 1024
         f.common_header(frame, buffer: "".b)
       end.to raise_error(CompressionError, /frame flag/)
     end
@@ -73,7 +73,7 @@ RSpec.describe HTTP2::Framer do
       frame = {
         length: 4,
         type: :data,
-        flags: [:end_stream],
+        flags: END_STREAM,
         stream: 1,
         payload: "text"
       }
@@ -90,7 +90,7 @@ RSpec.describe HTTP2::Framer do
       frame = {
         length: 12,
         type: :headers,
-        flags: %i[end_stream end_headers],
+        flags: END_HEADERS | END_STREAM,
         stream: 1,
         payload: "header-block"
       }
@@ -104,7 +104,7 @@ RSpec.describe HTTP2::Framer do
       frame = {
         length: 16,
         type: :headers,
-        flags: [:end_headers],
+        flags: END_HEADERS,
         stream: 1,
         dependency: 15,
         weight: 12,
@@ -154,7 +154,7 @@ RSpec.describe HTTP2::Framer do
     let(:frame) do
       {
         type: :settings,
-        flags: [],
+        flags: 0,
         stream: 0,
         payload: [
           [:settings_max_concurrent_streams, 10],
@@ -242,7 +242,7 @@ RSpec.describe HTTP2::Framer do
       frame = {
         length: 11,
         type: :push_promise,
-        flags: [:end_headers],
+        flags: END_HEADERS,
         stream: 1,
         promise_stream: 2,
         payload: "headers"
@@ -260,7 +260,7 @@ RSpec.describe HTTP2::Framer do
         length: 8,
         stream: 1,
         type: :ping,
-        flags: [:ack],
+        flags: ACK,
         payload: "12345678"
       }
     end
@@ -340,7 +340,7 @@ RSpec.describe HTTP2::Framer do
         length: 12,
         type: :continuation,
         stream: 1,
-        flags: [:end_headers],
+        flags: END_HEADERS,
         payload: "header-block"
       }
 
@@ -443,7 +443,7 @@ RSpec.describe HTTP2::Framer do
 
   it "should determine frame length" do
     frames = [
-      [{ type: :data, stream: 1, flags: [:end_stream], payload: "abc" }, 3],
+      [{ type: :data, stream: 1, flags: END_STREAM, payload: "abc" }, 3],
       [{ type: :headers, stream: 1, payload: "abc" }, 3],
       [{ type: :priority, stream: 3, dependency: 30, exclusive: false, weight: 1 }, 5],
       [{ type: :rst_stream, stream: 3, error: 100 }, 4],
@@ -465,7 +465,7 @@ RSpec.describe HTTP2::Framer do
   it "should parse single frame at a time" do
     frames = [
       { type: :headers, stream: 1, payload: "headers" },
-      { type: :data, stream: 1, flags: [:end_stream], payload: "abc" }
+      { type: :data, stream: 1, flags: END_STREAM, payload: "abc" }
     ]
 
     buf = f.generate(frames[0]) << f.generate(frames[1])
