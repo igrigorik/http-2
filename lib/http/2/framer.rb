@@ -96,10 +96,12 @@ module HTTP2
     UINT16 = "n"
     UINT8  = "C"
     HEADERPACK = (UINT8 + UINT16 + UINT8 + UINT8 + UINT32).freeze
+    PRIORITYPACK = (UINT32 + UINT8).freeze
+    ALTSVCPACK = (UINT32 + UINT16).freeze
     FRAME_LENGTH_HISHIFT = 16
     FRAME_LENGTH_LOMASK  = 0xFFFF
 
-    private_constant :RBIT, :RBYTE, :EBIT, :HEADERPACK, :UINT32, :UINT16, :UINT8
+    private_constant :RBIT, :RBYTE, :EBIT, :HEADERPACK, :PRIORITYPACK, :UINT32, :UINT16, :UINT8
 
     # Initializes new framer object.
     #
@@ -205,8 +207,10 @@ module HTTP2
         if frame[:flags].anybits?(PRIORITY)
           length = 5 + headers.bytesize
           bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
-          pack([(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)], UINT32, buffer: bytes)
-          pack([frame[:weight] - 1], UINT8, buffer: bytes)
+          pack(
+            [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT), frame[:weight] - 1],
+            PRIORITYPACK, buffer: bytes
+          )
           append_str(bytes, headers)
         else
           length = headers.bytesize
@@ -220,8 +224,10 @@ module HTTP2
 
         length = 5
         bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
-        pack([(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)], UINT32, buffer: bytes)
-        pack([frame[:weight] - 1], UINT8, buffer: bytes)
+        pack(
+          [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT), frame[:weight] - 1],
+          PRIORITYPACK, buffer: bytes
+        )
 
       when :rst_stream
         length = 4
@@ -281,7 +287,7 @@ module HTTP2
       when :altsvc
         length = 6
         bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
-        pack([frame[:max_age], frame[:port]], UINT32 + UINT16, buffer: bytes)
+        pack([frame[:max_age], frame[:port]], ALTSVCPACK, buffer: bytes)
         if frame[:proto]
           raise CompressionError, "Proto too long" if frame[:proto].bytesize > 255
 
@@ -383,8 +389,9 @@ module HTTP2
         padded = flags.anybits?(PADDED)
         if padded
           padlen = read_str(payload, 1).unpack1(UINT8)
-          frame[:padding] = padlen + 1
           raise ProtocolError, "padding too long" if padlen > payload.bytesize
+
+          frame[:padding] = padlen + 1
 
           payload = payload.byteslice(0, payload.bytesize - padlen) if padlen > 0
           frame[:length] -= frame[:padding]
@@ -450,7 +457,7 @@ module HTTP2
 
         frame[:increment] = read_uint32(payload) & RBIT
       when :altsvc
-        frame[:max_age], frame[:port] = read_str(payload, 6).unpack(UINT32 + UINT16)
+        frame[:max_age], frame[:port] = read_str(payload, 6).unpack(ALTSVCPACK)
 
         len = payload.byteslice(0, 1).ord
         payload = payload.byteslice(1..-1)

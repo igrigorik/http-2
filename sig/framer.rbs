@@ -31,6 +31,8 @@ module HTTP2
     UINT16: String
     UINT8: String
     HEADERPACK: String
+    PRIORITYPACK: String
+    ALTSVCPACK: String
     FRAME_LENGTH_HISHIFT: Integer
     FRAME_LENGTH_LOMASK: Integer
 
