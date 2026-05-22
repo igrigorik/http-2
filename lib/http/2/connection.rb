@@ -525,8 +525,6 @@ module HTTP2
           frame[:payload].each do |orig|
             emit(:origin, orig)
           end
-        when :blocked
-          emit(:blocked, frame)
         else
           connection_error
         end
