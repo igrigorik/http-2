@@ -447,9 +447,13 @@ module HTTP2
         # endpoint MAY choose to treat a stream error as a connection error.
 
         goaway(:protocol_error)
-      else
+      elsif HEADERS_FRAME_TYPES.include?(frame[:type])
         # HEADERS and PUSH_PROMISE may generate CONTINUATION. Also send
         # RST_STREAM that are not protocol errors
+        #: @type var frame: headers_frame | push_promise_frame
+        encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
+      else
+        #: @type var frame: connection_frame
         encode(frame)
       end
     end
@@ -458,12 +462,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def encode(frame)
-      if HEADERS_FRAME_TYPES.include?(frame[:type])
-        #: @type var frame: headers_frame | push_promise_frame
-        encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
-      else
-        emit(:frame, @framer.generate(frame))
-      end
+      emit(:frame, @framer.generate(frame))
     end
 
     # Check if frame is a connection frame: SETTINGS, PING, GOAWAY, and any
@@ -727,7 +726,7 @@ module HTTP2
 
       # if single frame, return immediately
       if payload.bytesize <= max_frame_size
-        emit(:frame, @framer.generate(headers_frame))
+        encode(headers_frame)
         return
       end
 
@@ -737,7 +736,7 @@ module HTTP2
       payload = payload.byteslice(max_frame_size..-1)
 
       # emit first HEADERS frame
-      emit(:frame, @framer.generate(headers_frame))
+      encode(headers_frame)
 
       loop do
         continuation_frame = headers_frame.merge(
@@ -750,11 +749,11 @@ module HTTP2
 
         if payload.nil? || payload.empty?
           continuation_frame[:flags] |= END_HEADERS
-          emit(:frame, @framer.generate(continuation_frame))
+          encode(continuation_frame)
           break
         end
 
-        emit(:frame, @framer.generate(continuation_frame))
+        encode(continuation_frame)
       end
     end
 
