@@ -17,6 +17,8 @@ Layout/HeredocIndentation:
     - 'lib/tasks/generate_huffman_table.rb'
     - 'example/*'
 
+Layout/LeadingCommentSpace:
+  AllowRBSInlineAnnotation: true
 
 Metrics/BlockLength:
   Enabled: false

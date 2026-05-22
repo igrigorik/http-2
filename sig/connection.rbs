@@ -68,7 +68,7 @@ module HTTP2
 
     def settings: (settings_enum payload) -> void
 
-    def receive: (string data) -> void
+    def receive: (String data) -> void
     alias << receive
 
     def initialize: (?connection_opts) -> void
@@ -81,25 +81,25 @@ module HTTP2
 
     def connection_frame?: (frame) -> bool
 
-    def connection_management: (frame) -> void
+    def connection_management: (connection_frame frame) -> void
 
     def ping_management: (frame) -> void
 
     def validate_settings: (role_type, settings_enum) -> void
 
-    def connection_settings: (frame) -> void
+    def connection_settings: (settings_frame) -> void
 
-    def decode_headers: (frame) -> void
+    def decode_headers: (headers_frame | push_promise_frame) -> void
 
-    def encode_headers: (frame headers_frame) -> void
+    def encode_headers: (headers_frame | push_promise_frame) -> void
 
     def activate_stream: (id: Integer, **untyped) -> Stream
 
     def verify_stream_order: (Integer id) -> void
 
-    def verify_pseudo_headers: (frame) -> void
+    def verify_pseudo_headers: (headers_frame | push_promise_frame) -> void
 
-    def _verify_pseudo_headers: (frame, Array[String]) -> void
+    def _verify_pseudo_headers: (headers_frame | push_promise_frame, Array[String]) -> void
 
     def connection_error: (?Symbol error, ?msg: String?, ?e: StandardError?) -> void
   end

@@ -117,7 +117,9 @@ module FrameHelpers
   def window_update_frame
     {
       type: :window_update,
-      increment: 10
+      increment: 10,
+      flags: 0,
+      stream: 0
     }
   end
 

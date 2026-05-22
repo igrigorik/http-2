@@ -80,12 +80,11 @@ module HTTP2
 
     def complete_transition: (frame) -> void
 
-    def process_priority: (priority_frame frame) -> void
+    def process_priority: (priority_frame_props frame) -> void
 
     def end_stream?: (frame frame) -> boolish
 
-    def stream_error: (Symbol error, ?msg: String?) -> void
-                    | () -> void
+    def stream_error: (?Symbol error, ?msg: String?) -> void
 
     alias error stream_error
 

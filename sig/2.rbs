@@ -49,40 +49,47 @@ module HTTP2
   # # FRAMES
   type frame_control_flags = Integer
 
-  type common_frame = { stream: Integer }
+  type common_frame = { stream: Integer, flags: frame_control_flags, ?ignore: bool }
+
+  type connection_frame = settings_frame | ping_frame | goaway_frame | window_update_frame | altsvc_frame | origin_frame
 
   # # HEADERS
-  type headers_frame = common_frame & {
-    type: :headers, flags: frame_control_flags, payload: Enumerable[header_pair] | String,
+  type headers_frame_props = {
+    type: :headers, payload: Enumerable[header_pair] | String,
     ?method: Symbol, ?trailer: Array[String], ?content_length: Integer, ?padding: Integer
   }
+  type headers_frame = common_frame & headers_frame_props
+
+  type continuation_frame = headers_frame
 
   # # DATA
-  type data_frame = { type: :data, flags: frame_control_flags, ?length: Integer, payload: String, ?padding: Integer }
+  type data_frame = common_frame & { type: :data, ?length: Integer, payload: String, ?padding: Integer }
 
   # # PUSH_PROMISE
-  type push_promise_frame = { type: :push_promise, promise_stream: Integer, flags: frame_control_flags, ?method: Symbol, ?trailer: Array[String], ?content_length: Integer, payload: Enumerable[header_pair], ?padding: Integer }
+  type push_promise_frame_props = { type: :push_promise, promise_stream: Integer, ?method: Symbol, ?trailer: Array[String], ?content_length: Integer, payload: Enumerable[header_pair] | String, ?padding: Integer }
+  type push_promise_frame = common_frame & push_promise_frame_props
 
   # # SETTINGS
-  type settings_frame = { type: :settings, ?payload: Array[[Symbol | Integer, Integer]], ?flags: frame_control_flags }
+  type settings_frame = common_frame & { type: :settings, payload: Array[[Symbol, Integer]] }
 
   # # WINDOW_UPDATE
-  type window_update_frame = { type: :window_update, increment: Integer }
+  type window_update_frame = common_frame & { type: :window_update, increment: Integer }
 
   # # PRIORITY
-  type priority_frame = { dependency: Integer, exclusive: bool, weight: Integer }
+  type priority_frame_props = { dependency: Integer, exclusive: bool, weight: Integer }
+  type priority_frame = common_frame & priority_frame_props
 
   # # ALTSVC
-  type altsvc_frame = { type: :altsvc, max_age: Integer, port: Integer, proto: "String", host: String }
+  type altsvc_frame = common_frame & { type: :altsvc, max_age: Integer, port: Integer, proto: String, host: String }
 
   # # ORIGIN
-  type origin_frame = { type: :origin, origin: Array[String] }
+  type origin_frame = common_frame & { type: :origin, length: Integer, payload: Array[String] }
 
   # # PING
-  type ping_frame = { type: :ping, payload: String, length: Integer, ?flags: frame_control_flags }
+  type ping_frame = common_frame & { type: :ping, payload: String, length: Integer }
 
   # # GOAWAY
-  type goaway_frame = { type: :goaway, last_stream: Integer, error: Symbol? }
+  type goaway_frame = common_frame & { type: :goaway, last_stream: Integer, error: Symbol? }
 
   # type frame = common_frame & (headers_frame | data_frame | push_promise_frame |
   #              settings_frame | window_update_frame | priority_frame | altsvc_frame |

@@ -114,10 +114,13 @@ RSpec.describe HTTP2::Client do
       end.to raise_error(NoMethodError)
     end
 
-    it "should raise error on PUSH_PROMISE against stream 0" do
-      expect do
-        client << set_stream_id(f.generate(push_promise_frame), 0)
-      end.to raise_error(ProtocolError)
+    unless defined?(RBS)
+      # RBS detects type unsafety at runtime
+      it "should raise error on PUSH_PROMISE against stream 0" do
+        expect do
+          client << set_stream_id(f.generate(push_promise_frame), 0)
+        end.to raise_error(ProtocolError)
+      end
     end
 
     it "should raise error on PUSH_PROMISE against bogus stream" do

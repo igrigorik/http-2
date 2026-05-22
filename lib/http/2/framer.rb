@@ -187,6 +187,7 @@ module HTTP2
 
       case frame[:type]
       when :data, :continuation
+        # @type var frame: data_frame | continuation_frame
         bytes = frame[:payload]
         length = bytes.bytesize
 
@@ -360,9 +361,9 @@ module HTTP2
 
       frame = read_common_header(buf)
 
-      type = frame[:type]
-      length = frame[:length]
-      flags = frame[:flags]
+      type = frame[:type] #: Symbol
+      length = frame[:length] #: Integer
+      flags = frame[:flags] #: Integer
 
       return if buf.size < 9 + length
 

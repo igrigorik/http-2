@@ -212,9 +212,8 @@ module HTTP2
       end
 
       while (frame = @framer.parse(@recv_buffer))
-        # @type var stream_id: Integer
-        stream_id = frame[:stream]
-        frame_type = frame[:type]
+        stream_id = frame[:stream] #: Integer
+        frame_type = frame[:type] #: Symbol?
 
         if is_a?(Client) && !@received_frame
           connection_error(:protocol_error, msg: "didn't receive settings") if frame_type != :settings
@@ -271,11 +270,13 @@ module HTTP2
         # anything other than 0x0, the endpoint MUST respond with a connection
         # error (Section 5.4.1) of type PROTOCOL_ERROR.
         if connection_frame?(frame)
+          # @type var frame: connection_frame
           connection_error(:protocol_error) unless stream_id.zero?
           connection_management(frame)
         else
           case frame_type
           when :headers
+            # @type var frame: headers_frame
             # When server receives even-numbered stream identifier,
             # the endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
             connection_error if stream_id.even? && is_a?(Server)
@@ -312,6 +313,7 @@ module HTTP2
             stream << frame
 
           when :push_promise
+            # @type var frame: push_promise_frame
             # The last frame in a sequence of PUSH_PROMISE/CONTINUATION
             # frames MUST have the END_HEADERS flag set
             unless frame[:flags].anybits?(END_HEADERS)
@@ -457,6 +459,7 @@ module HTTP2
     # @param frame [Hash]
     def encode(frame)
       if HEADERS_FRAME_TYPES.include?(frame[:type])
+        #: @type var frame: headers_frame | push_promise_frame
         encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
       else
         emit(:frame, @framer.generate(frame))
@@ -493,12 +496,15 @@ module HTTP2
       when :connected
         case frame_type
         when :settings
+          # @type var frame: settings_frame
           connection_settings(frame)
         when :window_update
+          # @type var frame: window_update_frame
           process_window_update(frame: frame, encode: true)
         when :ping
           ping_management(frame)
         when :goaway
+          # @type var frame: goaway_frame
           # Receivers of a GOAWAY frame MUST NOT open additional streams on
           # the connection, although a new connection can be established
           # for new streams.
@@ -506,12 +512,14 @@ module HTTP2
           @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
         when :altsvc
+          # @type var frame: altsvc_frame
           origin = frame[:origin]
           # 4.  The ALTSVC HTTP/2 Frame
           # An ALTSVC frame on stream 0 with empty (length 0) "Origin"
           # information is invalid and MUST be ignored.
           emit(:altsvc, frame) if origin && !origin.empty?
         when :origin
+          # @type var frame: origin_frame
           return if @h2c_upgrade || !frame[:flags].zero?
 
           frame[:payload].each do |orig|
@@ -609,8 +617,8 @@ module HTTP2
         settings = @pending_settings.shift
         side = :local
       else
-        validate_settings(@remote_role, frame[:payload])
         settings = frame[:payload]
+        validate_settings(@remote_role, settings)
         side = :remote
       end
 
@@ -738,7 +746,7 @@ module HTTP2
           type: :continuation,
           flags: 0,
           payload: payload.byteslice(0, max_frame_size)
-        )
+        ) #: continuation_frame
 
         payload = payload.byteslice(max_frame_size..-1)
 
