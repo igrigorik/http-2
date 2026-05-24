@@ -407,7 +407,7 @@ module HTTP2
           e_sd = read_uint32(payload)
           frame[:dependency] = e_sd & RBIT
           frame[:exclusive] = e_sd.anybits?(EBIT)
-          weight = payload.byteslice(0, 1).ord + 1
+          weight = payload.getbyte(0) + 1
           frame[:weight] = weight
           payload = payload.byteslice(1..-1)
         end
@@ -418,7 +418,7 @@ module HTTP2
         e_sd = read_uint32(payload)
         frame[:dependency] = e_sd & RBIT
         frame[:exclusive] = e_sd.anybits?(EBIT)
-        weight = payload.byteslice(0, 1).ord + 1
+        weight = payload.getbyte(0) + 1
         frame[:weight] = weight
         payload = payload.byteslice(1..-1)
       when :rst_stream
@@ -459,11 +459,11 @@ module HTTP2
       when :altsvc
         frame[:max_age], frame[:port] = read_str(payload, 6).unpack(ALTSVCPACK)
 
-        len = payload.byteslice(0, 1).ord
+        len = payload.getbyte(0)
         payload = payload.byteslice(1..-1)
         frame[:proto] = read_str(payload, len) if len > 0
 
-        len = payload.byteslice(0, 1).ord
+        len = payload.getbyte(0)
         payload = payload.byteslice(1..-1)
         frame[:host] = read_str(payload, len) if len > 0
 

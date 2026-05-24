@@ -120,7 +120,7 @@ module HTTP2
         end
 
         # set header representation pattern on first byte
-        fb = buffer[offset].ord | rep[:pattern]
+        fb = buffer.getbyte(offset) | rep[:pattern]
         buffer.setbyte(offset, fb)
 
         buffer
@@ -175,7 +175,7 @@ module HTTP2
       # @return [String] binary string
       def set_huffman_size(buffer, huffman_offset)
         integer(buffer.bytesize - huffman_offset, 7, buffer: buffer, offset: huffman_offset)
-        buffer.setbyte(huffman_offset, buffer[huffman_offset].ord | 0x80)
+        buffer.setbyte(huffman_offset, buffer.getbyte(huffman_offset) | 0x80)
         buffer
       end
     end
