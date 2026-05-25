@@ -268,13 +268,15 @@ RSpec.describe HTTP2::Client do
       end
     end
     context "received in a stream" do
-      it "should be ignored" do
-        s = client.new_stream
-        s.send headers_frame
+      unless defined?(RBS)
+        it "should be ignored" do
+          s = client.new_stream
+          s.send headers_frame
 
-        expect do
-          client << set_stream_id(f.generate(orig_frame), s.id)
-        end.not_to raise_error
+          expect do
+            client << set_stream_id(f.generate(orig_frame), s.id)
+          end.not_to raise_error
+        end
       end
     end
   end

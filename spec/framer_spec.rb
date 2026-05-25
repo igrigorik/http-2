@@ -6,7 +6,7 @@ RSpec.describe HTTP2::Framer do
   let(:f) { Framer.new }
 
   context "common header" do
-    let(:frame) do
+    let(:frame_headers) do
       {
         length: 4,
         type: :headers,
@@ -14,6 +14,7 @@ RSpec.describe HTTP2::Framer do
         stream: 15
       }
     end
+    let(:frame) { frame_headers.merge(payload: "data") }
 
     let(:bytes) { [0, 0x04, 0x01, 0x5, 0x0000000F].pack("CnCCN") }
 
@@ -22,7 +23,7 @@ RSpec.describe HTTP2::Framer do
     end
 
     it "should parse common 9 byte header" do
-      expect(f.read_common_header(bytes)).to eq frame
+      expect(f.read_common_header(bytes)).to eq frame_headers
     end
 
     it "should generate a large frame" do
@@ -35,15 +36,17 @@ RSpec.describe HTTP2::Framer do
         stream: 15
       }
       bytes = [5, 17, 0x01, 0x5, 0x0000000F].pack("CnCCN")
-      expect(f.common_header(frame, buffer: "".b)).to eq bytes
+      expect(f.common_header(frame.merge(payload: "data"), buffer: "".b)).to eq bytes
       expect(f.read_common_header(bytes)).to eq frame
     end
 
-    it "should raise exception on invalid frame type when sending" do
-      expect do
-        frame[:type] = :bogus
-        f.common_header(frame, buffer: "".b)
-      end.to raise_error(CompressionError, /invalid.*type/i)
+    unless defined?(RBS)
+      it "should raise exception on invalid frame type when sending" do
+        expect do
+          frame[:type] = :bogus
+          f.common_header(frame, buffer: "".b)
+        end.to raise_error(CompressionError, /invalid.*type/i)
+      end
     end
 
     it "should raise exception on invalid stream ID" do
@@ -312,7 +315,8 @@ RSpec.describe HTTP2::Framer do
       frame = {
         length: 4,
         type: :window_update,
-        increment: 10
+        increment: 10,
+        stream: 0
       }
 
       bytes = f.generate(frame)
@@ -327,7 +331,8 @@ RSpec.describe HTTP2::Framer do
       frame = {
         length: 4,
         type: :window_update,
-        increment: 0x7fffffff + 1
+        increment: 0x7fffffff + 1,
+        stream: 0
       }
 
       expect { f.generate(frame) }.to raise_error(CompressionError)
@@ -447,10 +452,10 @@ RSpec.describe HTTP2::Framer do
       [{ type: :headers, stream: 1, payload: "abc" }, 3],
       [{ type: :priority, stream: 3, dependency: 30, exclusive: false, weight: 1 }, 5],
       [{ type: :rst_stream, stream: 3, error: 100 }, 4],
-      [{ type: :settings, payload: [[:settings_max_concurrent_streams, 10]] }, 6],
-      [{ type: :push_promise, promise_stream: 5, payload: "abc" }, 7],
-      [{ type: :ping, payload: "blob" * 2 }, 8],
-      [{ type: :goaway, last_stream: 5, error: 20, payload: "blob" }, 12],
+      [{ type: :settings, stream: 0,  payload: [[:settings_max_concurrent_streams, 10]] }, 6],
+      [{ type: :push_promise, stream: 1, promise_stream: 5, payload: "abc" }, 7],
+      [{ type: :ping, stream: 0, payload: "blob" * 2 }, 8],
+      [{ type: :goaway, stream: 0, last_stream: 5, error: 20, payload: "blob" }, 12],
       [{ type: :window_update, stream: 1, increment: 1024 }, 4],
       [{ type: :continuation, stream: 1, payload: "abc" }, 3]
     ]

@@ -155,7 +155,7 @@ module HTTP2
     # @param error [Symbol]
     # @param payload [String]
     def goaway(error = :no_error, payload = nil)
-      send(type: :goaway, last_stream: @last_stream_id,
+      send(type: :goaway, stream: 0, last_stream: @last_stream_id,
            error: error, payload: payload)
       @state = :closed
       @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)

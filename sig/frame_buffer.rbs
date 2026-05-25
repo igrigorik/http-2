@@ -6,10 +6,10 @@ module HTTP2
 
     def clear: () -> void
 
-    def <<: (data_frame frame) -> void
+    def <<: (data_frame_props frame) -> void
 
     def empty?: () -> bool
 
-    def retrieve: (Integer) -> data_frame?
+    def retrieve: (Integer) -> data_frame_props?
   end
 end

@@ -85,7 +85,8 @@ module HTTP2
           length: buf.bytesize,
           type: :settings,
           stream: 0,
-          flags: 0
+          flags: 0,
+          payload: EMPTY
         },
         buffer: buf
       )

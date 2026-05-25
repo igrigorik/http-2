@@ -14,9 +14,9 @@ module HTTP2
 
     def calculate_window_update: (Integer) -> void
 
-    def send_data: (?data_frame? frame, ?bool encode) -> void
+    def send_data: (?data_frame_props? frame, ?bool encode) -> void
 
-    def send_frame: (data_frame frame, bool encode) -> void
+    def send_frame: (data_frame_props frame, bool encode) -> void
 
     def process_window_update: (frame: window_update_frame, ?encode: bool) -> void
   end

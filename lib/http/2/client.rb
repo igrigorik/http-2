@@ -69,7 +69,7 @@ module HTTP2
     end
 
     def self.settings_header(settings)
-      frame = Framer.new.generate(type: :settings, stream: 0, payload: settings)
+      frame = Framer.new.generate(type: :settings, stream: 0, flags: 0, payload: settings)
       Base64.urlsafe_encode64(frame[9..-1])
     end
 

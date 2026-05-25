@@ -76,7 +76,7 @@ module HTTP2
 
     private
 
-    def send: (frame frame) -> void
+    def send: (connection_frame_props | stream_frame_props frame) -> void
 
     def encode: (frame frame) -> void
 

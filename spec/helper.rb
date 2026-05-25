@@ -53,6 +53,7 @@ module FrameHelpers
     {
       type: :priority,
       stream: 1,
+      flags: 0,
       exclusive: false,
       dependency: 0,
       weight: 20
@@ -63,6 +64,7 @@ module FrameHelpers
     {
       type: :rst_stream,
       stream: 1,
+      flags: 0,
       error: :stream_closed
     }
   end
@@ -71,6 +73,7 @@ module FrameHelpers
     {
       type: :settings,
       stream: 0,
+      flags: 0,
       payload: [
         [:settings_max_concurrent_streams, 10],
         [:settings_initial_window_size, 0x7fffffff]
@@ -108,6 +111,7 @@ module FrameHelpers
   def goaway_frame
     {
       type: :goaway,
+      stream: 0,
       last_stream: 2,
       error: :no_error,
       payload: "debug"
@@ -134,6 +138,7 @@ module FrameHelpers
 
   def altsvc_frame
     {
+      stream: 0,
       type: :altsvc,
       max_age: 1_402_290_402,           # 4
       port: 8080,                       # 2    reserved 1
@@ -146,6 +151,7 @@ module FrameHelpers
   def origin_frame
     {
       type: :origin,
+      stream: 0,
       payload: %w[https://www.example.com https://www.example.org]
     }
   end
@@ -161,6 +167,12 @@ module FrameHelpers
   def frame_types
     methods.select { |meth| meth.to_s.end_with?("_frame") }
            .map { |meth| __send__(meth) }
+  end
+
+  def stream_frame_types
+    %i[data headers priority rst_stream push_promise window_update continuation].map do |type|
+      __send__(:"#{type}_frame")
+    end
   end
 end
 

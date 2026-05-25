@@ -58,13 +58,13 @@ RSpec.describe HTTP2::Stream do
       end
 
       it "should raise error if sending invalid frames" do
-        frame_types.reject { |frame| %i[headers rst_stream priority].include?(frame[:type]) }.each do |type|
+        stream_frame_types.reject { |frame| %i[headers rst_stream priority].include?(frame[:type]) }.each do |type|
           expect { stream.dup.send type }.to raise_error InternalError
         end
       end
 
       it "should raise error on receipt of invalid frames" do
-        what_types = frame_types.reject { |frame| %i[priority window_update rst_stream].include?(frame[:type]) }
+        what_types = stream_frame_types.reject { |frame| %i[priority window_update rst_stream].include?(frame[:type]) }
         what_types.each do |type|
           expect { stream.dup.receive type }.to raise_error InternalError
         end
@@ -109,13 +109,13 @@ RSpec.describe HTTP2::Stream do
       end
 
       it "should raise error if sending invalid frames" do
-        frame_types.reject { |frame| %i[priority rst_stream window_update].include?(frame[:type]) }.each do |type|
+        stream_frame_types.reject { |frame| %i[priority rst_stream window_update].include?(frame[:type]) }.each do |type|
           expect { stream.dup.send type }.to raise_error InternalError
         end
       end
 
       it "should raise error on receipt of invalid frames" do
-        frame_types.reject { |frame| %i[headers rst_stream priority].include?(frame[:type]) }.each do |type|
+        stream_frame_types.reject { |frame| %i[headers rst_stream priority].include?(frame[:type]) }.each do |type|
           expect { stream.dup.receive type }.to raise_error InternalError
         end
       end
@@ -150,13 +150,13 @@ RSpec.describe HTTP2::Stream do
       before { stream.receive headers_frame }
 
       it "should allow any valid frames types to be sent" do
-        (frame_types - [ping_frame, goaway_frame, settings_frame]).each do |type|
+        stream_frame_types.each do |type|
           expect { stream.dup.send type }.to_not raise_error
         end
       end
 
       it "should allow frames of any type to be received" do
-        frame_types.each do |type|
+        stream_frame_types.each do |type|
           expect { stream.dup.receive type }.to_not raise_error
         end
       end
@@ -297,7 +297,7 @@ RSpec.describe HTTP2::Stream do
       before { stream.send headers_frame.merge(flags: END_HEADERS | END_STREAM) }
 
       it "should raise error on attempt to send invalid frames" do
-        frame_types.reject { |frame| %i[priority rst_stream window_update].include?(frame[:type]) }.each do |frame|
+        stream_frame_types.reject { |frame| %i[priority rst_stream window_update].include?(frame[:type]) }.each do |frame|
           expect { stream.dup.send frame }.to raise_error InternalError
         end
       end
@@ -375,7 +375,7 @@ RSpec.describe HTTP2::Stream do
       before { stream.receive headers_frame.merge(flags: END_HEADERS | END_STREAM) }
 
       it "should raise STREAM_CLOSED error on reciept of frames" do
-        (frame_types - [priority_frame, rst_stream_frame, window_update_frame]).each do |frame|
+        (stream_frame_types - [priority_frame, rst_stream_frame, window_update_frame]).each do |frame|
           expect do
             stream.dup.receive frame
           end.to raise_error(StreamClosed)
@@ -414,7 +414,7 @@ RSpec.describe HTTP2::Stream do
           stream.send data.merge(payload: "x" * 16_384)
         end
         client << f.generate(settings_frame)
-        client << Framer.new.generate(type: :window_update, stream: stream.id, increment: 16_384)
+        client << Framer.new.generate(type: :window_update, stream: stream.id, increment: 16_384, flags: 0)
       end
 
       it "should transition to closed if RST_STREAM is sent" do
@@ -477,7 +477,7 @@ RSpec.describe HTTP2::Stream do
         end
 
         it "should raise STREAM_CLOSED on attempt to send frames" do
-          (frame_types - [priority_frame, rst_stream_frame]).each do |frame|
+          (stream_frame_types - [priority_frame, rst_stream_frame]).each do |frame|
             expect do
               stream.dup.send frame
             end.to raise_error(StreamClosed)
@@ -485,7 +485,7 @@ RSpec.describe HTTP2::Stream do
         end
 
         it "should raise STREAM_CLOSED on receipt of frame" do
-          (frame_types - [priority_frame, rst_stream_frame, window_update_frame]).each do |frame|
+          (stream_frame_types - [priority_frame, rst_stream_frame, window_update_frame]).each do |frame|
             expect do
               stream.dup.receive frame
             end.to raise_error(StreamClosed)
@@ -523,15 +523,17 @@ RSpec.describe HTTP2::Stream do
           stream.send rst_stream_frame  # closed by local
         end
 
-        it "should ignore received frames" do
-          control_frames.each do |frame|
-            expect do
-              cb = []
-              stream.on(:data) { cb << :data }
-              stream.on(:headers) { cb << :headers }
-              stream.dup.receive frame
-              expect(cb).to be_empty
-            end.to_not raise_error
+        unless defined?(RBS)
+          it "should ignore received frames" do
+            control_frames.each do |frame|
+              expect do
+                cb = []
+                stream.on(:data) { cb << :data }
+                stream.on(:headers) { cb << :headers }
+                stream.dup.receive frame
+                expect(cb).to be_empty
+              end.to_not raise_error
+            end
           end
         end
 
@@ -571,7 +573,7 @@ RSpec.describe HTTP2::Stream do
       stream.send headers_frame # go to open
       expect(stream.remote_window).to eq DEFAULT_FLOW_WINDOW
 
-      (frame_types - [data_frame, ping_frame, goaway_frame, settings_frame]).each do |frame|
+      (frame_types - [data_frame, ping_frame, pong_frame, goaway_frame, settings_frame]).each do |frame|
         s = stream.dup
         s.send frame
         expect(s.remote_window).to eq DEFAULT_FLOW_WINDOW
