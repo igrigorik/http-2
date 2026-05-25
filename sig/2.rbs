@@ -75,7 +75,7 @@ module HTTP2
   type push_promise_frame = common_frame & push_promise_frame_props
 
   # # SETTINGS
-  type settings_frame_props = { type: :settings, payload: Enumerable[[Symbol | Integer, Integer]] }
+  type settings_frame_props = { type: :settings, payload: (Enumerable[[Symbol | Integer, Integer]] | String) }
 
   type settings_frame = common_frame & settings_frame_props
 

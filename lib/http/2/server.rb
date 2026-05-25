@@ -78,19 +78,12 @@ module HTTP2
       receive(CONNECTION_PREFACE_MAGIC)
 
       # Process received HTTP2-Settings payload
-      buf = "".b
-      append_str(buf, Base64.urlsafe_decode64(settings.to_s))
-      @framer.common_header(
-        {
-          length: buf.bytesize,
-          type: :settings,
-          stream: 0,
-          flags: 0,
-          payload: EMPTY
-        },
-        buffer: buf
-      )
-      receive(buf)
+      receive(@framer.generate(
+                type: :settings,
+                stream: 0,
+                flags: 0,
+                payload: Base64.urlsafe_decode64(settings.to_s)
+              ))
 
       # Activate stream (id: 1) with on HTTP/1.1 request parameters
       stream = activate_stream(id: 1)

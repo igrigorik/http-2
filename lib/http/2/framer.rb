@@ -240,20 +240,27 @@ module HTTP2
         end
 
         settings = frame[:payload]
-        bytes = String.new("", encoding: Encoding::BINARY, capacity: settings.size * 6)
 
-        settings.each do |(k, v)|
-          if k.is_a? Integer # rubocop:disable Style/GuardClause
-            DEFINED_SETTINGS.value?(k) || next
-          else
-            k = DEFINED_SETTINGS[k]
+        case settings
+        when String
+          length = settings.bytesize
+          bytes = settings
+        else
+          bytes = String.new("", encoding: Encoding::BINARY, capacity: settings.size * 6)
 
-            raise CompressionError, "Unknown settings ID for #{k}" if k.nil?
+          settings.each do |(k, v)|
+            if k.is_a? Integer # rubocop:disable Style/GuardClause
+              DEFINED_SETTINGS.value?(k) || next
+            else
+              k = DEFINED_SETTINGS[k]
+
+              raise CompressionError, "Unknown settings ID for #{k}" if k.nil?
+            end
+
+            pack([k], UINT16, buffer: bytes)
+            pack([v], UINT32, buffer: bytes)
+            length += 6
           end
-
-          pack([k], UINT16, buffer: bytes)
-          pack([v], UINT32, buffer: bytes)
-          length += 6
         end
 
       when :push_promise
