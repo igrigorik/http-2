@@ -1,5 +1,7 @@
 module HTTP2
   class FrameBuffer
+    include BufferUtils
+
     attr_reader bytesize: Integer
 
     @buffer: Array[data_frame]

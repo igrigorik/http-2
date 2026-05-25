@@ -115,6 +115,8 @@ module HTTP2
   end
 
   class FrameBuffer
+    include BufferUtils
+
     attr_reader :bytesize
 
     def initialize
@@ -148,15 +150,13 @@ module HTTP2
       return if window_size <= 0 && !(frame_size.zero? && end_stream)
 
       if frame_size > window_size
-        chunk   = frame.dup
-        payload = frame[:payload]
+        chunk = frame.dup
 
         # Split frame so that it fits in the window
         # TODO: consider padding!
 
-        chunk[:payload] = payload.byteslice(0, window_size)
+        chunk[:payload] = read_str(frame[:payload], window_size) # mutates frame[:payload]
         chunk[:length]  = window_size
-        frame[:payload] = payload.byteslice(window_size..-1)
         frame[:length] = frame_size - window_size
 
         # if no longer last frame in sequence...
