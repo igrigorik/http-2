@@ -41,8 +41,6 @@ module HTTP2
 
   CONNECTION_FRAME_TYPES = %i[settings ping goaway].freeze
 
-  HEADERS_FRAME_TYPES = %i[headers push_promise].freeze
-
   STREAM_OPEN_STATES = %i[open half_closed_local].freeze
 
   # Connection encapsulates all of the connection, stream, flow-control,
@@ -439,23 +437,26 @@ module HTTP2
     # @note all frames are currently delivered in FIFO order.
     # @param frame [Hash]
     def send(frame)
-      frame_type = frame[:type]
-
       emit(:frame_sent, frame)
-      if frame_type == :data
+
+      frame_type = frame[:type] #: Symbol
+
+      case frame_type
+      when :data
+        #: @type var frame: data_frame
         send_data(frame, true)
-
-      elsif frame_type == :rst_stream && frame[:error] == :protocol_error
-        # An endpoint can end a connection at any time. In particular, an
-        # endpoint MAY choose to treat a stream error as a connection error.
-
-        goaway(:protocol_error)
-      elsif HEADERS_FRAME_TYPES.include?(frame[:type])
+      when :headers, :push_promise
         # HEADERS and PUSH_PROMISE may generate CONTINUATION. Also send
         # RST_STREAM that are not protocol errors
         #: @type var frame: headers_frame | push_promise_frame
         encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
       else
+        if frame_type == :rst_stream && frame[:error] == :protocol_error
+          # An endpoint can end a connection at any time. In particular, an
+          # endpoint MAY choose to treat a stream error as a connection error.
+
+          goaway(:protocol_error)
+        end
         #: @type var frame: connection_frame
         encode(frame)
       end
