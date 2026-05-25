@@ -89,6 +89,7 @@ module HTTP2
       @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
+      @oldest_stream_recently_closed = nil
       @pending_settings = []
 
       @framer = Framer.new(@local_settings[:settings_max_frame_size])
@@ -788,19 +789,24 @@ module HTTP2
         # is closed, with a minimum of 15s RTT time window.
         now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-        _, closed_since = @streams_recently_closed.first
-
         # forego recently closed recycling if empty or the first element
         # hasn't expired yet (it's ordered).
-        if closed_since && (now - closed_since) > 15
+        if @oldest_stream_recently_closed && (now - @oldest_stream_recently_closed) > 15
+          new_oldest = nil
           # discards all streams which have closed for a while.
           # TODO: use a drop_while! variant whenever there is one.
-          @streams_recently_closed = @streams_recently_closed.drop_while do |_, since|
-            (now - since) > 15
-          end.to_h
+          @streams_recently_closed.delete_if do |_, since|
+            unless (now - since) > 15
+              new_oldest ||= since
+              break
+            end
+
+            true
+          end
+          @oldest_stream_recently_closed = new_oldest
         end
 
-        @streams_recently_closed[id] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        @streams_recently_closed[id] = now
       end
 
       stream.on(:frame, &method(:send))
