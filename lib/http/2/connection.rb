@@ -747,15 +747,18 @@ module HTTP2
       # emit first HEADERS frame
       encode(headers_frame)
 
+      stream_id = headers_frame[:stream]
+
       while offset < total
         chunk_end = offset + max_frame_size
         is_last = chunk_end >= total
 
-        continuation_frame = headers_frame.merge(
+        continuation_frame = {
           type: :continuation,
           flags: is_last ? END_HEADERS : 0,
+          stream: stream_id,
           payload: payload.byteslice(offset, max_frame_size)
-        ) #: continuation_frame
+        } #: continuation_frame
 
         encode(continuation_frame)
         offset = chunk_end
