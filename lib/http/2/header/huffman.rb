@@ -56,7 +56,7 @@ module HTTP2
             first, state = MACHINE.dig(state, branch)
             raise CompressionError, "Huffman decode error (EOS found)" if first == EOS
 
-            append_str(emit, first.chr) if first
+            emit << first if first
           end
         end
         # Check whether partial input is correctly filled
