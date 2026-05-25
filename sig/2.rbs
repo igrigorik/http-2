@@ -91,9 +91,9 @@ module HTTP2
   # # GOAWAY
   type goaway_frame = common_frame & { type: :goaway, last_stream: Integer, error: Symbol? }
 
-  # type frame = common_frame & (headers_frame | data_frame | push_promise_frame |
+  # type frame = headers_frame | data_frame | push_promise_frame |
   #              settings_frame | window_update_frame | priority_frame | altsvc_frame |
-  #              origin_frame | ping_frame | goaway_frame)
+  #              origin_frame | ping_frame | goaway_frame
 
   type frame_key = :type | :flags | :stream | :padding | :ignore |
                    # headers

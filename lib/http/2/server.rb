@@ -157,7 +157,7 @@ module HTTP2
         flags: flags,
         stream: parent.id,
         promise_stream: promise.id,
-        payload: headers.to_a
+        payload: headers
       )
 
       yield(promise)
