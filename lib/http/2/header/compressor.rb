@@ -86,6 +86,7 @@ module HTTP2
             integer(huffman.bytesize, 7, buffer: buffer)
             buffer.setbyte(huffman_offset, buffer.getbyte(huffman_offset) | 0x80)
             append_str(buffer, huffman)
+            buffer
           else
             plain_string(str, buffer)
           end
