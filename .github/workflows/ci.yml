@@ -78,5 +78,6 @@ jobs:
           bundle exec rake coverage:report
 
       - uses: joshmfrankel/simplecov-check-action@main
+        if: ${{ github.repository == 'igrigorik/http-2' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
