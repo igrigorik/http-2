@@ -178,7 +178,6 @@ module HTTP2
       validate_settings(@local_role, payload)
       @pending_settings << payload
       send(type: :settings, stream: 0, payload: payload)
-      @pending_settings << payload
     end
 
     # Decodes incoming bytes into HTTP 2.0 frames and routes them to
