@@ -41,7 +41,9 @@ namespace :coverage do
     require "simplecov"
 
     puts Dir["coverage/**/.resultset.json"].inspect
-    SimpleCov.collate Dir["coverage/**/.resultset.json"]
+    SimpleCov.collate Dir["coverage/**/.resultset.json"] do
+      minimum_coverage 95
+    end
   end
 end
 

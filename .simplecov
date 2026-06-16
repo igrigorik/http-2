@@ -7,5 +7,4 @@ SimpleCov.start do
   add_filter "/spec/"
   add_filter "/lib/http/2/base64"
   coverage_dir "coverage"
-  minimum_coverage(RUBY_ENGINE == "truffleruby" ? 85 : 90)
 end
