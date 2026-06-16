@@ -37,7 +37,7 @@ module HTTP2
 
     def calculate_content_length: (Integer?) -> void
 
-    def send: (frame frame) -> void
+    def send: (stream_frame_props frame) -> void
 
     def headers: (Enumerable[header_pair] headers, ?end_headers: bool, ?end_stream: bool) -> void
 
@@ -70,7 +70,7 @@ module HTTP2
       ?state: Symbol
     ) -> untyped
 
-    def transition: (frame, bool sending) -> void
+    def transition: (stream_frame_props frame, bool sending) -> void
 
     def event: (Symbol newstate) -> void
 
@@ -80,15 +80,14 @@ module HTTP2
 
     def complete_transition: (frame) -> void
 
-    def process_priority: (priority_frame frame) -> void
+    def process_priority: (priority_frame_inner_props frame) -> void
 
-    def end_stream?: (frame frame) -> boolish
+    def end_stream?: (stream_frame_props frame) -> boolish
 
-    def stream_error: (Symbol error, ?msg: String?) -> void
-                    | () -> void
+    def stream_error: (?Symbol error, ?msg: String?) -> void
 
     alias error stream_error
 
-    def manage_state: (frame) { () -> void } -> void
+    def manage_state: (stream_frame_props frame) { () -> void } -> void
   end
 end

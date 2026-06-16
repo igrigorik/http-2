@@ -29,7 +29,7 @@ RSpec.shared_examples "a connection" do
 
       frame = frames.last
       expect(frame[:type]).to eq :settings
-      expect(frame[:flags]).to eq [:ack]
+      expect(frame[:flags]).to eq ACK
       expect(frame[:payload]).to eq []
     end
   end
@@ -119,7 +119,7 @@ RSpec.shared_examples "a connection" do
       conn << f.generate(settings_frame)
       expect(conn).to receive(:send) do |frame|
         expect(frame[:type]).to eq :ping
-        expect(frame[:flags]).to eq [:ack]
+        expect(frame[:flags]).to eq ACK
         expect(frame[:payload]).to eq "12345678"
       end
 
@@ -284,10 +284,10 @@ RSpec.shared_examples "a connection" do
 
     it "should chain continuation frames" do
       headers = headers_frame
-      headers[:flags] = []
+      headers[:flags] = 0
       continuation = continuation_frame
       continuation[:stream] = headers[:stream]
-      continuation[:flags] = []
+      continuation[:flags] = 0
 
       conn << f.generate(headers)
       conn << f.generate(continuation)
@@ -298,14 +298,14 @@ RSpec.shared_examples "a connection" do
       max_frame_size = connected_conn.local_settings[:settings_max_frame_size]
 
       headers = headers_frame
-      headers[:flags] = []
+      headers[:flags] = 0
 
       conn << f.generate(headers)
       expect do
         max_frame_size.times do
           continuation = continuation_frame
           continuation[:stream] = headers[:stream]
-          continuation[:flags] = []
+          continuation[:flags] = 0
           conn << f.generate(continuation)
         end
       end.to raise_error(ProtocolError)
@@ -313,7 +313,7 @@ RSpec.shared_examples "a connection" do
 
     it "should require that split header blocks are a contiguous sequence" do
       headers = headers_frame
-      headers[:flags] = []
+      headers[:flags] = 0
 
       conn << f.generate(headers)
       (frame_types - [continuation_frame]).each do |frame|
@@ -323,7 +323,7 @@ RSpec.shared_examples "a connection" do
 
     it "should require that split promise blocks are a contiguous sequence" do
       headers = push_promise_frame
-      headers[:flags] = []
+      headers[:flags] = 0
 
       conn << f.generate(headers)
       (frame_types - [continuation_frame]).each do |frame|
@@ -381,9 +381,9 @@ RSpec.shared_examples "a connection" do
       expect(headers[0][:type]).to eq :headers
       expect(headers[1][:type]).to eq :continuation
       expect(headers[2][:type]).to eq :continuation
-      expect(headers[0][:flags]).to eq [:end_stream]
-      expect(headers[1][:flags]).to eq []
-      expect(headers[2][:flags]).to eq [:end_headers]
+      expect(headers[0][:flags]).to eq END_STREAM
+      expect(headers[1][:flags]).to eq 0
+      expect(headers[2][:flags]).to eq END_HEADERS
     end
 
     it "should not generate CONTINUATION if HEADERS fits exactly in a frame" do
@@ -404,8 +404,8 @@ RSpec.shared_examples "a connection" do
       expect(headers[0][:length]).to eq conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
       expect(headers[0][:type]).to eq :headers
-      expect(headers[0][:flags]).to include(:end_headers)
-      expect(headers[0][:flags]).to include(:end_stream)
+      expect(headers[0][:flags]).to be_anybits(END_HEADERS)
+      expect(headers[0][:flags]).to be_anybits(END_STREAM)
     end
 
     it "should not generate CONTINUATION if HEADERS fits exactly in a frame" do
@@ -426,8 +426,8 @@ RSpec.shared_examples "a connection" do
       expect(headers[0][:length]).to eq conn.remote_settings[:settings_max_frame_size]
       expect(headers.size).to eq 1
       expect(headers[0][:type]).to eq :headers
-      expect(headers[0][:flags]).to include(:end_headers)
-      expect(headers[0][:flags]).to include(:end_stream)
+      expect(headers[0][:flags]).to be_anybits(END_HEADERS)
+      expect(headers[0][:flags]).to be_anybits(END_STREAM)
     end
 
     it "should generate CONTINUATION if HEADERS exceed the max payload by one byte" do
@@ -449,8 +449,8 @@ RSpec.shared_examples "a connection" do
       expect(headers.size).to eq 2
       expect(headers[0][:type]).to eq :headers
       expect(headers[1][:type]).to eq :continuation
-      expect(headers[0][:flags]).to eq [:end_stream]
-      expect(headers[1][:flags]).to eq [:end_headers]
+      expect(headers[0][:flags]).to eq END_STREAM
+      expect(headers[1][:flags]).to eq END_HEADERS
     end
   end
   context "API" do

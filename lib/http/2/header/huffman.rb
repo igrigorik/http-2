@@ -20,6 +20,8 @@ module HTTP2
       EOS = 256
       private_constant :EOS
 
+      EOS_PADDING = (0..7).map { |n| ("1" * n).b.freeze }.freeze
+
       # Encodes provided value via huffman encoding.
       # Length is not encoded in this method.
       #
@@ -29,7 +31,7 @@ module HTTP2
       def encode(str, buffer = "".b)
         bitstring = String.new("", encoding: Encoding::BINARY, capacity: (str.bytesize * 30) + ((8 - str.size) % 8))
         str.each_byte { |chr| append_str(bitstring, ENCODE_TABLE[chr]) }
-        append_str(bitstring, "1" * ((8 - bitstring.size) % 8))
+        append_str(bitstring, EOS_PADDING[(8 - bitstring.size) % 8])
         pack([bitstring], "B*", buffer: buffer)
       end
 
@@ -54,13 +56,13 @@ module HTTP2
             first, state = MACHINE.dig(state, branch)
             raise CompressionError, "Huffman decode error (EOS found)" if first == EOS
 
-            append_str(emit, first.chr) if first
+            emit << first if first
           end
         end
         # Check whether partial input is correctly filled
         raise CompressionError, "Huffman decode error (EOS invalid)" unless state <= MAX_FINAL_STATE
 
-        emit.force_encoding(Encoding::BINARY)
+        emit
       end
 
       # Huffman table as specified in
@@ -325,7 +327,7 @@ module HTTP2
         [0x3fffffff, 30]
       ].each(&:freeze).freeze
 
-      ENCODE_TABLE = CODES.map { |c, l| [c].pack("N").unpack1("B*")[-l..-1] }.each(&:freeze).freeze
+      ENCODE_TABLE = CODES.map { |c, l| [c].pack("N").unpack1("B*")[-l..-1].b.freeze }.freeze
     end
   end
 end

@@ -20,7 +20,9 @@ module HTTP2
 
     DEFINED_SETTINGS: Hash[Symbol, Integer]
 
-    DEFINED_ERRORS: Hash[Symbol, Integer]
+    DEFINED_SETTINGS_BY_ID: Hash[Integer, Symbol]
+
+    DEFINED_ERRORS: Array[Symbol]
 
     RBIT: Integer
     RBYTE: Integer
@@ -29,6 +31,8 @@ module HTTP2
     UINT16: String
     UINT8: String
     HEADERPACK: String
+    PRIORITYPACK: String
+    ALTSVCPACK: String
     FRAME_LENGTH_HISHIFT: Integer
     FRAME_LENGTH_LOMASK: Integer
 
@@ -41,19 +45,19 @@ module HTTP2
 
     def common_header: (frame, buffer: String) -> String
 
-    def read_common_header: (String buf) -> frame
+    def read_common_header: (String buf) -> (common_frame | { length: Integer })
 
     def read_common_frame: (String) -> frame
 
     def generate: (frame) -> String
 
-    def parse: (String) -> frame?
+    def parse: (String) -> (frame | { length: Integer })?
 
     private
 
     def initialize: (?Integer local_max_frame_size, ?Integer remote_max_frame_size) -> untyped
 
-    def pack_error: (Integer | Symbol error, buffer: String) -> String
+    def pack_error: (Symbol | Integer error, buffer: String) -> String
 
     def unpack_error: (Integer) -> (Symbol | Integer)
   end

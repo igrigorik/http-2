@@ -1,3 +1,16 @@
+## 1.2.0
+
+### Improvements
+
+A lot of optimizations around reducing allocated objects, avoiding expensive frequent operations, and simpler data structures. A few highlights:
+
+* precompute huffman padding bytes.
+* use `String#bytesplice` (when available) to save an intermediate string in buffer ops.
+* bookkeep header dynamic table offsets to improve lookups.
+* streams recently closed: use `Hash#delete_if` with early break instead of `Hash#delete_while` to avoid intermediate hash.
+* Store frame flags as integers instead of arrays of symbols in frame hashes.
+  * NOTE: while frame hashes are an internal representation, they get exposed via `:frame_received` or `:frame_sent` callbacks. in case you're relying on the `:flags` field, you'll have to adapt your code accordingly.
+
 ## 1.1.3
 
 HTTP2::FrameBuffer#clear: clears the buffered data chunks

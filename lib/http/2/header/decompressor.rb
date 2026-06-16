@@ -33,24 +33,25 @@ module HTTP2
       # @return [Integer]
       def integer(buf, n)
         limit = (1 << n) - 1
-        i = n.zero? ? 0 : (shift_byte(buf) & limit)
-
-        m = 0
-        if i == limit
-          offset = 0
-
-          buf.each_byte.with_index do |byte, idx|
-            offset = idx
-            # while (byte = shift_byte(buf))
-            i += ((byte & 127) << m)
-            m += 7
-
-            break if byte.nobits?(128)
-          end
-
-          read_str(buf, offset + 1)
+        if n.zero?
+          i = 0
+          consumed = 0
+        else
+          i = buf.getbyte(0) & limit
+          consumed = 1
         end
 
+        if i == limit
+          m = 0
+          while (byte = buf.getbyte(consumed))
+            i += ((byte & 127) << m)
+            m += 7
+            consumed += 1
+            break if byte.nobits?(128)
+          end
+        end
+
+        read_str(buf, consumed)
         i
       end
 

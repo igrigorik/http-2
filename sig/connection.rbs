@@ -33,6 +33,7 @@ module HTTP2
 
     @streams: Hash[Integer, Stream]
     @streams_recently_closed: Hash[Integer, Numeric]
+    @oldest_stream_recently_closed: Numeric
 
     @framer: Framer
 
@@ -50,6 +51,7 @@ module HTTP2
 
     @recv_buffer: String
     @continuation: Array[frame]
+    @continuation_size: Integer
 
     @h2c_upgrade: Symbol?
     @closed_since: Float?
@@ -68,38 +70,38 @@ module HTTP2
 
     def settings: (settings_enum payload) -> void
 
-    def receive: (string data) -> void
+    def receive: (String data) -> void
     alias << receive
 
     def initialize: (?connection_opts) -> void
 
     private
 
-    def send: (frame frame) -> void
+    def send: (connection_frame_props | stream_frame_props frame) -> void
 
     def encode: (frame frame) -> void
 
     def connection_frame?: (frame) -> bool
 
-    def connection_management: (frame) -> void
+    def connection_management: (connection_frame frame) -> void
 
     def ping_management: (frame) -> void
 
     def validate_settings: (role_type, settings_enum) -> void
 
-    def connection_settings: (frame) -> void
+    def connection_settings: (settings_frame) -> void
 
-    def decode_headers: (frame) -> void
+    def decode_headers: (headers_frame | push_promise_frame) -> void
 
-    def encode_headers: (frame headers_frame) -> void
+    def encode_headers: (headers_frame | push_promise_frame) -> void
 
     def activate_stream: (id: Integer, **untyped) -> Stream
 
     def verify_stream_order: (Integer id) -> void
 
-    def verify_pseudo_headers: (frame) -> void
+    def verify_pseudo_headers: (headers_frame | push_promise_frame) -> void
 
-    def _verify_pseudo_headers: (frame, Array[String]) -> void
+    def _verify_pseudo_headers: (headers_frame | push_promise_frame, Array[String]) -> void
 
     def connection_error: (?Symbol error, ?msg: String?, ?e: StandardError?) -> void
   end

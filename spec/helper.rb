@@ -34,7 +34,7 @@ module FrameHelpers
   def data_frame
     {
       type: :data,
-      flags: [:end_stream],
+      flags: END_STREAM,
       stream: 1,
       payload: "text"
     }
@@ -43,7 +43,7 @@ module FrameHelpers
   def headers_frame
     {
       type: :headers,
-      flags: [:end_headers].freeze,
+      flags: END_HEADERS,
       stream: 1,
       payload: Compressor.new.encode(REQUEST_HEADERS)
     }
@@ -53,6 +53,7 @@ module FrameHelpers
     {
       type: :priority,
       stream: 1,
+      flags: 0,
       exclusive: false,
       dependency: 0,
       weight: 20
@@ -63,6 +64,7 @@ module FrameHelpers
     {
       type: :rst_stream,
       stream: 1,
+      flags: 0,
       error: :stream_closed
     }
   end
@@ -71,6 +73,7 @@ module FrameHelpers
     {
       type: :settings,
       stream: 0,
+      flags: 0,
       payload: [
         [:settings_max_concurrent_streams, 10],
         [:settings_initial_window_size, 0x7fffffff]
@@ -81,7 +84,7 @@ module FrameHelpers
   def push_promise_frame
     {
       type: :push_promise,
-      flags: [:end_headers],
+      flags: END_HEADERS,
       stream: 1,
       promise_stream: 2,
       payload: Compressor.new.encode(REQUEST_HEADERS)
@@ -100,7 +103,7 @@ module FrameHelpers
     {
       stream: 0,
       type: :ping,
-      flags: [:ack],
+      flags: ACK,
       payload: "12345678"
     }
   end
@@ -108,6 +111,7 @@ module FrameHelpers
   def goaway_frame
     {
       type: :goaway,
+      stream: 0,
       last_stream: 2,
       error: :no_error,
       payload: "debug"
@@ -117,7 +121,9 @@ module FrameHelpers
   def window_update_frame
     {
       type: :window_update,
-      increment: 10
+      increment: 10,
+      flags: 0,
+      stream: 0
     }
   end
 
@@ -125,13 +131,14 @@ module FrameHelpers
     {
       type: :continuation,
       stream: 1,
-      flags: [:end_headers],
+      flags: END_HEADERS,
       payload: "-second-block"
     }
   end
 
   def altsvc_frame
     {
+      stream: 0,
       type: :altsvc,
       max_age: 1_402_290_402,           # 4
       port: 8080,                       # 2    reserved 1
@@ -144,6 +151,7 @@ module FrameHelpers
   def origin_frame
     {
       type: :origin,
+      stream: 0,
       payload: %w[https://www.example.com https://www.example.org]
     }
   end
@@ -159,6 +167,12 @@ module FrameHelpers
   def frame_types
     methods.select { |meth| meth.to_s.end_with?("_frame") }
            .map { |meth| __send__(meth) }
+  end
+
+  def stream_frame_types
+    %i[data headers priority rst_stream push_promise window_update continuation].map do |type|
+      __send__(:"#{type}_frame")
+    end
   end
 end
 

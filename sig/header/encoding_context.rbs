@@ -22,6 +22,10 @@ module HTTP2
 
       attr_reader current_table_size: Integer
 
+      @table_by_field: Hash[string, Array[[string, Integer]]]
+
+      @unshifts: Integer
+
       @limit: Integer
 
       @_table_updated: bool

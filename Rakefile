@@ -41,7 +41,9 @@ namespace :coverage do
     require "simplecov"
 
     puts Dir["coverage/**/.resultset.json"].inspect
-    SimpleCov.collate Dir["coverage/**/.resultset.json"]
+    SimpleCov.collate Dir["coverage/**/.resultset.json"] do
+      minimum_coverage 95
+    end
   end
 end
 
@@ -94,7 +96,7 @@ task :h2spec do
           "Or Download the binary from https://github.com/summerwind/h2spec/releases"
   end
 
-  server_pid = Process.spawn("ruby example/server.rb -p 9000", out: File::NULL)
+  server_pid = Process.spawn({ "RUBYOPT" => nil }, "ruby example/server.rb -p 9000", out: File::NULL)
   sleep RUBY_ENGINE == "ruby" ? 5 : 20
   system("#{h2spec} -p 9000 -o 2 --strict")
   Process.kill("TERM", server_pid)

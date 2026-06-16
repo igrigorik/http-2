@@ -41,8 +41,6 @@ module HTTP2
 
   CONNECTION_FRAME_TYPES = %i[settings ping goaway].freeze
 
-  HEADERS_FRAME_TYPES = %i[headers push_promise].freeze
-
   STREAM_OPEN_STATES = %i[open half_closed_local].freeze
 
   # Connection encapsulates all of the connection, stream, flow-control,
@@ -91,6 +89,7 @@ module HTTP2
       @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
+      @oldest_stream_recently_closed = nil
       @pending_settings = []
 
       @framer = Framer.new(@local_settings[:settings_max_frame_size])
@@ -102,6 +101,7 @@ module HTTP2
 
       @recv_buffer = "".b
       @continuation = []
+      @continuation_size = 0
       @error = nil
 
       @h2c_upgrade = nil
@@ -156,7 +156,7 @@ module HTTP2
     # @param error [Symbol]
     # @param payload [String]
     def goaway(error = :no_error, payload = nil)
-      send(type: :goaway, last_stream: @last_stream_id,
+      send(type: :goaway, stream: 0, last_stream: @last_stream_id,
            error: error, payload: payload)
       @state = :closed
       @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -178,7 +178,6 @@ module HTTP2
       validate_settings(@local_role, payload)
       @pending_settings << payload
       send(type: :settings, stream: 0, payload: payload)
-      @pending_settings << payload
     end
 
     # Decodes incoming bytes into HTTP 2.0 frames and routes them to
@@ -212,9 +211,8 @@ module HTTP2
       end
 
       while (frame = @framer.parse(@recv_buffer))
-        # @type var stream_id: Integer
-        stream_id = frame[:stream]
-        frame_type = frame[:type]
+        stream_id = frame[:stream] #: Integer
+        frame_type = frame[:type] #: Symbol?
 
         if is_a?(Client) && !@received_frame
           connection_error(:protocol_error, msg: "didn't receive settings") if frame_type != :settings
@@ -237,15 +235,16 @@ module HTTP2
         # Header blocks MUST be transmitted as a contiguous sequence of frames
         # with no interleaved frames of any other type, or from any other stream.
         unless @continuation.empty?
+          # @type var frame: continuation_frame
           connection_error unless frame_type == :continuation && stream_id == @continuation.first[:stream]
 
           @continuation << frame
-          unless frame[:flags].include? :end_headers
-            buffered_payload = @continuation.sum { |f| f[:payload].bytesize }
+          @continuation_size += frame[:payload].bytesize
+          unless frame[:flags].anybits?(END_HEADERS)
             # prevent HTTP/2 CONTINUATION FLOOD
             # same heuristic as the one from HAProxy: https://www.haproxy.com/blog/haproxy-is-resilient-to-the-http-2-continuation-flood
             # different mitigation (connection closed, instead of 400 response)
-            unless buffered_payload < @local_settings[:settings_max_frame_size]
+            unless @continuation_size < @local_settings[:settings_max_frame_size]
               connection_error(:protocol_error,
                                msg: "too many continuations received")
             end
@@ -259,10 +258,11 @@ module HTTP2
           frame_type = frame[:type]
 
           @continuation.clear
+          @continuation_size = 0
 
           frame.delete(:length)
           frame[:payload] = payload
-          frame[:flags] << :end_headers
+          frame[:flags] |= END_HEADERS
         end
 
         # SETTINGS frames always apply to a connection, never a single stream.
@@ -271,18 +271,20 @@ module HTTP2
         # anything other than 0x0, the endpoint MUST respond with a connection
         # error (Section 5.4.1) of type PROTOCOL_ERROR.
         if connection_frame?(frame)
+          # @type var frame: connection_frame
           connection_error(:protocol_error) unless stream_id.zero?
           connection_management(frame)
         else
           case frame_type
           when :headers
+            # @type var frame: headers_frame
             # When server receives even-numbered stream identifier,
             # the endpoint MUST respond with a connection error of type PROTOCOL_ERROR.
             connection_error if stream_id.even? && is_a?(Server)
 
             # The last frame in a sequence of HEADERS/CONTINUATION
             # frames MUST have the END_HEADERS flag set.
-            unless frame[:flags].include? :end_headers
+            unless frame[:flags].anybits?(END_HEADERS)
               @continuation << frame
               next
             end
@@ -312,9 +314,10 @@ module HTTP2
             stream << frame
 
           when :push_promise
+            # @type var frame: push_promise_frame
             # The last frame in a sequence of PUSH_PROMISE/CONTINUATION
             # frames MUST have the END_HEADERS flag set
-            unless frame[:flags].include? :end_headers
+            unless frame[:flags].anybits?(END_HEADERS)
               @continuation << frame
               return
             end
@@ -434,20 +437,27 @@ module HTTP2
     # @note all frames are currently delivered in FIFO order.
     # @param frame [Hash]
     def send(frame)
-      frame_type = frame[:type]
-
       emit(:frame_sent, frame)
-      if frame_type == :data
+
+      frame_type = frame[:type] #: Symbol
+
+      case frame_type
+      when :data
+        #: @type var frame: data_frame
         send_data(frame, true)
-
-      elsif frame_type == :rst_stream && frame[:error] == :protocol_error
-        # An endpoint can end a connection at any time. In particular, an
-        # endpoint MAY choose to treat a stream error as a connection error.
-
-        goaway(:protocol_error)
-      else
+      when :headers, :push_promise
         # HEADERS and PUSH_PROMISE may generate CONTINUATION. Also send
         # RST_STREAM that are not protocol errors
+        #: @type var frame: headers_frame | push_promise_frame
+        encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
+      else
+        if frame_type == :rst_stream && frame[:error] == :protocol_error
+          # An endpoint can end a connection at any time. In particular, an
+          # endpoint MAY choose to treat a stream error as a connection error.
+
+          goaway(:protocol_error)
+        end
+        #: @type var frame: connection_frame
         encode(frame)
       end
     end
@@ -456,11 +466,7 @@ module HTTP2
     #
     # @param frame [Hash]
     def encode(frame)
-      if HEADERS_FRAME_TYPES.include?(frame[:type])
-        encode_headers(frame) # HEADERS and PUSH_PROMISE may create more than one frame
-      else
-        emit(:frame, @framer.generate(frame))
-      end
+      emit(:frame, @framer.generate(frame))
     end
 
     # Check if frame is a connection frame: SETTINGS, PING, GOAWAY, and any
@@ -493,12 +499,15 @@ module HTTP2
       when :connected
         case frame_type
         when :settings
+          # @type var frame: settings_frame
           connection_settings(frame)
         when :window_update
+          # @type var frame: window_update_frame
           process_window_update(frame: frame, encode: true)
         when :ping
           ping_management(frame)
         when :goaway
+          # @type var frame: goaway_frame
           # Receivers of a GOAWAY frame MUST NOT open additional streams on
           # the connection, although a new connection can be established
           # for new streams.
@@ -506,19 +515,19 @@ module HTTP2
           @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
         when :altsvc
+          # @type var frame: altsvc_frame
           origin = frame[:origin]
           # 4.  The ALTSVC HTTP/2 Frame
           # An ALTSVC frame on stream 0 with empty (length 0) "Origin"
           # information is invalid and MUST be ignored.
           emit(:altsvc, frame) if origin && !origin.empty?
         when :origin
-          return if @h2c_upgrade || !frame[:flags].empty?
+          # @type var frame: origin_frame
+          return if @h2c_upgrade || !frame[:flags].zero?
 
           frame[:payload].each do |orig|
             emit(:origin, orig)
           end
-        when :blocked
-          emit(:blocked, frame)
         else
           connection_error
         end
@@ -538,11 +547,10 @@ module HTTP2
     end
 
     def ping_management(frame)
-      if frame[:flags].include? :ack
+      if frame[:flags].anybits?(ACK)
         emit(:ack, frame[:payload])
       else
-        send(type: :ping, stream: 0,
-             flags: [:ack], payload: frame[:payload])
+        send(type: :ping, stream: 0, flags: ACK, payload: frame[:payload])
       end
     end
 
@@ -605,13 +613,13 @@ module HTTP2
       #  side =
       #   local: previously sent and pended our settings should be effective
       #   remote: just received peer settings should immediately be effective
-      if frame[:flags].include?(:ack)
+      if frame[:flags].anybits?(ACK)
         # Process pending settings we have sent.
         settings = @pending_settings.shift
         side = :local
       else
-        validate_settings(@remote_role, frame[:payload])
         settings = frame[:payload]
+        validate_settings(@remote_role, settings)
         side = :remote
       end
 
@@ -681,7 +689,7 @@ module HTTP2
       when :remote
         unless @state == :closed || @h2c_upgrade == :start
           # Send ack to peer
-          send(type: :settings, stream: 0, payload: [], flags: [:ack])
+          send(type: :settings, stream: 0, payload: EMPTY, flags: ACK)
           # when initial window size changes, we try to flush any buffered
           # data.
           @streams.each_value(&:flush)
@@ -711,45 +719,49 @@ module HTTP2
     #
     # @param headers_frame [Hash]
     def encode_headers(headers_frame)
-      payload = headers_frame[:payload]
+      headers_payload = headers_frame[:payload]
       begin
-        payload = headers_frame[:payload] = @compressor.encode(payload) unless payload.is_a?(String)
+        payload = headers_payload.is_a?(String) ? headers_payload : @compressor.encode(headers_payload)
       rescue StandardError => e
         connection_error(:compression_error, e: e)
       end
+
+      #: @type var payload: String
+      headers_frame[:payload] = payload
 
       max_frame_size = @remote_settings[:settings_max_frame_size]
 
       # if single frame, return immediately
       if payload.bytesize <= max_frame_size
-        emit(:frame, @framer.generate(headers_frame))
+        encode(headers_frame)
         return
       end
 
       # split into multiple CONTINUATION frames
-      headers_frame[:flags].delete(:end_headers)
+      total = payload.bytesize
+      headers_frame[:flags] ^= END_HEADERS
       headers_frame[:payload] = payload.byteslice(0, max_frame_size)
-      payload = payload.byteslice(max_frame_size..-1)
+      # payload = payload.byteslice(max_frame_size..-1)
+      offset = max_frame_size
 
       # emit first HEADERS frame
-      emit(:frame, @framer.generate(headers_frame))
+      encode(headers_frame)
 
-      loop do
-        continuation_frame = headers_frame.merge(
+      stream_id = headers_frame[:stream]
+
+      while offset < total
+        chunk_end = offset + max_frame_size
+        is_last = chunk_end >= total
+
+        continuation_frame = {
           type: :continuation,
-          flags: EMPTY,
-          payload: payload.byteslice(0, max_frame_size)
-        )
+          flags: is_last ? END_HEADERS : 0,
+          stream: stream_id,
+          payload: payload.byteslice(offset, max_frame_size)
+        } #: continuation_frame
 
-        payload = payload.byteslice(max_frame_size..-1)
-
-        if payload.nil? || payload.empty?
-          continuation_frame[:flags] = [:end_headers]
-          emit(:frame, @framer.generate(continuation_frame))
-          break
-        end
-
-        emit(:frame, @framer.generate(continuation_frame))
+        encode(continuation_frame)
+        offset = chunk_end
       end
     end
 
@@ -776,19 +788,24 @@ module HTTP2
         # is closed, with a minimum of 15s RTT time window.
         now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-        _, closed_since = @streams_recently_closed.first
-
         # forego recently closed recycling if empty or the first element
         # hasn't expired yet (it's ordered).
-        if closed_since && (now - closed_since) > 15
+        if @oldest_stream_recently_closed && (now - @oldest_stream_recently_closed) > 15
+          new_oldest = nil
           # discards all streams which have closed for a while.
           # TODO: use a drop_while! variant whenever there is one.
-          @streams_recently_closed = @streams_recently_closed.drop_while do |_, since|
-            (now - since) > 15
-          end.to_h
+          @streams_recently_closed.delete_if do |_, since|
+            unless (now - since) > 15
+              new_oldest ||= since
+              break
+            end
+
+            true
+          end
+          @oldest_stream_recently_closed = new_oldest
         end
 
-        @streams_recently_closed[id] = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        @streams_recently_closed[id] = now
       end
 
       stream.on(:frame, &method(:send))

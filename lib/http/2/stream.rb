@@ -114,8 +114,10 @@ module HTTP2
     def receive(frame)
       transition(frame, false)
 
-      case frame[:type]
+      frame_type = frame[:type] #: Symbol
+      case frame_type
       when :data
+        # @type var frame: data_frame
         # 6.1. DATA
         # If a DATA frame is received whose stream is not in "open" or
         # "half closed (local)" state, the recipient MUST respond with a
@@ -129,6 +131,7 @@ module HTTP2
         emit(:data, frame[:payload]) unless frame[:ignore]
         calculate_window_update(@local_window_max_size)
       when :headers
+        # @type var frame: headers_frame
         stream_error(:stream_closed) if (@state == :closed && @closed != :local_rst) ||
                                         @state == :remote_closed
         @_method ||= frame[:method]
@@ -151,17 +154,18 @@ module HTTP2
         stream_error(:stream_closed) if (@state == :closed && @closed != :local_rst) || @state == :remote_closed
         stream_error(:protocol_error) if @received_data
       when :priority
+        # @type var frame: priority_frame
         process_priority(frame)
       when :window_update
+        # @type var frame: window_update_frame
         process_window_update(frame: frame)
       when :altsvc
+        # @type var frame: origin_frame
         # 4.  The ALTSVC HTTP/2 Frame
         # An ALTSVC frame on a
         # stream other than stream 0 containing non-empty "Origin" information
         # is invalid and MUST be ignored.
-        emit(frame[:type], frame) if !frame[:origin] || frame[:origin].empty?
-      when :blocked
-        emit(frame[:type], frame)
+        emit(frame_type, frame) if !frame[:origin] || frame[:origin].empty?
       end
 
       complete_transition(frame)
@@ -199,11 +203,14 @@ module HTTP2
     def send(frame)
       case frame[:type]
       when :data
+        # @type var frame: data_frame
         # stream state management is maintained in send_data
         return send_data(frame)
       when :window_update
+        # @type var frame: window_update_frame
         @local_window += frame[:increment]
       when :priority
+        # @type var frame: priority_frame
         process_priority(frame)
       end
 
@@ -219,9 +226,8 @@ module HTTP2
     # @param end_headers [Boolean] indicates that no more headers will be sent
     # @param end_stream [Boolean] indicates that no payload will be sent
     def headers(headers, end_headers: true, end_stream: false)
-      flags = []
-      flags << :end_headers if end_headers
-      flags << :end_stream  if end_stream || @_method == "HEAD"
+      flags = end_headers ? END_HEADERS : 0
+      flags |= END_STREAM  if end_stream || @_method == "HEAD"
 
       send(type: :headers, flags: flags, payload: headers)
     end
@@ -229,7 +235,7 @@ module HTTP2
     def promise(headers, end_headers: true, &block)
       raise ArgumentError, "must provide callback" unless block
 
-      flags = end_headers ? [:end_headers] : []
+      flags = end_headers ? END_HEADERS : 0
       emit(:promise, self, headers, flags, &block)
     end
 
@@ -254,12 +260,12 @@ module HTTP2
 
       if payload.bytesize > max_size
         payload = chunk_data(payload, max_size) do |chunk|
-          send(type: :data, flags: [], payload: chunk)
+          send(type: :data, flags: 0, payload: chunk)
         end
       end
 
-      flags = []
-      flags << :end_stream if end_stream
+      flags = 0
+      flags |= END_STREAM if end_stream
       send(type: :data, flags: flags, payload: payload)
     end
 
@@ -663,7 +669,8 @@ module HTTP2
     def end_stream?(frame)
       case frame[:type]
       when :data, :headers, :continuation
-        frame[:flags] && frame[:flags].include?(:end_stream)
+        # @type var frame: data_frame | headers_frame | continuation_frame
+        frame[:flags] && frame[:flags].anybits?(END_STREAM)
       else false
       end
     end

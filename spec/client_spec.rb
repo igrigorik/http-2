@@ -72,7 +72,7 @@ RSpec.describe HTTP2::Client do
       expect(f.parse(frames[1])[:type]).to eq :settings
       ack_frame = f.parse(frames[2])
       expect(ack_frame[:type]).to eq :settings
-      expect(ack_frame[:flags]).to include(:ack)
+      expect(ack_frame[:flags]).to be_anybits(ACK)
     end
   end
 
@@ -83,7 +83,7 @@ RSpec.describe HTTP2::Client do
       client.settings(settings_header_table_size: 256)
       expect(client.local_settings[:settings_header_table_size]).to eq 4096
 
-      ack = { type: :settings, stream: 0, payload: [], flags: [:ack] }
+      ack = { type: :settings, stream: 0, payload: [], flags: ACK }
       client << f.generate(ack)
 
       expect(client.local_settings[:settings_header_table_size]).to eq 256
@@ -114,10 +114,13 @@ RSpec.describe HTTP2::Client do
       end.to raise_error(NoMethodError)
     end
 
-    it "should raise error on PUSH_PROMISE against stream 0" do
-      expect do
-        client << set_stream_id(f.generate(push_promise_frame), 0)
-      end.to raise_error(ProtocolError)
+    unless defined?(RBS)
+      # RBS detects type unsafety at runtime
+      it "should raise error on PUSH_PROMISE against stream 0" do
+        expect do
+          client << set_stream_id(f.generate(push_promise_frame), 0)
+        end.to raise_error(ProtocolError)
+      end
     end
 
     it "should raise error on PUSH_PROMISE against bogus stream" do
@@ -252,7 +255,7 @@ RSpec.describe HTTP2::Client do
         end
       end
       context "when receiving a reserved flag" do
-        let(:orig_frame) { origin_frame.merge(flags: [:reserved]) }
+        let(:orig_frame) { origin_frame.merge(flags: RESERVED) }
         it "should be ignored" do
           client << f.generate(settings_frame)
           origins = []
@@ -265,13 +268,15 @@ RSpec.describe HTTP2::Client do
       end
     end
     context "received in a stream" do
-      it "should be ignored" do
-        s = client.new_stream
-        s.send headers_frame
+      unless defined?(RBS)
+        it "should be ignored" do
+          s = client.new_stream
+          s.send headers_frame
 
-        expect do
-          client << set_stream_id(f.generate(orig_frame), s.id)
-        end.not_to raise_error
+          expect do
+            client << set_stream_id(f.generate(orig_frame), s.id)
+          end.not_to raise_error
+        end
       end
     end
   end
@@ -350,7 +355,7 @@ RSpec.describe HTTP2::Client do
       payload = cc.encode(req_headers)
       h1[:payload] = payload.slice!(0, payload.size / 2) # first half
       h1[:stream] = 2
-      h1[:flags] = []
+      h1[:flags] = 0
 
       h2[:payload] = payload # the remaining
       h2[:stream] = 2

@@ -1,6 +1,25 @@
 # frozen_string_literal: true
 
 module HTTP2
+  # Frame flags as defined by the spec (max 255 bits)
+  # DATA:          ( X X COMPRESSED X PADDED X X END_STREAM )
+  # HEADERS:       ( X X PRIORITY X PADDED END_HEADERS X END_STREAM )
+  # PRIORITY:      ( X X X X X X X X )
+  # RST_STREAM:    ( X X X X X X X X )
+  # SETTINGS:      ( X X X X X X X ACK )
+  # PUSH_PROMISE:  ( X X X X PADDED END_HEADERS X X )
+  # PING:          ( X X X X X X X ACK )
+  # GOAWAY:        ( X X X X X X X X )
+  # WINDOW_UPDATE: ( X X X X X X X X )
+  # CONTINUATION:  ( X X X X X END_HEADERS X X )
+  # ALTSVC:        ( X X X X X X X X )
+  # ORIGIN:        ( RESERVED4 X X RESERVED3 X RESERVED2 RESERVED X )
+  END_STREAM = ACK = 0b0001 # 1
+  RESERVED = 0b0010 # 2
+  END_HEADERS = 0b0100 # 4
+  PADDED = 0b1000 # 8
+  PRIORITY = 0b0010_0000 # 32
+
   # Performs encoding, decoding, and validation of binary HTTP/2 frames.
   #
   class Framer
@@ -40,39 +59,6 @@ module HTTP2
 
     FRAME_TYPES_WITH_PADDING = %i[data headers push_promise].freeze
 
-    # Per frame flags as defined by the spec
-    FRAME_FLAGS = {
-      data: {
-        end_stream: 0,
-        padded: 3,
-        compressed: 5
-      },
-      headers: {
-        end_stream: 0,
-        end_headers: 2,
-        padded: 3,
-        priority: 5
-      },
-      priority: {},
-      rst_stream: {},
-      settings: { ack: 0 },
-      push_promise: {
-        end_headers: 2,
-        padded: 3
-      },
-      ping: { ack: 0 },
-      goaway: {},
-      window_update: {},
-      continuation: { end_headers: 2 },
-      altsvc: {},
-      origin: {
-        reserved: 1,
-        reserved2: 2,
-        reserved3: 4,
-        reserved4: 8
-      }
-    }.each_value(&:freeze).freeze
-
     # Default settings as defined by the spec
     DEFINED_SETTINGS = {
       settings_header_table_size: 1,
@@ -83,23 +69,25 @@ module HTTP2
       settings_max_header_list_size: 6
     }.freeze
 
-    # Default error types as defined by the spec
-    DEFINED_ERRORS = {
-      no_error: 0,
-      protocol_error: 1,
-      internal_error: 2,
-      flow_control_error: 3,
-      settings_timeout: 4,
-      stream_closed: 5,
-      frame_size_error: 6,
-      refused_stream: 7,
-      cancel: 8,
-      compression_error: 9,
-      connect_error: 10,
-      enhance_your_calm: 11,
-      inadequate_security: 12,
-      http_1_1_required: 13
-    }.freeze
+    DEFINED_SETTINGS_BY_ID = DEFINED_SETTINGS.invert.freeze
+
+    # Default error types as defined by the spec (the code is the array index)
+    DEFINED_ERRORS = %i[
+      no_error
+      protocol_error
+      internal_error
+      flow_control_error
+      settings_timeout
+      stream_closed
+      frame_size_error
+      refused_stream
+      cancel
+      compression_error
+      connect_error
+      enhance_your_calm
+      inadequate_security
+      http_1_1_required
+    ].freeze
 
     RBIT  = 0x7fffffff
     RBYTE = 0x0fffffff
@@ -108,10 +96,12 @@ module HTTP2
     UINT16 = "n"
     UINT8  = "C"
     HEADERPACK = (UINT8 + UINT16 + UINT8 + UINT8 + UINT32).freeze
+    PRIORITYPACK = (UINT32 + UINT8).freeze
+    ALTSVCPACK = (UINT32 + UINT16).freeze
     FRAME_LENGTH_HISHIFT = 16
     FRAME_LENGTH_LOMASK  = 0xFFFF
 
-    private_constant :RBIT, :RBYTE, :EBIT, :HEADERPACK, :UINT32, :UINT16, :UINT8
+    private_constant :RBIT, :RBYTE, :EBIT, :HEADERPACK, :PRIORITYPACK, :UINT32, :UINT16, :UINT8
 
     # Initializes new framer object.
     #
@@ -146,6 +136,10 @@ module HTTP2
         raise CompressionError, "Window increment (#{frame[:increment]}) is too large"
       end
 
+      flags = frame[:flags]
+
+      raise CompressionError, "Invalid frame flag (#{flags}) for #{type}" unless flags.between?(0, 255)
+
       header = buffer
 
       # make sure the buffer is binary and unfrozen
@@ -160,12 +154,7 @@ module HTTP2
              (length >> FRAME_LENGTH_HISHIFT),
              (length & FRAME_LENGTH_LOMASK),
              FRAME_TYPES[type],
-             frame[:flags].reduce(0) do |acc, f|
-               position = FRAME_FLAGS[type][f]
-               raise CompressionError, "Invalid frame flag (#{f}) for #{type}" unless position
-
-               acc | (1 << position)
-             end,
+             flags,
              stream_id
            ], HEADERPACK, buffer: header, offset: 0) # 8+16,8,8,32
     end
@@ -184,9 +173,7 @@ module HTTP2
 
       {
         type: type,
-        flags: FRAME_FLAGS[type].filter_map do |name, pos|
-          name if flags.anybits?(1 << pos)
-        end,
+        flags: flags,
         length: length,
         stream: stream & RBIT
       }
@@ -198,10 +185,11 @@ module HTTP2
     # @param frame [Hash]
     def generate(frame)
       length = 0
-      frame[:flags] ||= EMPTY
+      frame[:flags] ||= 0
 
       case frame[:type]
       when :data, :continuation
+        # @type var frame: data_frame | continuation_frame
         bytes = frame[:payload]
         length = bytes.bytesize
 
@@ -213,14 +201,16 @@ module HTTP2
             raise CompressionError, "Must specify all of priority parameters for #{frame[:type]}"
           end
 
-          frame[:flags] += [:priority] unless frame[:flags].include?(:priority)
+          frame[:flags] |= PRIORITY
         end
 
-        if frame[:flags].include?(:priority)
+        if frame[:flags].anybits?(PRIORITY)
           length = 5 + headers.bytesize
           bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
-          pack([(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)], UINT32, buffer: bytes)
-          pack([frame[:weight] - 1], UINT8, buffer: bytes)
+          pack(
+            [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT), frame[:weight] - 1],
+            PRIORITYPACK, buffer: bytes
+          )
           append_str(bytes, headers)
         else
           length = headers.bytesize
@@ -234,8 +224,10 @@ module HTTP2
 
         length = 5
         bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
-        pack([(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT)], UINT32, buffer: bytes)
-        pack([frame[:weight] - 1], UINT8, buffer: bytes)
+        pack(
+          [(frame[:exclusive] ? EBIT : 0) | (frame[:dependency] & RBIT), frame[:weight] - 1],
+          PRIORITYPACK, buffer: bytes
+        )
 
       when :rst_stream
         length = 4
@@ -248,20 +240,27 @@ module HTTP2
         end
 
         settings = frame[:payload]
-        bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
 
-        settings.each do |(k, v)|
-          if k.is_a? Integer # rubocop:disable Style/GuardClause
-            DEFINED_SETTINGS.value?(k) || next
-          else
-            k = DEFINED_SETTINGS[k]
+        case settings
+        when String
+          length = settings.bytesize
+          bytes = settings
+        else
+          bytes = String.new("", encoding: Encoding::BINARY, capacity: settings.size * 6)
 
-            raise CompressionError, "Unknown settings ID for #{k}" if k.nil?
+          settings.each do |(k, v)|
+            if k.is_a? Integer # rubocop:disable Style/GuardClause
+              DEFINED_SETTINGS.value?(k) || next
+            else
+              k = DEFINED_SETTINGS[k]
+
+              raise CompressionError, "Unknown settings ID for #{k}" if k.nil?
+            end
+
+            pack([k], UINT16, buffer: bytes)
+            pack([v], UINT32, buffer: bytes)
+            length += 6
           end
-
-          pack([k], UINT16, buffer: bytes)
-          pack([v], UINT32, buffer: bytes)
-          length += 6
         end
 
       when :push_promise
@@ -295,7 +294,7 @@ module HTTP2
       when :altsvc
         length = 6
         bytes = String.new("", encoding: Encoding::BINARY, capacity: length)
-        pack([frame[:max_age], frame[:port]], UINT32 + UINT16, buffer: bytes)
+        pack([frame[:max_age], frame[:port]], ALTSVCPACK, buffer: bytes)
         if frame[:proto]
           raise CompressionError, "Proto too long" if frame[:proto].bytesize > 255
 
@@ -354,7 +353,7 @@ module HTTP2
 
         length += padlen
         pack([padlen -= 1], UINT8, buffer: bytes, offset: 0)
-        frame[:flags] += [:padded]
+        frame[:flags] |= PADDED
 
         # Padding:  Padding octets that contain no application semantic value.
         # Padding octets MUST be set to zero when sending and ignored when
@@ -375,9 +374,9 @@ module HTTP2
 
       frame = read_common_header(buf)
 
-      type = frame[:type]
-      length = frame[:length]
-      flags = frame[:flags]
+      type = frame[:type] #: Symbol
+      length = frame[:length] #: Integer
+      flags = frame[:flags] #: Integer
 
       return if buf.size < 9 + length
 
@@ -394,15 +393,16 @@ module HTTP2
       # Process padding
       padlen = 0
       if FRAME_TYPES_WITH_PADDING.include?(type)
-        padded = flags.include?(:padded)
+        padded = flags.anybits?(PADDED)
         if padded
           padlen = read_str(payload, 1).unpack1(UINT8)
-          frame[:padding] = padlen + 1
           raise ProtocolError, "padding too long" if padlen > payload.bytesize
+
+          frame[:padding] = padlen + 1
 
           payload = payload.byteslice(0, payload.bytesize - padlen) if padlen > 0
           frame[:length] -= frame[:padding]
-          flags.delete(:padded)
+          frame[:flags] ^= PADDED
         end
       end
 
@@ -410,11 +410,11 @@ module HTTP2
       when :data, :ping, :continuation
         frame[:payload] = read_str(payload, length)
       when :headers
-        if flags.include?(:priority)
+        if flags.anybits?(PRIORITY)
           e_sd = read_uint32(payload)
           frame[:dependency] = e_sd & RBIT
           frame[:exclusive] = e_sd.anybits?(EBIT)
-          weight = payload.byteslice(0, 1).ord + 1
+          weight = payload.getbyte(0) + 1
           frame[:weight] = weight
           payload = payload.byteslice(1..-1)
         end
@@ -425,7 +425,7 @@ module HTTP2
         e_sd = read_uint32(payload)
         frame[:dependency] = e_sd & RBIT
         frame[:exclusive] = e_sd.anybits?(EBIT)
-        weight = payload.byteslice(0, 1).ord + 1
+        weight = payload.getbyte(0) + 1
         frame[:weight] = weight
         payload = payload.byteslice(1..-1)
       when :rst_stream
@@ -436,19 +436,19 @@ module HTTP2
       when :settings
         # NOTE: frame[:length] might not match the number of frame[:payload]
         # because unknown extensions are ignored.
-        frame[:payload] = []
         raise ProtocolError, "Invalid settings payload length" unless (length % 6).zero?
 
         raise ProtocolError, "Invalid stream ID (#{frame[:stream]})" if frame[:stream].nonzero?
 
-        (frame[:length] / 6).times do
+        frame[:payload] = (frame[:length] / 6).times.filter_map do
           id  = read_str(payload, 2).unpack1(UINT16)
           val = read_uint32(payload)
 
           # Unsupported or unrecognized settings MUST be ignored.
           # Here we send it along.
-          name, = DEFINED_SETTINGS.find { |_name, v| v == id }
-          frame[:payload] << [name, val] if name
+          if (name = DEFINED_SETTINGS_BY_ID[id])
+            [name, val]
+          end
         end
       when :push_promise
         frame[:promise_stream] = read_uint32(payload) & RBIT
@@ -464,13 +464,13 @@ module HTTP2
 
         frame[:increment] = read_uint32(payload) & RBIT
       when :altsvc
-        frame[:max_age], frame[:port] = read_str(payload, 6).unpack(UINT32 + UINT16)
+        frame[:max_age], frame[:port] = read_str(payload, 6).unpack(ALTSVCPACK)
 
-        len = payload.byteslice(0, 1).ord
+        len = payload.getbyte(0)
         payload = payload.byteslice(1..-1)
         frame[:proto] = read_str(payload, len) if len > 0
 
-        len = payload.byteslice(0, 1).ord
+        len = payload.getbyte(0)
         payload = payload.byteslice(1..-1)
         frame[:host] = read_str(payload, len) if len > 0
 
@@ -495,7 +495,7 @@ module HTTP2
 
     def pack_error(error, buffer:)
       unless error.is_a? Integer
-        error = DEFINED_ERRORS[error]
+        error = DEFINED_ERRORS.index(error)
 
         raise CompressionError, "Unknown error ID for #{error}" unless error
       end
@@ -504,7 +504,7 @@ module HTTP2
     end
 
     def unpack_error(error)
-      DEFINED_ERRORS.key(error) || error
+      DEFINED_ERRORS.fetch(error, error)
     end
   end
 end

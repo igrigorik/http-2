@@ -9,6 +9,8 @@ module HTTP2
 
       EOS: Integer
 
+      EOS_PADDING: Array[String]
+
       CODES: Array[[Integer, Integer]]
 
       ENCODE_TABLE: Array[String]
