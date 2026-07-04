@@ -399,7 +399,6 @@ module HTTP2
                 unless @streams_recently_closed.key?(stream_id)
                   connection_error(:protocol_error, msg: "sent window update on idle stream")
                 end
-                stream = @streams_recently_closed[stream_id]
                 process_window_update(frame: frame, encode: true)
               # Endpoints MUST ignore
               # WINDOW_UPDATE or RST_STREAM frames received in this state (closed), though
