@@ -26,9 +26,16 @@ module HTTP2
       def read_str(str, n)
         return "".b if n == 0
 
+        enc = str.encoding
+
+        if enc != Encoding::BINARY
+          str = str.dup if str.frozen?
+          str.force_encoding(Encoding::BINARY)
+        end
+
         chunk = str.byteslice(0, n)
         str.bytesplice(0, chunk.length, "")
-        chunk
+        chunk.force_encoding(Encoding::BINARY)
       end
     else
       def read_str(str, n)
@@ -37,7 +44,7 @@ module HTTP2
         chunk = str.byteslice(0, n)
         remaining = str.byteslice(n, str.size - n)
         remaining ? str.replace(remaining) : str.clear
-        chunk
+        chunk.force_encoding(Encoding::BINARY)
       end
     end
 
