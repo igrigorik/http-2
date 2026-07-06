@@ -1,3 +1,7 @@
+## 1.2.1
+
+* fix: encode the string to binary when using `String#bytesplice` (if the string is UTF-8 and the range would split multibyte characters, bytesplicing raises an error).
+
 ## 1.2.0
 
 ### Improvements
