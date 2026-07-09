@@ -309,6 +309,36 @@ RSpec.describe HTTP2::Client do
       client << f.generate(push_promise_frame)
       expect(client.active_stream_count).to eq 1
     end
+
+    it "should deliver response headers for a stream the GOAWAY promised to finish" do
+      stream = client.new_stream # id 1
+      stream.send headers_frame
+
+      received = nil
+      stream.on(:headers) { |h| received = h }
+
+      # GOAWAY (last_stream: 2) covers this stream (id 1), so the server
+      # promised to finish it: its response, arriving after the GOAWAY, must
+      # still be delivered rather than dropped once the connection is :closed.
+      client << f.generate(goaway_frame)
+      client << f.generate(headers_frame.merge(payload: Compressor.new.encode(RESPONSE_HEADERS)))
+
+      expect(received).to eq(RESPONSE_HEADERS)
+    end
+
+    it "should drop response headers for a stream the GOAWAY refused" do
+      client << f.generate(goaway_frame) # last_stream: 2
+
+      opened = false
+      client.on(:stream) { opened = true }
+
+      # A stream beyond last_stream_id (id 5) was refused and never processed;
+      # its (unexpected) headers must not open a stream on the closed connection.
+      client << f.generate(headers_frame.merge(stream: 5, payload: Compressor.new.encode(RESPONSE_HEADERS)))
+
+      expect(opened).to be(false)
+      expect(client.active_stream_count).to eq 0
+    end
   end
 
   context "framing" do
