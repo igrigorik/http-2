@@ -56,7 +56,8 @@ module HTTP2
     include Error
     include BufferUtils
 
-    # Connection state (:new, :closed).
+    # Connection state (:waiting_magic, :waiting_connection_preface,
+    # :connected, :closing, :closed).
     attr_reader :state
 
     # Size of current connection flow control window (by default, set to
@@ -113,8 +114,15 @@ module HTTP2
       @send_buffer = FrameBuffer.new
     end
 
+    # No new streams may be opened (a GOAWAY was sent or received).
     def closed?
-      @state == :closed
+      @state == :closed || @state == :closing
+    end
+
+    # Graceful GOAWAY received: tracked streams may still complete,
+    # but no new ones can be opened.
+    def closing?
+      @state == :closing
     end
 
     # Allocates new stream for current connection.
@@ -123,7 +131,7 @@ module HTTP2
     # @param window [Integer]
     # @param parent [Stream]
     def new_stream(**args)
-      raise ConnectionClosed if @state == :closed
+      raise ConnectionClosed if closed?
       raise StreamLimitExceeded if @active_stream_count >= @remote_settings[:settings_max_concurrent_streams]
 
       connection_error(:protocol_error, msg: "id is smaller than previous") if @stream_id < @last_stream_id
@@ -158,8 +166,7 @@ module HTTP2
     def goaway(error = :no_error, payload = nil)
       send(type: :goaway, stream: 0, last_stream: @last_stream_id,
            error: error, payload: payload)
-      @state = :closed
-      @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      close!
     end
 
     # Sends a WINDOW_UPDATE frame to the peer.
@@ -295,12 +302,11 @@ module HTTP2
             # PUSH_PROMISE and CONTINUATION frames MUST be minimally
             # processed to ensure a consistent compression state
             decode_headers(frame)
-            # A GOAWAY moves the connection to :closed, but streams the peer
-            # promised to finish (id <= last_stream_id, already in @streams) can
-            # still complete (RFC 9113 Section 6.8). Only discard HEADERS that
-            # would open a NEW stream; a known stream's response must be
-            # delivered (its DATA frames already are - see the branch below).
-            return if @state == :closed && stream_id > @last_stream_id
+            # After a GOAWAY, HEADERS may only complete a tracked stream at
+            # or below the highest id seen (Section 6.8); anything else is
+            # discarded - decoded above, so the compression state is intact.
+            # Skip only this frame: later ones may serve completing streams.
+            next if closed? && (stream_id > @last_stream_id || !@streams.key?(stream_id))
 
             stream = @streams[stream_id]
             if stream.nil?
@@ -328,7 +334,7 @@ module HTTP2
             end
 
             decode_headers(frame)
-            return if @state == :closed
+            next if closed?
 
             # PUSH_PROMISE frames MUST be associated with an existing, peer-
             # initiated stream... A receiver MUST treat the receipt of a
@@ -385,6 +391,10 @@ module HTTP2
               # group of dependent streams by altering the priority of an
               # unused or closed parent stream.
               when :priority
+                # The stream already existed and closed: reprioritizing a
+                # closed parent is a no-op here - do not resurrect it.
+                next if stream_id <= @last_stream_id
+
                 stream = activate_stream(
                   id: stream_id,
                   weight: frame[:weight] || DEFAULT_WEIGHT,
@@ -500,7 +510,7 @@ module HTTP2
         @state = :connected
         connection_settings(frame)
 
-      when :connected
+      when :connected, :closing
         case frame_type
         when :settings
           # @type var frame: settings_frame
@@ -515,8 +525,13 @@ module HTTP2
           # Receivers of a GOAWAY frame MUST NOT open additional streams on
           # the connection, although a new connection can be established
           # for new streams.
-          @state = :closed
-          @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          if frame[:error] == :no_error && !@streams.empty?
+            # A graceful GOAWAY lets tracked streams complete before the
+            # connection closes (Section 6.8).
+            @state = :closing
+          else
+            close!
+          end
           emit(:goaway, frame[:last_stream], frame[:error], frame[:payload])
         when :altsvc
           # @type var frame: altsvc_frame
@@ -786,6 +801,8 @@ module HTTP2
       stream.once(:close) do
         @streams.delete(id)
 
+        close! if @state == :closing && @streams.empty?
+
         # Store a reference to the closed stream, such that we can respond
         # to any in-flight frames while close is registered on both sides.
         # References to such streams will be purged whenever another stream
@@ -814,6 +831,11 @@ module HTTP2
 
       stream.on(:frame, &method(:send))
       @streams[id] = stream
+    end
+
+    def close!
+      @state = :closed
+      @closed_since = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
     def verify_stream_order(id)

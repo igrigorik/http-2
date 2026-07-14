@@ -339,6 +339,207 @@ RSpec.describe HTTP2::Client do
       expect(opened).to be(false)
       expect(client.active_stream_count).to eq 0
     end
+
+    it "should drop response headers for a stream it no longer tracks once closed" do
+      stream = client.new_stream
+      stream.send headers_frame
+      stream.close # locally reset: no longer tracked
+
+      client << f.generate(goaway_frame) # nothing left to drain: :closed
+      expect(client).to be_closed
+
+      # Response HEADERS racing the local reset must not kill the closed
+      # connection.
+      client << f.generate(headers_frame.merge(payload: Compressor.new.encode(RESPONSE_HEADERS)))
+      expect(client).to be_closed
+    end
+
+    it "should not resurrect a closed stream on a late PRIORITY" do
+      stream = client.new_stream
+      stream.send headers_frame
+      stream.close
+
+      opened = false
+      client.on(:stream) { opened = true }
+      client << f.generate(priority_frame.merge(stream: stream.id))
+
+      expect(opened).to be(false)
+      expect(client.active_stream_count).to eq 0
+    end
+  end
+
+  context "graceful shutdown (GOAWAY)" do
+    it "should keep the connection operating for in-flight streams after a graceful GOAWAY" do
+      stream = client.new_stream
+      stream.send headers_frame
+
+      client << f.generate(goaway_frame)
+      expect(client).to be_closing
+      # closed? reports "no new work" from GOAWAY receipt on, as it always did.
+      expect(client).to be_closed
+
+      # Connection-level flow control must keep working while closing.
+      client << f.generate(window_update_frame.merge(stream: 0, increment: 1000))
+      expect(client.remote_window).to eq DEFAULT_FLOW_WINDOW + 1000
+    end
+
+    it "should ack SETTINGS and answer PING while closing" do
+      stream = client.new_stream
+      stream.send headers_frame
+
+      client << f.generate(goaway_frame)
+
+      acks = []
+      client.on(:frame_sent) { |frame| acks << frame[:type] if frame[:flags].anybits?(ACK) }
+
+      client << f.generate(settings_frame)
+      client << f.generate(ping_frame)
+
+      expect(acks).to eq(%i[settings ping])
+    end
+
+    it "should still deliver an in-flight stream's response after a graceful GOAWAY" do
+      stream = client.new_stream
+      stream.send headers_frame
+
+      received = nil
+      stream.on(:headers) { |headers| received = headers }
+
+      client << f.generate(goaway_frame)
+      client << f.generate(headers_frame.merge(payload: Compressor.new.encode(RESPONSE_HEADERS)))
+
+      expect(received).to eq(RESPONSE_HEADERS)
+    end
+
+    it "should discard HEADERS for a stream it no longer tracks while closing" do
+      finished = client.new_stream
+      finished.send headers_frame
+      finished.close # locally reset: no longer tracked
+
+      survivor = client.new_stream
+      survivor.send headers_frame.merge(stream: survivor.id)
+
+      client << f.generate(goaway_frame.merge(last_stream: survivor.id))
+
+      # Response HEADERS racing the local reset must not kill the
+      # closing connection.
+      client << f.generate(headers_frame.merge(payload: Compressor.new.encode(RESPONSE_HEADERS)))
+      expect(client).to be_closing
+
+      client << f.generate(rst_stream_frame.merge(stream: survivor.id))
+      expect(client).to be_closed
+    end
+
+    it "should not deliver HEADERS that would open a new stream while closing" do
+      client.new_stream.send headers_frame
+
+      opened = false
+      client.on(:stream) { opened = true }
+
+      client << f.generate(goaway_frame)
+      client << f.generate(headers_frame.merge(stream: 5, payload: Compressor.new.encode(RESPONSE_HEADERS)))
+
+      expect(opened).to be(false)
+      expect(client.active_stream_count).to eq 1
+    end
+
+    it "should not let HEADERS on an unpromised push stream open it while closing" do
+      stream = client.new_stream
+      stream.send headers_frame
+      second = client.new_stream
+      second.send headers_frame.merge(stream: second.id)
+
+      client << f.generate(goaway_frame.merge(last_stream: second.id))
+
+      opened = false
+      client.on(:stream) { opened = true }
+      client << f.generate(headers_frame.merge(stream: 2, payload: Compressor.new.encode(RESPONSE_HEADERS)))
+
+      expect(opened).to be(false)
+
+      client << f.generate(rst_stream_frame.merge(stream: stream.id))
+      client << f.generate(rst_stream_frame.merge(stream: second.id))
+      expect(client).to be_closed
+    end
+
+    it "should not wait for streams the GOAWAY refused" do
+      promised = client.new_stream
+      promised.send headers_frame
+      refused = client.new_stream
+      refused.send headers_frame.merge(stream: refused.id)
+
+      client << f.generate(goaway_frame.merge(last_stream: promised.id))
+      expect(client).to be_closing
+
+      # The refused stream (above last_stream_id) never completes; only the
+      # promised one holds the drain open.
+      client << f.generate(rst_stream_frame.merge(stream: promised.id))
+      expect(client).to be_closed
+    end
+
+    it "should keep processing frames that follow a discarded HEADERS in the same read" do
+      finished = client.new_stream
+      finished.send headers_frame
+      finished.close # locally reset: no longer tracked
+
+      survivor = client.new_stream
+      survivor.send headers_frame.merge(stream: survivor.id)
+
+      received = nil
+      survivor.on(:headers) { |headers| received = headers }
+
+      client << f.generate(goaway_frame.merge(last_stream: survivor.id))
+
+      # One read, two responses: discarding the first (reset stream) must
+      # not defer the survivor's.
+      compressor = Compressor.new
+      reset_response = f.generate(headers_frame.merge(payload: compressor.encode(RESPONSE_HEADERS)))
+      survivor_response = f.generate(headers_frame.merge(stream: survivor.id,
+                                                         payload: compressor.encode(RESPONSE_HEADERS)))
+      client << (reset_response + survivor_response)
+
+      expect(received).to eq(RESPONSE_HEADERS)
+    end
+
+    it "should report closed when only idle or reserved streams remain" do
+      client << f.generate(priority_frame.merge(stream: 2)) # idle, never completes
+
+      client << f.generate(goaway_frame)
+
+      expect(client).to be_closed
+    end
+
+    it "should not wait for an undelivered push promise" do
+      stream = client.new_stream
+      stream.send headers_frame
+      client << f.generate(push_promise_frame) # reserves stream 2, never delivered
+
+      client << f.generate(goaway_frame)
+      expect(client).to be_closing
+
+      client << f.generate(rst_stream_frame.merge(stream: stream.id))
+      expect(client).to be_closed
+    end
+
+    it "should close once the last in-flight stream finishes" do
+      stream = client.new_stream
+      stream.send headers_frame
+
+      client << f.generate(goaway_frame)
+      client << f.generate(rst_stream_frame.merge(stream: stream.id))
+
+      expect(client).not_to be_closing
+      expect(client).to be_closed
+    end
+
+    it "should close when a subsequent GOAWAY reports an error while closing" do
+      client.new_stream.send headers_frame
+      client << f.generate(goaway_frame)
+      expect(client).to be_closing
+
+      client << f.generate(goaway_frame.merge(error: :internal_error))
+      expect(client).to be_closed
+    end
   end
 
   context "framing" do
