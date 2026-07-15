@@ -295,7 +295,12 @@ module HTTP2
             # PUSH_PROMISE and CONTINUATION frames MUST be minimally
             # processed to ensure a consistent compression state
             decode_headers(frame)
-            return if @state == :closed
+            # A GOAWAY moves the connection to :closed, but streams the peer
+            # promised to finish (id <= last_stream_id, already in @streams) can
+            # still complete (RFC 9113 Section 6.8). Only discard HEADERS that
+            # would open a NEW stream; a known stream's response must be
+            # delivered (its DATA frames already are - see the branch below).
+            return if @state == :closed && stream_id > @last_stream_id
 
             stream = @streams[stream_id]
             if stream.nil?
