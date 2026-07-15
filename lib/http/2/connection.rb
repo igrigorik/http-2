@@ -300,7 +300,7 @@ module HTTP2
             # still complete (RFC 9113 Section 6.8). Only discard HEADERS that
             # would open a NEW stream; a known stream's response must be
             # delivered (its DATA frames already are - see the branch below).
-            return if @state == :closed && !@streams.key?(stream_id)
+            return if @state == :closed && stream_id > @last_stream_id
 
             stream = @streams[stream_id]
             if stream.nil?
