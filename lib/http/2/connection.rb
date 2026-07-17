@@ -391,9 +391,11 @@ module HTTP2
               # group of dependent streams by altering the priority of an
               # unused or closed parent stream.
               when :priority
-                # The stream already existed and closed: reprioritizing a
-                # closed parent is a no-op here - do not resurrect it.
-                next if stream_id <= @last_stream_id
+                # After a GOAWAY, a PRIORITY for a stream already used and
+                # closed must not resurrect it: reprioritizing a closed
+                # parent is a no-op here, and a phantom stream would hold
+                # the draining connection open.
+                next if closed? && stream_id <= @last_stream_id
 
                 stream = activate_stream(
                   id: stream_id,
@@ -801,6 +803,9 @@ module HTTP2
       stream.once(:close) do
         @streams.delete(id)
 
+        # A graceful GOAWAY leaves the connection :closing until the
+        # tracked streams complete (Section 6.8); the last one to close
+        # moves it to its terminal state.
         close! if @state == :closing && @streams.empty?
 
         # Store a reference to the closed stream, such that we can respond

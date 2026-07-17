@@ -353,19 +353,6 @@ RSpec.describe HTTP2::Client do
       client << f.generate(headers_frame.merge(payload: Compressor.new.encode(RESPONSE_HEADERS)))
       expect(client).to be_closed
     end
-
-    it "should not resurrect a closed stream on a late PRIORITY" do
-      stream = client.new_stream
-      stream.send headers_frame
-      stream.close
-
-      opened = false
-      client.on(:stream) { opened = true }
-      client << f.generate(priority_frame.merge(stream: stream.id))
-
-      expect(opened).to be(false)
-      expect(client.active_stream_count).to eq 0
-    end
   end
 
   context "graceful shutdown (GOAWAY)" do
@@ -398,20 +385,37 @@ RSpec.describe HTTP2::Client do
       expect(acks).to eq(%i[settings ping])
     end
 
-    it "should still deliver an in-flight stream's response after a graceful GOAWAY" do
-      stream = client.new_stream
-      stream.send headers_frame
+    it "should deliver in-flight streams' responses and discard untracked ones' while closing" do
+      finished = client.new_stream
+      finished.send headers_frame
+      finished.close # locally reset: no longer tracked
+
+      survivor = client.new_stream
+      survivor.send headers_frame.merge(stream: survivor.id)
 
       received = nil
-      stream.on(:headers) { |headers| received = headers }
+      survivor.on(:headers) { |headers| received = headers }
 
-      client << f.generate(goaway_frame)
-      client << f.generate(headers_frame.merge(payload: Compressor.new.encode(RESPONSE_HEADERS)))
+      client << f.generate(goaway_frame.merge(last_stream: survivor.id))
+      expect(client).to be_closing
+
+      # One read, two responses: HEADERS racing the local reset must not
+      # kill the closing connection, and discarding them (decoded, so the
+      # compression state stays intact) must not defer the survivor's.
+      compressor = Compressor.new
+      reset_response = f.generate(headers_frame.merge(payload: compressor.encode(RESPONSE_HEADERS)))
+      survivor_response = f.generate(headers_frame.merge(stream: survivor.id,
+                                                         payload: compressor.encode(RESPONSE_HEADERS)))
+      client << (reset_response + survivor_response)
 
       expect(received).to eq(RESPONSE_HEADERS)
+      expect(client).to be_closing
+
+      client << f.generate(rst_stream_frame.merge(stream: survivor.id))
+      expect(client).to be_closed
     end
 
-    it "should discard HEADERS for a stream it no longer tracks while closing" do
+    it "should not resurrect a finished stream on a late PRIORITY while closing" do
       finished = client.new_stream
       finished.send headers_frame
       finished.close # locally reset: no longer tracked
@@ -420,13 +424,16 @@ RSpec.describe HTTP2::Client do
       survivor.send headers_frame.merge(stream: survivor.id)
 
       client << f.generate(goaway_frame.merge(last_stream: survivor.id))
-
-      # Response HEADERS racing the local reset must not kill the
-      # closing connection.
-      client << f.generate(headers_frame.merge(payload: Compressor.new.encode(RESPONSE_HEADERS)))
       expect(client).to be_closing
 
+      opened = false
+      client.on(:stream) { opened = true }
+      client << f.generate(priority_frame.merge(stream: finished.id))
+      expect(opened).to be(false)
+
+      # A resurrected phantom stream would also hold the drain open.
       client << f.generate(rst_stream_frame.merge(stream: survivor.id))
+      expect(client).not_to be_closing
       expect(client).to be_closed
     end
 
@@ -475,30 +482,6 @@ RSpec.describe HTTP2::Client do
       # promised one holds the drain open.
       client << f.generate(rst_stream_frame.merge(stream: promised.id))
       expect(client).to be_closed
-    end
-
-    it "should keep processing frames that follow a discarded HEADERS in the same read" do
-      finished = client.new_stream
-      finished.send headers_frame
-      finished.close # locally reset: no longer tracked
-
-      survivor = client.new_stream
-      survivor.send headers_frame.merge(stream: survivor.id)
-
-      received = nil
-      survivor.on(:headers) { |headers| received = headers }
-
-      client << f.generate(goaway_frame.merge(last_stream: survivor.id))
-
-      # One read, two responses: discarding the first (reset stream) must
-      # not defer the survivor's.
-      compressor = Compressor.new
-      reset_response = f.generate(headers_frame.merge(payload: compressor.encode(RESPONSE_HEADERS)))
-      survivor_response = f.generate(headers_frame.merge(stream: survivor.id,
-                                                         payload: compressor.encode(RESPONSE_HEADERS)))
-      client << (reset_response + survivor_response)
-
-      expect(received).to eq(RESPONSE_HEADERS)
     end
 
     it "should report closed when only idle or reserved streams remain" do

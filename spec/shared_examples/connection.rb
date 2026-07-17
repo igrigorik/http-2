@@ -176,6 +176,12 @@ RSpec.shared_examples "a connection" do
       connected_conn << f.generate(window_update_frame.merge(stream: 0, increment: 1000))
       expect(connected_conn.remote_window).to eq DEFAULT_FLOW_WINDOW + 1000
 
+      # ... and so do frames for the streams being drained.
+      received = nil
+      stream.on(:data) { |data| received = data }
+      connected_conn << f.generate(data_frame.merge(stream: stream.id))
+      expect(received).to eq "text"
+
       expect { connected_conn.new_stream }.to raise_error(ConnectionClosed)
 
       stream.close
