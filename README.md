@@ -85,6 +85,15 @@ Events emitted by the connection object:
   </tr>
 </table>
 
+Connection shutdown happens in two steps. Once a GOAWAY frame is sent or
+received, no new streams may be opened: `closed?` turns true and `new_stream`
+raises `ConnectionClosed` — new work belongs on a new connection. After a
+graceful GOAWAY (`:no_error`), streams the peer may still complete keep
+running: `closing?` distinguishes this draining state, in which the connection
+keeps processing frames — including connection-level flow control — until the
+last tracked stream closes. Streams the GOAWAY refused (id above its
+last-stream-id) are reported via the `:goaway` event, so their callers can
+retry them on a fresh connection.
 
 ### Stream lifecycle management
 

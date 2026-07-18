@@ -386,10 +386,9 @@ module HTTP2
               end
             else
               case frame_type
-              # The PRIORITY frame can be sent for a stream in the "idle" or
-              # "closed" state. This allows for the reprioritization of a
-              # group of dependent streams by altering the priority of an
-              # unused or closed parent stream.
+              # Priority signaling is deprecated (RFC 9113 Section 5.3.2), but
+              # a PRIORITY frame may still name a stream id not opened yet:
+              # activate it, so the priority sticks if the stream opens.
               when :priority
                 # After a GOAWAY, a PRIORITY for a stream already used and
                 # closed must not resurrect it: reprioritizing a closed
