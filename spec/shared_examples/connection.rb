@@ -165,6 +165,38 @@ RSpec.shared_examples "a connection" do
       expect { conn.new_stream }.to raise_error(ConnectionClosed)
     end
 
+    it "should drain in-flight streams after receiving a graceful GOAWAY" do
+      stream = connected_conn.new_stream
+      stream.send headers_frame
+
+      connected_conn << f.generate(goaway_frame)
+      expect(connected_conn).to be_closing
+
+      # Connection-level frames keep being processed while closing.
+      connected_conn << f.generate(window_update_frame.merge(stream: 0, increment: 1000))
+      expect(connected_conn.remote_window).to eq DEFAULT_FLOW_WINDOW + 1000
+
+      # ... and so do frames for the streams being drained.
+      received = nil
+      stream.on(:data) { |data| received = data }
+      connected_conn << f.generate(data_frame.merge(stream: stream.id))
+      expect(received).to eq "text"
+
+      expect { connected_conn.new_stream }.to raise_error(ConnectionClosed)
+
+      stream.close
+      expect(connected_conn).not_to be_closing
+      expect(connected_conn).to be_closed
+    end
+
+    it "should close immediately on GOAWAY with an error code" do
+      connected_conn.new_stream
+
+      connected_conn << f.generate(goaway_frame.merge(error: :internal_error))
+
+      expect(connected_conn).to be_closed
+    end
+
     it "should not raise error when receiving connection management frames immediately after emitting goaway" do
       conn.goaway
       expect(conn).to be_closed

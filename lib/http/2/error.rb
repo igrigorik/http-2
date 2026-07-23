@@ -53,7 +53,7 @@ module HTTP2
     # Raised if stream has been closed and new frames cannot be sent.
     class StreamClosed < Error; end
 
-    # Raised if connection has been closed (or draining) and new stream
+    # Raised if connection has been closed (or closing) and new stream
     # cannot be opened.
     class ConnectionClosed < Error; end
 

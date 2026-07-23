@@ -59,6 +59,10 @@ module HTTP2
 
     def closed?: () -> bool
 
+    def closing?: () -> bool
+
+    def close!: () -> void
+
     def new_stream: (**untyped) -> Stream
 
     def ping: (String) -> void
