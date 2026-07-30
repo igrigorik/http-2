@@ -4,8 +4,7 @@ GC.auto_compact = true if GC.respond_to?(:auto_compact=)
 
 if ENV.key?("CI")
   require "simplecov"
-  SimpleCov.command_name "#{RUBY_ENGINE}-#{RUBY_VERSION}"
-  SimpleCov.coverage_dir "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}"
+  SimpleCov.start
 end
 
 RSpec.configure(&:disable_monkey_patching!)

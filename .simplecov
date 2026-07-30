@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-SimpleCov.start do
-  command_name "Spec"
-  add_filter "/.bundle/"
-  add_filter "/vendor/"
-  add_filter "/spec/"
-  add_filter "/lib/http/2/base64"
-  coverage_dir "coverage"
-end
+SimpleCov.skip ".bundle/"
+SimpleCov.skip "vendor/"
+SimpleCov.skip "spec/"
+SimpleCov.skip "lib/http/2/base64"
+SimpleCov.command_name "#{RUBY_ENGINE}-#{RUBY_VERSION}"
+coverage_dir "coverage"
+SimpleCov.coverage_dir "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}"
