@@ -99,7 +99,7 @@ module HTTP2
 
     def encode_headers: (headers_frame | push_promise_frame) -> void
 
-    def activate_stream: (id: Integer, **untyped) -> Stream
+    def activate_stream: (id: Integer, ?max_concurrent_streams: Integer, **untyped) -> Stream
 
     def verify_stream_order: (Integer id) -> void
 

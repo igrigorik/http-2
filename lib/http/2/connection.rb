@@ -132,11 +132,14 @@ module HTTP2
     # @param parent [Stream]
     def new_stream(**args)
       raise ConnectionClosed if closed?
-      raise StreamLimitExceeded if @active_stream_count >= @remote_settings[:settings_max_concurrent_streams]
 
       connection_error(:protocol_error, msg: "id is smaller than previous") if @stream_id < @last_stream_id
 
-      stream = activate_stream(id: @stream_id, **args)
+      stream = activate_stream(
+        id: @stream_id,
+        max_concurrent_streams: @remote_settings[:settings_max_concurrent_streams],
+        **args
+      )
       @last_stream_id = stream.id
 
       @stream_id += 2
@@ -789,13 +792,17 @@ module HTTP2
     # connection managemet callbacks.
     #
     # @param id [Integer]
+    # @param max_concurrent_streams [Symbol] threshold to cap the number of active streams with.
     # @param priority [Integer]
     # @param window [Integer]
     # @param parent [Stream]
-    def activate_stream(id:, **args)
+    def activate_stream(id:, max_concurrent_streams: @local_settings[:settings_max_concurrent_streams], **args)
       connection_error(msg: "Stream ID already exists") if @streams.key?(id)
 
-      raise StreamLimitExceeded if @active_stream_count >= @local_settings[:settings_max_concurrent_streams]
+      # SETTINGS_MAX_CONCURRENT_STREAMS "limits the number of concurrent streams that the sender
+      # of the setting permits the receiver to create" (RFC 9113, section 5.1.2), so the bounding
+      # limit is the one advertised by the endpoint that did *not* open the stream.
+      raise StreamLimitExceeded if @active_stream_count >= max_concurrent_streams
 
       stream = Stream.new(connection: self, id: id, **args)
 

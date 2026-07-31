@@ -300,6 +300,23 @@ RSpec.shared_examples "a connection" do
       expect { conn.new_stream }.to raise_error(StreamLimitExceeded)
     end
 
+    it "should not limit locally-initiated streams to the local stream limit" do
+      settings = settings_frame
+      settings[:payload] = [[:settings_max_concurrent_streams, 200]]
+      conn << f.generate(settings)
+
+      limit = conn.local_settings[:settings_max_concurrent_streams]
+
+      expect do
+        (limit + 50).times do
+          s = conn.new_stream
+          s.send headers_frame
+        end
+      end.to_not raise_error
+
+      expect(conn.active_stream_count).to eq(limit + 50)
+    end
+
     it "should initialize idle stream on PRIORITY frame" do
       conn << f.generate(settings_frame)
 
