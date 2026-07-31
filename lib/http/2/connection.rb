@@ -799,8 +799,8 @@ module HTTP2
     def activate_stream(id:, max_concurrent_streams: @local_settings[:settings_max_concurrent_streams], **args)
       connection_error(msg: "Stream ID already exists") if @streams.key?(id)
 
-      # SETTINGS_MAX_CONCURRENT_STREAMS "limits the number of concurrent streams that the sender
-      # of the setting permits the receiver to create" (RFC 9113, section 5.1.2), so the bounding
+      # SETTINGS_MAX_CONCURRENT_STREAMS limits the number of concurrent streams that the sender
+      # of the setting permits the receiver to create (RFC 9113, section 5.1.2), so the bounding
       # limit is the one advertised by the endpoint that did *not* open the stream.
       raise StreamLimitExceeded if @active_stream_count >= max_concurrent_streams
 
