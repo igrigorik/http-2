@@ -1,3 +1,10 @@
+## 1.2.2
+
+### Bugfixes
+
+* allow completion of streams lower than last stream id after receiving a GOAWAY frame for stream 0 (connection), in conformance with RFC 9113 Section 6.8.
+  * in the process, a new connection state, `:closing`, has been introduced, to identify connections which do not accept new streams BUT allow existing streams to be processed to completion, and will also process control-flow frames to aid in the process. A note that the public API `HTTP2::Connection#closed?` will also return true for that new state (besides `:closed`).
+
 ## 1.2.1
 
 * fix: encode the string to binary when using `String#bytesplice` (if the string is UTF-8 and the range would split multibyte characters, bytesplicing raises an error).
