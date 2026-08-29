@@ -100,7 +100,7 @@ module HTTP2
       }
 
       if body.empty?
-        headers_frame[:flags] |= END_HEADERS
+        headers_frame[:flags] |= END_STREAM
         stream << headers_frame
       else
         stream << headers_frame
