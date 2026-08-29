@@ -30,16 +30,16 @@ elsif !defined?(Base64)
         str.tr!("+/", "-_")
         str
       end
-    end
 
-    def urlsafe_decode64(str)
-      if !str.end_with?("=") && str.length % 4 != 0
-        str = str.ljust((str.length + 3) & ~3, "=")
-        str.tr!("-_", "+/")
-      else
-        str = str.tr("-_", "+/")
+      def urlsafe_decode64(str)
+        if !str.end_with?("=") && str.length % 4 != 0
+          str = str.ljust((str.length + 3) & ~3, "=")
+          str.tr!("-_", "+/")
+        else
+          str = str.tr("-_", "+/")
+        end
+        strict_decode64(str)
       end
-      strict_decode64(str)
     end
   end
 end
