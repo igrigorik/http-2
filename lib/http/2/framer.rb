@@ -130,10 +130,10 @@ module HTTP2
 
       stream_id = frame.fetch(:stream, 0)
 
-      raise CompressionError, "Stream ID (#{stream_id}) is too large" if stream_id > MAX_STREAM_ID
+      raise CompressionError, "Stream ID (#{stream_id}) is outside the valid range" unless stream_id.between?(0, MAX_STREAM_ID)
 
-      if type == :window_update && frame[:increment] > MAX_WINDOWINC
-        raise CompressionError, "Window increment (#{frame[:increment]}) is too large"
+      if type == :window_update && !frame[:increment].between?(1, MAX_WINDOWINC)
+        raise CompressionError, "Window increment (#{frame[:increment]}) is outside the valid range"
       end
 
       flags = frame[:flags]
