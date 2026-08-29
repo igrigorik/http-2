@@ -23,6 +23,6 @@ Gem::Specification.new do |spec|
     "rubygems_mfa_required" => "true"
   }
 
-  spec.files = Dir["LICENSE.txt", "README.md", "lib/**/*.rb", "sig/**/*.rbs"]
+  spec.files = Dir["LICENSE", "README.md", "lib/**/*.rb", "sig/**/*.rbs"]
   spec.require_paths = ["lib"]
 end
