@@ -319,11 +319,18 @@ module HTTP2
 
               verify_stream_order(stream_id)
               priority = @idle_stream_priorities.delete(stream_id) || {}
+              if frame[:flags].anybits?(PRIORITY)
+                priority = {
+                  weight: frame[:weight],
+                  dependency: frame[:dependency],
+                  exclusive: frame[:exclusive]
+                }
+              end
               stream = activate_stream(
                 id: stream_id,
-                weight: frame.fetch(:weight, priority.fetch(:weight, DEFAULT_WEIGHT)),
-                dependency: frame.fetch(:dependency, priority.fetch(:dependency, 0)),
-                exclusive: frame.fetch(:exclusive, priority.fetch(:exclusive, false))
+                weight: priority.fetch(:weight, DEFAULT_WEIGHT),
+                dependency: priority.fetch(:dependency, 0),
+                exclusive: priority.fetch(:exclusive, false)
               )
               emit(:stream, stream)
             end
