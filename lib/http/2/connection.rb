@@ -90,7 +90,7 @@ module HTTP2
       @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
-      @idle_priority_stream_ids = {}
+      @idle_stream_priorities = {}
       @oldest_stream_recently_closed = nil
       @last_promised_stream_id = 0
       @pending_settings = []
@@ -318,11 +318,12 @@ module HTTP2
               verify_pseudo_headers(frame)
 
               verify_stream_order(stream_id)
+              priority = @idle_stream_priorities.delete(stream_id) || {}
               stream = activate_stream(
                 id: stream_id,
-                weight: frame[:weight] || DEFAULT_WEIGHT,
-                dependency: frame[:dependency] || 0,
-                exclusive: frame[:exclusive] || false
+                weight: frame.fetch(:weight, priority.fetch(:weight, DEFAULT_WEIGHT)),
+                dependency: frame.fetch(:dependency, priority.fetch(:dependency, 0)),
+                exclusive: frame.fetch(:exclusive, priority.fetch(:exclusive, false))
               )
               emit(:stream, stream)
             end
@@ -410,17 +411,17 @@ module HTTP2
                 # the draining connection open.
                 next if closed? && stream_id <= @last_stream_id
 
-                next if @idle_priority_stream_ids.key?(stream_id)
-                next if @idle_priority_stream_ids.size >= @local_settings[:settings_max_concurrent_streams]
+                unless @idle_stream_priorities.key?(stream_id)
+                  next if @idle_stream_priorities.size >= @local_settings[:settings_max_concurrent_streams]
+                end
 
-                @idle_priority_stream_ids[stream_id] = true
-                stream = Stream.new(
-                  connection: self,
-                  id: stream_id,
+                priority = {
                   weight: frame[:weight] || DEFAULT_WEIGHT,
                   dependency: frame[:dependency] || 0,
                   exclusive: frame[:exclusive] || false
-                )
+                }
+                @idle_stream_priorities[stream_id] = priority
+                stream = Stream.new(connection: self, id: stream_id, **priority)
 
                 emit(:stream, stream)
                 stream << frame
