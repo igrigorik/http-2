@@ -90,7 +90,9 @@ module HTTP2
       @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
+      @idle_priority_stream_ids = {}
       @oldest_stream_recently_closed = nil
+      @last_promised_stream_id = 0
       @pending_settings = []
 
       @framer = Framer.new(@local_settings[:settings_max_frame_size])
@@ -352,6 +354,8 @@ module HTTP2
             parent = @streams[stream_id]
             pid = frame[:promise_stream]
 
+            validate_push_promise(pid)
+
             # if PUSH parent is recently closed, RST_STREAM the push
             if @streams_recently_closed[stream_id]
               send(type: :rst_stream, stream: pid, error: :refused_stream)
@@ -377,6 +381,13 @@ module HTTP2
 
             _verify_pseudo_headers(frame, REQUEST_MANDATORY_HEADERS)
             verify_stream_order(pid)
+
+            promised_stream_count = @streams.each_value.count(&:parent)
+            if promised_stream_count >= @local_settings[:settings_max_concurrent_streams]
+              send(type: :rst_stream, stream: pid, error: :refused_stream)
+              next
+            end
+
             stream = activate_stream(id: pid, parent: parent)
             emit(:promise, stream)
             stream << frame
@@ -399,7 +410,12 @@ module HTTP2
                 # the draining connection open.
                 next if closed? && stream_id <= @last_stream_id
 
-                stream = activate_stream(
+                next if @idle_priority_stream_ids.key?(stream_id)
+                next if @idle_priority_stream_ids.size >= @local_settings[:settings_max_concurrent_streams]
+
+                @idle_priority_stream_ids[stream_id] = true
+                stream = Stream.new(
+                  connection: self,
                   id: stream_id,
                   weight: frame[:weight] || DEFAULT_WEIGHT,
                   dependency: frame[:dependency] || 0,
@@ -575,6 +591,18 @@ module HTTP2
       else
         send(type: :ping, stream: 0, flags: ACK, payload: frame[:payload])
       end
+    end
+
+    def validate_push_promise(stream_id)
+      connection_error(:protocol_error, msg: "clients cannot send PUSH_PROMISE") if @local_role == :server
+      if @local_settings[:settings_enable_push].zero?
+        connection_error(:protocol_error, msg: "received PUSH_PROMISE while push is disabled")
+      end
+      unless stream_id.positive? && stream_id.even? && stream_id > @last_promised_stream_id
+        connection_error(:protocol_error, msg: "invalid promised stream ID")
+      end
+
+      @last_promised_stream_id = stream_id
     end
 
     # Validate settings parameters.  See sepc Section 6.5.2.
