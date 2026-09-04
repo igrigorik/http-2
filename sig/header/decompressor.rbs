@@ -6,8 +6,11 @@ module HTTP2
       FORBIDDEN_HEADERS: Array[String]
 
       @cc: EncodingContext
+      @max_header_list_size: Integer
 
       def table_size=: (Integer) -> void
+      def table_size_limit=: (Integer) -> void
+      def max_header_list_size=: (Integer) -> void
 
       def integer: (String, Integer) -> Integer
 
