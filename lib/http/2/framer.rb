@@ -378,9 +378,9 @@ module HTTP2
       length = frame[:length] #: Integer
       flags = frame[:flags] #: Integer
 
-      return if buf.size < 9 + length
-
       raise ProtocolError, "payload too large" if length > @local_max_frame_size
+
+      return if buf.size < 9 + length
 
       read_str(buf, 9)
       payload = read_str(buf, length)
