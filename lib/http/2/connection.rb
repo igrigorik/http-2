@@ -835,6 +835,8 @@ module HTTP2
             true
           end
           @oldest_stream_recently_closed = new_oldest
+        else
+          @oldest_stream_recently_closed ||= now
         end
 
         @streams_recently_closed[id] = now
