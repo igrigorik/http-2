@@ -13,6 +13,7 @@ group :development do
     gem "rubocop"
     gem "rubocop-performance"
   end
+  gem "irb" if RUBY_VERSION >= "4.0.0"
 end
 
 group :docs do
