@@ -64,7 +64,7 @@ module HTTP2
       @state = :connected
       emit(:frame, CONNECTION_PREFACE_MAGIC)
 
-      payload = @local_settings.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
+      payload = @local_settings.each_pair.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
       settings(payload)
     end
 

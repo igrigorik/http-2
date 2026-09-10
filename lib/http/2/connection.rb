@@ -10,25 +10,6 @@ module HTTP2
   # Default stream_limit
   DEFAULT_MAX_CONCURRENT_STREAMS = 100
 
-  # Default values for SETTINGS frame, as defined by the spec.
-  SPEC_DEFAULT_CONNECTION_SETTINGS = {
-    settings_header_table_size: 4096,
-    settings_enable_push: 1, # enabled for servers
-    settings_max_concurrent_streams: Framer::MAX_STREAM_ID, # unlimited
-    settings_initial_window_size: 65_535,
-    settings_max_frame_size: 16_384,
-    settings_max_header_list_size: (2 << 30) - 1 # unlimited
-  }.freeze
-
-  DEFAULT_CONNECTION_SETTINGS = {
-    settings_header_table_size: 4096,
-    settings_enable_push: 1, # enabled for servers
-    settings_max_concurrent_streams: 100,
-    settings_initial_window_size: 65_535,
-    settings_max_frame_size: 16_384,
-    settings_max_header_list_size: (2 << 30) - 1 # unlimited
-  }.freeze
-
   # Default stream priority (lower values are higher priority).
   DEFAULT_WEIGHT = 16
 
@@ -80,8 +61,8 @@ module HTTP2
     # Initializes new connection object.
     #
     def initialize(settings = {})
-      @local_settings  = DEFAULT_CONNECTION_SETTINGS.merge(settings)
-      @remote_settings = SPEC_DEFAULT_CONNECTION_SETTINGS.dup
+      @local_settings  = Settings.new(**settings)
+      @remote_settings = Settings.new(settings_max_concurrent_streams: Framer::MAX_STREAM_ID)
 
       @compressor   = Header::Compressor.new(settings)
       @decompressor = Header::Decompressor.new(settings)
@@ -93,11 +74,11 @@ module HTTP2
       @oldest_stream_recently_closed = nil
       @pending_settings = []
 
-      @framer = Framer.new(@local_settings[:settings_max_frame_size])
+      @framer = Framer.new(@local_settings.settings_max_frame_size)
 
-      @local_window_limit = @local_settings[:settings_initial_window_size]
+      @local_window_limit = @local_settings.settings_initial_window_size
       @local_window = @local_window_limit
-      @remote_window_limit = @remote_settings[:settings_initial_window_size]
+      @remote_window_limit = @remote_settings.settings_initial_window_size
       @remote_window = @remote_window_limit
 
       @recv_buffer = "".b
@@ -137,7 +118,7 @@ module HTTP2
 
       stream = activate_stream(
         id: @stream_id,
-        max_concurrent_streams: @remote_settings[:settings_max_concurrent_streams],
+        max_concurrent_streams: @remote_settings.settings_max_concurrent_streams,
         **args
       )
       @last_stream_id = stream.id
@@ -213,7 +194,7 @@ module HTTP2
         elsif read_str(@recv_buffer, 24) == CONNECTION_PREFACE_MAGIC
           # MAGIC is OK.  Send our settings
           @state = :waiting_connection_preface
-          payload = @local_settings.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
+          payload = @local_settings.each_pair.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
           settings(payload)
         else
           raise HandshakeError
@@ -254,7 +235,7 @@ module HTTP2
             # prevent HTTP/2 CONTINUATION FLOOD
             # same heuristic as the one from HAProxy: https://www.haproxy.com/blog/haproxy-is-resilient-to-the-http-2-continuation-flood
             # different mitigation (connection closed, instead of 400 response)
-            unless @continuation_size < @local_settings[:settings_max_frame_size]
+            unless @continuation_size < @local_settings.settings_max_frame_size
               connection_error(:protocol_error,
                                msg: "too many continuations received")
             end
@@ -752,7 +733,7 @@ module HTTP2
       #: @type var payload: String
       headers_frame[:payload] = payload
 
-      max_frame_size = @remote_settings[:settings_max_frame_size]
+      max_frame_size = @remote_settings.settings_max_frame_size
 
       # if single frame, return immediately
       if payload.bytesize <= max_frame_size
@@ -796,7 +777,7 @@ module HTTP2
     # @param priority [Integer]
     # @param window [Integer]
     # @param parent [Stream]
-    def activate_stream(id:, max_concurrent_streams: @local_settings[:settings_max_concurrent_streams], **args)
+    def activate_stream(id:, max_concurrent_streams: @local_settings.settings_max_concurrent_streams, **args)
       connection_error(msg: "Stream ID already exists") if @streams.key?(id)
 
       # SETTINGS_MAX_CONCURRENT_STREAMS limits the number of concurrent streams that the sender

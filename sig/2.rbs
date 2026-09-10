@@ -11,22 +11,9 @@ module HTTP2
 
   type connection_opts = Hash[Symbol, untyped]
 
-  type settings_hash = {
-    settings_header_table_size: Integer,
-    settings_enable_push: Integer,
-    settings_max_concurrent_streams:  Integer,
-    settings_initial_window_size: Integer,
-    settings_max_frame_size: Integer,
-    settings_max_header_list_size: Integer
-  }
-
   type settings_ary = Array[settings_enum]
 
   type settings_enum = Enumerable[[Symbol, Integer]]
-
-  SPEC_DEFAULT_CONNECTION_SETTINGS: settings_hash
-
-  DEFAULT_CONNECTION_SETTINGS: settings_hash
 
   DEFAULT_WEIGHT: Integer
 

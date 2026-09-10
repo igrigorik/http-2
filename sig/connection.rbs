@@ -21,8 +21,8 @@ module HTTP2
 
     alias window local_window
 
-    attr_reader remote_settings: settings_hash
-    attr_reader local_settings: settings_hash
+    attr_reader remote_settings: Settings
+    attr_reader local_settings: Settings
     attr_reader pending_settings: settings_ary
 
     attr_accessor active_stream_count: Integer
