@@ -23,6 +23,12 @@ module HTTP2
 
   RESPONSE_MANDATORY_HEADERS: Array[String]
 
+  CONNECTION_FRAME_TYPES: Array[Symbol]
+
+  STREAM_OPEN_STATES: Array[Symbol]
+
+  HEADERS_FRAME_TYPES: Array[Symbol]
+
   # Frame flags
   END_STREAM: Integer
   ACK: Integer
