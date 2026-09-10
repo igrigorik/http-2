@@ -87,7 +87,7 @@ module HTTP2
 
     def connection_frame?: (frame) -> bool
 
-    def connection_management: (connection_frame frame) -> void
+    def connection_management: (frame frame) -> void
 
     def ping_management: (frame) -> void
 
