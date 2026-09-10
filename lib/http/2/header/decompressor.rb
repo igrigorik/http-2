@@ -17,6 +17,7 @@ module HTTP2
 
       # @param options [Hash] decoding options.  Only :table_size is effective.
       def initialize(options = {})
+        @accept_invalid_headers = options.fetch(:accept_invalid_headers, false)
         @cc = EncodingContext.new(options)
       end
 
@@ -123,12 +124,14 @@ module HTTP2
             next if field.nil?
 
             is_pseudo_header = field.start_with?(":")
-            if !decoding_pseudo_headers && is_pseudo_header
+            if !decoding_pseudo_headers && is_pseudo_header && !@accept_invalid_headers
               raise ProtocolError, "one or more pseudo headers encountered after regular headers"
             end
 
             decoding_pseudo_headers = is_pseudo_header
-            raise ProtocolError, "invalid header received: #{field}" if FORBIDDEN_HEADERS.include?(field)
+            if !@accept_invalid_headers && FORBIDDEN_HEADERS.include?(field)
+              raise ProtocolError, "invalid header received: #{field}"
+            end
 
             if frame
               case field
