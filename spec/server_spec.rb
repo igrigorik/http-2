@@ -153,6 +153,19 @@ RSpec.describe HTTP2::Server do
       expect(stream.weight).to eq 20
     end
 
+    it "should preserve updated PRIORITY values when an idle stream opens" do
+      srv << CONNECTION_PREFACE_MAGIC
+      srv << f.generate(settings_frame)
+
+      streams = []
+      srv.on(:stream) { |stream| streams << stream }
+      srv << f.generate(priority_frame.merge(stream: 1, weight: 20))
+      srv << f.generate(priority_frame.merge(stream: 1, weight: 30))
+      srv << f.generate(headers_frame)
+
+      expect(streams.last.weight).to eq 30
+    end
+
     it "should process connection management frames after GOAWAY" do
       srv << CONNECTION_PREFACE_MAGIC
       srv << f.generate(settings_frame)

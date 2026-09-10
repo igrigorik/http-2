@@ -23,7 +23,9 @@ module HTTP2
 
     @streams: Hash[Integer, Stream]
     @streams_recently_closed: Hash[Integer, Numeric]
+    @idle_stream_priorities: Hash[Integer, Hash[Symbol, Integer | bool]]
     @oldest_stream_recently_closed: Numeric
+    @last_promised_stream_id: Integer
 
     @framer: Framer
 
@@ -80,6 +82,8 @@ module HTTP2
     def connection_management: (frame frame) -> void
 
     def ping_management: (frame) -> void
+
+    def validate_push_promise: (Integer stream_id) -> void
 
     def validate_settings: (role_type, settings_enum) -> void
 
