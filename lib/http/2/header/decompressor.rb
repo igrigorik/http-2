@@ -16,6 +16,11 @@ module HTTP2
       def initialize(settings = Settings.new)
         @cc = EncodingContext.new(settings)
         @max_header_list_size = settings.settings_max_header_list_size
+        @accept_invalid_headers = false
+      end
+
+      def accept_invalid_headers!
+        @accept_invalid_headers = true
       end
 
       # Set the maximum dynamic table +size+ allowed by our acknowledged
@@ -110,12 +115,14 @@ module HTTP2
             next if field.nil?
 
             is_pseudo_header = field.start_with?(":")
-            if !decoding_pseudo_headers && is_pseudo_header
+            if !decoding_pseudo_headers && is_pseudo_header && !@accept_invalid_headers
               raise ProtocolError, "one or more pseudo headers encountered after regular headers"
             end
 
             decoding_pseudo_headers = is_pseudo_header
-            raise ProtocolError, "invalid header received: #{field}" if FORBIDDEN_HEADERS.include?(field)
+            if !@accept_invalid_headers && FORBIDDEN_HEADERS.include?(field)
+              raise ProtocolError, "invalid header received: #{field}"
+            end
 
             header_list_size += field.bytesize + value.bytesize + 32
             raise ProtocolError, "header list exceeds configured maximum" if header_list_size > @max_header_list_size
