@@ -115,7 +115,7 @@ module HTTP2
       # @param frame [HTTP2::Frame, nil]
       # @return [Array] +[[name, value], ...]
       def decode(buf, frame = nil)
-        list = []
+        list = [] #: Array[header_pair]
         decoding_pseudo_headers = true
         @cc.listen_on_table do
           until buf.empty?

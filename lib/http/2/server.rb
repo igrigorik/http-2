@@ -97,7 +97,7 @@ module HTTP2
         dependency: 0,
         exclusive: false,
         payload: headers
-      }
+      } #: headers_frame
 
       if body.empty?
         headers_frame[:flags] |= END_STREAM

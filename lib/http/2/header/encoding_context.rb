@@ -217,11 +217,12 @@ module HTTP2
           emit = [name, value]
 
           # add to table
-          if type == :incremental && size_check?(name.bytesize + value.bytesize + 32)
+          cmdsize = name.bytesize + value.bytesize + 32
+          if type == :incremental && size_check?(cmdsize)
             @table.unshift(emit)
             @unshifts += 1
             @table_by_field[name].unshift([value, @unshifts])
-            @current_table_size += name.bytesize + value.bytesize + 32
+            @current_table_size += cmdsize
             @_table_updated = true
           end
 

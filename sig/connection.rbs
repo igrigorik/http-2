@@ -4,16 +4,6 @@ module HTTP2
     include Emitter
     include BufferUtils
 
-    REQUEST_MANDATORY_HEADERS: Array[String]
-
-    RESPONSE_MANDATORY_HEADERS: Array[String]
-
-    CONNECTION_FRAME_TYPES: Array[Symbol]
-
-    HEADERS_FRAME_TYPES: Array[Symbol]
-
-    STREAM_OPEN_STATES: Array[Symbol]
-
     attr_reader state: Symbol
 
     attr_reader local_window: Integer
@@ -21,8 +11,8 @@ module HTTP2
 
     alias window local_window
 
-    attr_reader remote_settings: settings_hash
-    attr_reader local_settings: settings_hash
+    attr_reader remote_settings: Settings
+    attr_reader local_settings: Settings
     attr_reader pending_settings: settings_ary
 
     attr_accessor active_stream_count: Integer
@@ -87,7 +77,7 @@ module HTTP2
 
     def connection_frame?: (frame) -> bool
 
-    def connection_management: (connection_frame frame) -> void
+    def connection_management: (frame frame) -> void
 
     def ping_management: (frame) -> void
 

@@ -1,0 +1,26 @@
+module HTTP2
+  MAX_HEADER_LIST_SIZE: Integer
+
+  SPEC_DEFAULT_CONNECTION_SETTINGS: Hash[Symbol, Integer]
+
+  class Settings # this is actually a Struct, but RBS does not support it yet
+    attr_reader settings_header_table_size: Integer
+    attr_reader settings_enable_push: Integer
+    attr_reader settings_max_concurrent_streams: Integer
+    attr_reader settings_initial_window_size: Integer
+    attr_reader settings_max_frame_size: Integer
+    attr_reader settings_max_header_list_size: Integer
+
+    def initalize: (
+      ?settings_header_table_size: Integer,
+      ?settings_enable_push: Integer,
+      ?settings_max_concurrent_streams: Integer,
+      ?settings_initial_window_size: Integer,
+      ?settings_max_frame_size: Integer,
+      ?settings_max_header_list_size: Integer
+    ) -> void
+
+    def each_pair: () { (Symbol, Integer) -> void } -> self
+                 | () -> Enumerable[[Symbol, Integer]]
+  end
+end
