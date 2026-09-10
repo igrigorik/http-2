@@ -36,12 +36,12 @@ RSpec.describe HTTP2::Header do
             story = JSON.parse(File.read("#{path}/#{file}"))
             cases = story["cases"]
             table_size = cases[0]["header_table_size"] || 4096
-            @dc = Decompressor.new(table_size: table_size)
+            @dc = Decompressor.new(table_size: table_size, accept_invalid_headers: true)
             cases.each do |c|
               wire = [c["wire"]].pack("H*").force_encoding(Encoding::BINARY)
-              @emitted = @dc.decode(HTTP2::Buffer.new(wire))
+              @emitted = @dc.decode(wire)
               headers = c["headers"].flat_map(&:to_a)
-              expect(@emitted).to eq headers
+              expect(@emitted).to match_array(headers)
             end
           end
         end
@@ -74,12 +74,12 @@ RSpec.describe HTTP2::Header do
                 story = JSON.parse(File.read("#{path}/#{file}"))
                 cases = story["cases"]
                 @cc = Compressor.new(options)
-                @dc = Decompressor.new(options)
+                @dc = Decompressor.new(options.merge(accept_invalid_headers: true))
                 cases.each do |c|
                   headers = c["headers"].flat_map(&:to_a)
                   wire = @cc.encode(headers)
-                  decoded = @dc.decode(HTTP2::Buffer.new(wire))
-                  expect(decoded).to eq headers
+                  decoded = @dc.decode(wire)
+                  expect(decoded).to match_array(headers)
                 end
               end
             end

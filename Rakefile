@@ -8,16 +8,17 @@ require_relative "tasks/generate_huffman_table"
 
 RUBY_MAJOR_MINOR = RUBY_VERSION.split(".").first(2).join(".")
 
-begin
-  require "rspec/core/rake_task"
-  RSpec::Core::RakeTask.new(:spec) do |t|
-    t.exclude_pattern = "./spec/hpack_test_spec.rb"
-  end
+require "rspec/core/rake_task"
+RSpec::Core::RakeTask.new(:spec) do |t|
+  t.exclude_pattern = "./spec/hpack_test_spec.rb"
+end
 
-  RSpec::Core::RakeTask.new(:hpack) do |t|
-    t.pattern = "./spec/hpack_test_spec.rb"
-  end
-rescue LoadError
+RSpec::Core::RakeTask.new(:hpack) do |t|
+  t.pattern = "./spec/hpack_test_spec.rb"
+end
+
+task :prepare_hpack do
+  system("git clone --depth 1 https://github.com/http2jp/hpack-test-case.git spec/hpack-test-case")
 end
 
 begin
@@ -103,6 +104,6 @@ end
 
 default_tasks = %i[spec]
 default_tasks << :rubocop if defined?(RuboCop) && RUBY_ENGINE == "ruby"
-default_tasks += %i[h2spec_install h2spec] if ENV.key?("CI")
+default_tasks += %i[prepare_hpack hpack h2spec_install h2spec] if ENV.key?("CI")
 task default: default_tasks
-task all: %i[default hpack]
+task all: default_tasks
