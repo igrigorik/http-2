@@ -1,3 +1,4 @@
 .idea/
 Gemfile.lock
 *.gem
+spec/hpack-test-case
