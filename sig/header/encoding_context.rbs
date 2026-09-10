@@ -41,6 +41,7 @@ module HTTP2
       def addcmd: (String name, String value) -> header_command
 
       def table_size=: (Integer) -> void
+      def table_size_limit=: (Integer) -> void
 
       def listen_on_table: { () -> void } -> void
 

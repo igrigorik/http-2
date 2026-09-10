@@ -4,10 +4,14 @@ module HTTP2
       include BufferUtils
 
       FORBIDDEN_HEADERS: Array[String]
+      DEFAULT_MAX_HEADER_LIST_SIZE: Integer
 
       @cc: EncodingContext
+      @max_header_list_size: Integer
 
       def table_size=: (Integer) -> void
+      def table_size_limit=: (Integer) -> void
+      def max_header_list_size=: (Integer) -> void
 
       def integer: (String, Integer) -> Integer
 

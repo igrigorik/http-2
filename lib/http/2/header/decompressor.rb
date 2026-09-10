@@ -14,16 +14,26 @@ module HTTP2
       include BufferUtils
 
       FORBIDDEN_HEADERS = %w[connection te].freeze
+      DEFAULT_MAX_HEADER_LIST_SIZE = (2 << 30) - 1
+      attr_writer :max_header_list_size
 
-      # @param options [Hash] decoding options.  Only :table_size is effective.
+      # @param options [Hash] decoding options.
       def initialize(options = {})
         @cc = EncodingContext.new(options)
+        @max_header_list_size = options.fetch(
+          :settings_max_header_list_size,
+          DEFAULT_MAX_HEADER_LIST_SIZE
+        )
       end
 
       # Set dynamic table size in EncodingContext
       # @param size [Integer] new dynamic table size
       def table_size=(size)
         @cc.table_size = size
+      end
+
+      def table_size_limit=(size)
+        @cc.table_size_limit = size
       end
 
       # Decodes integer value from provided buffer.
@@ -116,6 +126,7 @@ module HTTP2
       # @return [Array] +[[name, value], ...]
       def decode(buf, frame = nil)
         list = []
+        header_list_size = 0
         decoding_pseudo_headers = true
         @cc.listen_on_table do
           until buf.empty?
@@ -129,6 +140,9 @@ module HTTP2
 
             decoding_pseudo_headers = is_pseudo_header
             raise ProtocolError, "invalid header received: #{field}" if FORBIDDEN_HEADERS.include?(field)
+
+            header_list_size += field.bytesize + value.bytesize + 32
+            raise ProtocolError, "header list exceeds configured maximum" if header_list_size > @max_header_list_size
 
             if frame
               case field
