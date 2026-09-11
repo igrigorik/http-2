@@ -1,3 +1,20 @@
+## 1.2.3
+
+### Improvements
+
+Connection and HPACK settings are now kept in a Settings container object, a struct-like class; this improves storage of settings (Struct objects use less memory than Hashes), reduces allocations (previously, some of the hashes had to merge with defaults downstream), and improves lookups (Struct accessors > Hash lookups).
+
+### Bugfixes
+
+* h2c initiated streams will now correctly close the request stream for bodyless(like-GET) requests.
+* negative stream ids are now checked against.
+* negative or 0 WINDOW_UPDATE increments are now checked against.
+* memory leak fixed around streams recently closed bookkeeping.
+
+### Chore
+
+LICENSE file was accidentally left out of previous release bundles.
+
 ## 1.2.2
 
 ### Bugfixes
