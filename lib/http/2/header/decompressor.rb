@@ -5,10 +5,6 @@ module HTTP2
     # Responsible for decoding received headers and maintaining compression
     # context of the opposing peer. Decompressor must be initialized with
     # appropriate starting context based on local role: client or server.
-    #
-    # @example
-    #   server_role = Decompressor.new(:request)
-    #   client_role = Decompressor.new(:response)
     class Decompressor
       include Error
       include BufferUtils
@@ -19,17 +15,12 @@ module HTTP2
         @cc = EncodingContext.new(settings)
       end
 
-      # Set dynamic table size in EncodingContext
-      # @param size [Integer] new dynamic table size
+      # Set dynamic table +size+ in EncodingContext
       def table_size=(size)
         @cc.table_size = size
       end
 
-      # Decodes integer value from provided buffer.
-      #
-      # @param buf [String]
-      # @param n [Integer] number of available bits
-      # @return [Integer]
+      # Decodes integer value from provided +buffer+.
       def integer(buf, n)
         limit = (1 << n) - 1
         if n.zero?
@@ -54,11 +45,9 @@ module HTTP2
         i
       end
 
-      # Decodes string value from provided buffer.
+      # Decodes string value from provided +buf+.
       #
-      # @param buf [String]
-      # @return [String] UTF-8 encoded string
-      # @raise [CompressionError] when input is malformed
+      # raises CompressionError when input is malformed
       def string(buf)
         raise CompressionError, "invalid header block fragment" if buf.empty?
 
@@ -71,10 +60,7 @@ module HTTP2
         str.force_encoding(Encoding::UTF_8)
       end
 
-      # Decodes header command from provided buffer.
-      #
-      # @param buf [Buffer]
-      # @return [Hash] command
+      # Decodes header command from provided +buf+.
       def header(buf)
         peek = buf.getbyte(0)
 
@@ -108,11 +94,7 @@ module HTTP2
         end
       end
 
-      # Decodes and processes header commands within provided buffer.
-      #
-      # @param buf [Buffer]
-      # @param frame [HTTP2::Frame, nil]
-      # @return [Array] +[[name, value], ...]
+      # Decodes and processes header commands within provided +buf+.
       def decode(buf, frame = nil)
         list = [] #: Array[header_pair]
         decoding_pseudo_headers = true

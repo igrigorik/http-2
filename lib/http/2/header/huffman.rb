@@ -22,12 +22,7 @@ module HTTP2
 
       EOS_PADDING = (0..7).map { |n| ("1" * n).b.freeze }.freeze
 
-      # Encodes provided value via huffman encoding.
-      # Length is not encoded in this method.
-      #
-      # @param str [String]
-      # @param buffer [String]
-      # @return [String] binary string
+      # Encodes provided +str+ via huffman encoding into +buffer+ .
       def encode(str, buffer = "".b)
         bitstring = String.new("", encoding: Encoding::BINARY, capacity: (str.bytesize * 30) + ((8 - str.size) % 8))
         str.each_byte { |chr| append_str(bitstring, ENCODE_TABLE[chr]) }
@@ -35,11 +30,9 @@ module HTTP2
         pack([bitstring], "B*", buffer: buffer)
       end
 
-      # Decodes provided Huffman coded string.
+      # Decodes provided Huffman coded string in +buf+.
       #
-      # @param buf [Buffer]
-      # @return [String] binary string
-      # @raise [CompressionError] when Huffman coded string is malformed
+      # raises CompressionError when Huffman coded string is malformed
       def decode(buf)
         emit = "".b
         state = 0 # start state

@@ -16,10 +16,6 @@ group :development do
   gem "irb" if RUBY_VERSION >= "4.0.0"
 end
 
-group :docs do
-  gem "yard"
-end
-
 group :test do
   gem "rspec"
   gem "simplecov", require: false

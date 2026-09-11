@@ -3,6 +3,7 @@
 require "English"
 require "bundler/gem_tasks"
 require "open3"
+require "rdoc/task"
 
 require_relative "tasks/generate_huffman_table"
 
@@ -27,10 +28,10 @@ begin
 rescue LoadError
 end
 
-begin
-  require "yard"
-  YARD::Rake::YardocTask.new
-rescue LoadError
+RDoc::Task.new do |rdoc|
+  rdoc.rdoc_dir = "rdoc"
+  rdoc.options.push("--main", "README.md")
+  rdoc.rdoc_files.add %w[README.md CHANGELOG.md lib/**/*.rb]
 end
 
 namespace :coverage do

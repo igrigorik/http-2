@@ -11,13 +11,12 @@ module HTTP2
         @cc = EncodingContext.new(settings)
       end
 
-      # Set dynamic table size in EncodingContext
-      # @param size [Integer] new dynamic table size
+      # Set dynamic table +size+ in EncodingContext
       def table_size=(size)
         @cc.table_size = size
       end
 
-      # Encodes provided value via integer representation.
+      # Encodes +i+ via integer representation into +buffer+ at the offset set by +offset+.
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-5.1
       #
       #  If I < 2^N - 1, encode I on N bits
@@ -29,11 +28,6 @@ module HTTP2
       #           I = I / 128
       #      encode (I) on 8 bits
       #
-      # @param i [Integer] value to encode
-      # @param n [Integer] number of available bits
-      # @param buffer [String] buffer to pack bytes into
-      # @param offset [Integer] offset to insert packed bytes in buffer
-      # @return [String] binary string
       def integer(i, n, buffer:, offset: buffer.size)
         limit = (1 << n) - 1
         return pack([i], "C", buffer: buffer, offset: offset) if i < limit
@@ -64,14 +58,6 @@ module HTTP2
       # * If the bit 7 of the first byte is 0, the string value is
       #   represented as a list of UTF-8 encoded octets.
       #
-      # +@options [:huffman]+ controls whether to use Huffman encoding:
-      #  :never   Do not use Huffman encoding
-      #  :always  Always use Huffman encoding
-      #  :shorter Use Huffman when the result is strictly shorter
-      #
-      # @param str [String]
-      # @param buffer [String]
-      # @return [String] binary string
       def string(str, buffer = "".b)
         case @cc.settings.huffman
         when :always
@@ -92,11 +78,7 @@ module HTTP2
         end
       end
 
-      # Encodes header command with appropriate header representation.
-      #
-      # @param h [Hash] header command
-      # @param buffer [String]
-      # @return [Buffer]
+      # Encodes +h+ header command with appropriate header representation into +buffer+.
       def header(h, buffer = "".b)
         type = h[:type]
         rep = HEADREP[type]
@@ -127,9 +109,6 @@ module HTTP2
       end
 
       # Encodes provided list of HTTP headers.
-      #
-      # @param headers [Array] +[[name, value], ...]+
-      # @return [Buffer]
       def encode(headers)
         buffer = "".b
         headers.partition { |f, _| f.start_with? ":" }.each do |hs|
@@ -143,9 +122,7 @@ module HTTP2
 
       private
 
-      # @param str [String]
-      # @param buffer [String]
-      # @return [String] binary string
+      # encodes +str+ into +buffer+ using Huffman encoding.
       def huffman_string(str, buffer = "".b)
         huffman_offset = buffer.bytesize
         buffer << "\x00".b
@@ -161,18 +138,14 @@ module HTTP2
         buffer
       end
 
-      # @param str [String]
-      # @param buffer [String]
-      # @return [String] binary string
+      # encodes +str+ into +buffer+.
       def plain_string(str, plain = "".b)
         integer(str.bytesize, 7, buffer: plain)
         append_str(plain, str)
         plain
       end
 
-      # @param buffer [String]
-      # @param huffman_offset [Integer] buffer offset where huffman string was introduced
-      # @return [String] binary string
+      # encodes the huffman string size from +buffer+ into the string at the offset indicated by +huffman_offset+
       def set_huffman_size(buffer, huffman_offset)
         integer(buffer.bytesize - huffman_offset, 7, buffer: buffer, offset: huffman_offset)
         buffer.setbyte(huffman_offset, buffer.getbyte(huffman_offset) | 0x80)
