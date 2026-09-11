@@ -59,13 +59,12 @@ module HTTP2
     attr_accessor :active_stream_count
 
     # Initializes new connection object.
-    #
     def initialize(settings = {})
       @local_settings  = Settings.new(**settings)
       @remote_settings = Settings.new(settings_max_concurrent_streams: Framer::MAX_STREAM_ID)
 
-      @compressor   = Header::Compressor.new(settings)
-      @decompressor = Header::Decompressor.new(settings)
+      @compressor   = Header::Compressor.new(@local_settings)
+      @decompressor = Header::Decompressor.new(@local_settings)
 
       @active_stream_count = 0
       @last_stream_id = 0
@@ -194,7 +193,7 @@ module HTTP2
         elsif read_str(@recv_buffer, 24) == CONNECTION_PREFACE_MAGIC
           # MAGIC is OK.  Send our settings
           @state = :waiting_connection_preface
-          payload = @local_settings.each_pair.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
+          payload = @local_settings.connection_settings.reject { |k, v| v == SPEC_DEFAULT_CONNECTION_SETTINGS[k] }
           settings(payload)
         else
           raise HandshakeError

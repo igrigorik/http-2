@@ -86,12 +86,6 @@ module HTTP2
 
       STATIC_TABLE_SIZE = STATIC_TABLE.size
 
-      DEFAULT_OPTIONS = {
-        huffman: :shorter,
-        index: :all,
-        table_size: 4096
-      }.freeze
-
       STATIC_ALL = %i[all static].freeze
 
       STATIC_NEVER = %i[never static].freeze
@@ -99,37 +93,27 @@ module HTTP2
       # Current table of header key-value pairs.
       attr_reader :table
 
-      # Current encoding options
-      #
-      #   :table_size  Integer  maximum dynamic table size in bytes
-      #   :huffman     Symbol   :always, :never, :shorter
-      #   :index       Symbol   :all, :static, :never
-      attr_reader :options
+      # Current encoding settings
+      attr_reader :settings
 
       # Current table size in octets
       attr_reader :current_table_size
 
       # Initializes compression context with appropriate client/server
-      # defaults and maximum size of the dynamic table.
-      #
-      # @param options [Hash] encoding options
-      #   :table_size  Integer  maximum dynamic table size in bytes
-      #   :huffman     Symbol   :always, :never, :shorter
-      #   :index       Symbol   :all, :static, :never
-      def initialize(options = {})
+      # +settings+ and maximum size of the dynamic table.
+      def initialize(settings = Settings.new)
         @table = []
         @table_by_field = Hash.new { |hs, k| hs[k] = [] }
         @unshifts = 0
-        @options = DEFAULT_OPTIONS.merge(options)
-        @limit = @options[:table_size]
+        @settings = settings
+        @limit = settings.table_size
         @_table_updated = false
         @current_table_size = 0
       end
 
       # Duplicates current compression context
-      # @return [EncodingContext]
       def dup
-        other = EncodingContext.new(@options)
+        other = EncodingContext.new(@settings)
         t = @table
         tbf = @table_by_field.transform_values(&:dup)
         unshifts = @unshifts
@@ -143,16 +127,13 @@ module HTTP2
         other
       end
 
-      # Finds an entry in current dynamic table by index.
-      # Note that index is zero-based in this module.
+      # Finds an entry in current dynamic table by +index+.
+      # Note that +index+ is zero-based in this module.
       #
-      # If the index is greater than the last index in the static table,
+      # If the +index+ is greater than the last index in the static table,
       # an entry in the dynamic table is dereferenced.
       #
-      # If the index is greater than the last header index, an error is raised.
-      #
-      # @param index [Integer] zero-based index in the dynamic table.
-      # @return [Array] +[key, value]+
+      # If the +index+ is greater than the last header index, an error is raised.
       def dereference(index)
         # NOTE: index is zero-based in this module.
         return STATIC_TABLE[index] if index < STATIC_TABLE_SIZE
@@ -166,10 +147,6 @@ module HTTP2
 
       # Header Block Processing
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-4.1
-      #
-      # @param cmd [Hash] { type:, name:, value:, index: }
-      # @return [Array, nil] +[name, value]+ header field that is added to the decoded header list,
-      #                                      or nil if +cmd[:type]+ is +:changetablesize+
       def process(cmd)
         type = cmd[:type]
         name = cmd[:name]
@@ -181,7 +158,7 @@ module HTTP2
 
           # we can receive multiple table size change commands inside a header frame. However,
           # we should blow up if we receive another frame where the new table size is bigger.
-          table_size_updated = @limit != @options[:table_size]
+          table_size_updated = @limit != @settings.table_size
 
           raise CompressionError, "dynamic table size update exceed limit" if !table_size_updated && value > @limit
 
@@ -232,16 +209,10 @@ module HTTP2
         end
       end
 
-      # Plan header compression according to +@options [:index]+
-      #  :never   Do not use dynamic table or static table reference at all.
-      #  :static  Use static table only.
-      #  :all     Use all of them.
-      #
-      # @param headers [Array] +[[name, value], ...]+
-      # @return [Array] array of commands
+      # Plan +headers+ compression.
       def encode(headers)
         # Literals commands are marked with :noindex when index is not used
-        noindex = STATIC_NEVER.include?(@options[:index])
+        noindex = STATIC_NEVER.include?(@settings.index)
 
         headers.each do |field, value|
           # Literal header names MUST be translated to lowercase before
@@ -255,26 +226,17 @@ module HTTP2
         end
       end
 
-      # Emits command for a header.
+      # Emits command for a +field+/+value+ header.
       # Prefer static table over dynamic table.
       # Prefer exact match over name-only match.
       #
-      # +@options [:index]+ controls whether to use the dynamic table,
-      # static table, or both.
-      #  :never   Do not use dynamic table or static table reference at all.
-      #  :static  Use static table only.
-      #  :all     Use all of them.
-      #
-      # @param field [String] the header field
-      # @param value [String] the header value
-      # @return [Hash] command
       def addcmd(field, value)
         # @type var exact: Integer?
         exact = nil
         # @type var name_only: Integer?
         name_only = nil
 
-        index_type = @options[:index]
+        index_type = @settings.index
 
         if STATIC_ALL.include?(index_type) &&
            STATIC_TABLE_BY_FIELD.key?(field)
@@ -338,11 +300,10 @@ module HTTP2
         end
       end
 
+      # whether +cmd+ fits in the dynamic table.
+      #
       # To keep the dynamic table size lower than or equal to @limit,
       # remove one or more entries at the end of the dynamic table.
-      #
-      # @param cmdsize [Integer]
-      # @return [Boolean] whether +cmd+ fits in the dynamic table.
       def size_check?(cmdsize)
         resize_table(cmdsize)
         cmdsize <= @limit

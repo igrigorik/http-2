@@ -109,3 +109,6 @@ Performance/MethodObjectAsBlock:
 Metrics/CollectionLiteralLength:
   Exclude:
     - lib/http/2/header/huffman.rb
+
+Metrics/ParameterLists:
+  Enabled: false

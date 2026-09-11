@@ -3,24 +3,69 @@ module HTTP2
 
   SPEC_DEFAULT_CONNECTION_SETTINGS: Hash[Symbol, Integer]
 
+  ENCODING_CONTEXT_SETTINGS: Array[Symbol]
+
+  type huffman_type = :always | :never | :shorter
+
+  type index_type = :all | :static | :never
+
+  # Container for all settings required for the management of an HTTP/2 connection. This
+  # includes the managemenet of the settings negotiated via the SETTINGS frame, as well as
+  # user-level configuration related with header compression.
   class Settings # this is actually a Struct, but RBS does not support it yet
+    # connection settings (send and received in the SETTINGS frame)
+
+    # maximum size of the header compression table used to decode header blocks, in bytes.
     attr_reader settings_header_table_size: Integer
+
+    # can be used to disable server push (set to 0)
     attr_reader settings_enable_push: Integer
+
+    # maximum number of concurrent streams that the sender will allow.
     attr_reader settings_max_concurrent_streams: Integer
+
+    # initial window size (in bytes) for stream-level flow control.
     attr_reader settings_initial_window_size: Integer
+
+    # max size of for payload that the sender is willing to receive, in bytes.
     attr_reader settings_max_frame_size: Integer
     attr_reader settings_max_header_list_size: Integer
 
-    def initalize: (
+    # encoding context settings
+
+    # controls how to use huffman encoding to encode strings. can be one of the following values:
+    #
+    # * `:always` - Always use Huffman encoding
+    # * `:never` - Do not use Huffman encoding
+    # * `:shorter` - Use Huffman when the result is strictly shorter
+    attr_reader huffman: huffman_type
+
+    # controls the configuration of the HPACK indexing tables:
+    #
+    # * `:static` - use the static table only
+    # * `:all` - use the static table and the dynamic table
+    # * `:never` - do not use any of the tables.
+    attr_reader index: index_type
+
+    # maximum dynamic table size in bytes
+    attr_reader table_size: Integer
+
+    def initialize: (
+      # connection settings
       ?settings_header_table_size: Integer,
       ?settings_enable_push: Integer,
       ?settings_max_concurrent_streams: Integer,
       ?settings_initial_window_size: Integer,
       ?settings_max_frame_size: Integer,
-      ?settings_max_header_list_size: Integer
+      ?settings_max_header_list_size: Integer,
+      # encoding context settings
+      ?huffman: huffman_type,
+      ?index: index_type,
+      ?table_size: Integer
     ) -> void
 
-    def each_pair: () { (Symbol, Integer) -> void } -> self
-                 | () -> Enumerable[[Symbol, Integer]]
+    # yields connection-level settings only.
+    def connection_settings: () { (Symbol, Integer) -> void } -> self
+                           | () -> Enumerable[[Symbol, Integer]]
   end
 end
