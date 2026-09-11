@@ -47,7 +47,7 @@ RSpec.describe HTTP2::Header do
         ].each do |datatype, plain|
           it "should handle #{datatype} #{desc}" do
             # NOTE: don't put this new in before{} because of test case shuffling
-            c = Compressor.new(huffman: option)
+            c = Compressor.new(Settings.new(huffman: option))
             str = c.string(plain)
             expect(str.getbyte(0) & 0x80).to eq msb
 
@@ -62,7 +62,7 @@ RSpec.describe HTTP2::Header do
          ["200", :huffman],
          ["xq", :plain]].each do |string, choice|
           it "should return #{choice} representation" do
-            c = Compressor.new(huffman: :shorter)
+            c = Compressor.new(Settings.new(huffman: :shorter))
             wire = c.string(string)
             expect(wire.getbyte(0) & 0x80).to eq(choice == :plain ? 0 : 0x80)
           end
@@ -191,7 +191,7 @@ RSpec.describe HTTP2::Header do
 
       context "size bounds" do
         it "should drop headers from end of table" do
-          cc = EncodingContext.new(table_size: 2048)
+          cc = EncodingContext.new(Settings.new(table_size: 2048))
           cc.process(name: "test1", value: "1" * 1024, type: :incremental)
           cc.process(name: "test2", value: "2" * 500, type: :incremental)
 
@@ -208,7 +208,7 @@ RSpec.describe HTTP2::Header do
       end
 
       it "should clear table if entry exceeds table size" do
-        cc = EncodingContext.new(table_size: 2048)
+        cc = EncodingContext.new(Settings.new(table_size: 2048))
         cc.process(name: "test1", value: "1" * 1024, type: :incremental)
         cc.process(name: "test2", value: "2" * 500, type: :incremental)
 
@@ -221,7 +221,7 @@ RSpec.describe HTTP2::Header do
       end
 
       it "should shrink table if set smaller size" do
-        cc = EncodingContext.new(table_size: 2048)
+        cc = EncodingContext.new(Settings.new(table_size: 2048))
         cc.listen_on_table do
           cc.process(name: "test1", value: "1" * 1024, type: :incremental)
           cc.process(name: "test2", value: "2" * 500, type: :incremental)
@@ -233,7 +233,7 @@ RSpec.describe HTTP2::Header do
       end
 
       it "should reject table size update if exceed limit" do
-        cc = EncodingContext.new(table_size: 4096)
+        cc = EncodingContext.new(Settings.new(table_size: 4096))
 
         expect { cc.process(type: :changetablesize, value: 150_000_000) }.to raise_error(CompressionError)
       end
@@ -553,7 +553,7 @@ RSpec.describe HTTP2::Header do
       context "spec example #{ex[:title]}" do
         ex[:streams].size.times do |nth|
           context "request #{nth + 1}" do
-            let(:dc) { Decompressor.new(table_size: ex[:table_size]) }
+            let(:dc) { Decompressor.new(Settings.new(table_size: ex[:table_size])) }
             before do
               (0...nth).each do |i|
                 bytes = [ex[:streams][i][:wire].delete(" \n")].pack("H*")
@@ -601,8 +601,7 @@ RSpec.describe HTTP2::Header do
         ex[:streams].size.times do |nth|
           context "request #{nth + 1}" do
             let(:cc) do
-              Compressor.new(table_size: ex[:table_size],
-                             huffman: ex[:huffman])
+              Compressor.new(Settings.new(table_size: ex[:table_size], huffman: ex[:huffman]))
             end
             before do
               (0...nth).each do |i|

@@ -11,14 +11,12 @@ module HTTP2
 
       STATIC_NEVER: Array[Symbol]
 
-      DEFAULT_OPTIONS: context_hash
-
       UPPER: Regexp
 
 
       attr_reader table: Array[header_pair]
 
-      attr_reader options: context_hash
+      attr_reader settings: Settings
 
       attr_reader current_table_size: Integer
 
@@ -46,7 +44,7 @@ module HTTP2
 
       private
 
-      def initialize: (?connection_opts options) -> void
+      def initialize: (?Settings settings) -> void
 
       def add_to_table: (string name, string value) -> void
 

@@ -19,7 +19,7 @@ module HTTP2
                 | (String) -> Array[header_pair]
       private
 
-      def initialize: (?connection_opts options) -> void
+      def initialize: (?Settings settings) -> void
     end
   end
 end

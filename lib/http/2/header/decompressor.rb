@@ -15,9 +15,8 @@ module HTTP2
 
       FORBIDDEN_HEADERS = %w[connection te].freeze
 
-      # @param options [Hash] decoding options.  Only :table_size is effective.
-      def initialize(options = {})
-        @cc = EncodingContext.new(options)
+      def initialize(settings = Settings.new)
+        @cc = EncodingContext.new(settings)
       end
 
       # Set dynamic table size in EncodingContext

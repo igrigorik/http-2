@@ -7,9 +7,8 @@ module HTTP2
       include PackingExtensions
       include BufferUtils
 
-      # @param options [Hash] encoding options
-      def initialize(options = {})
-        @cc = EncodingContext.new(options)
+      def initialize(settings = Settings.new)
+        @cc = EncodingContext.new(settings)
       end
 
       # Set dynamic table size in EncodingContext
@@ -74,7 +73,7 @@ module HTTP2
       # @param buffer [String]
       # @return [String] binary string
       def string(str, buffer = "".b)
-        case @cc.options[:huffman]
+        case @cc.settings.huffman
         when :always
           huffman_string(str, buffer)
         when :never

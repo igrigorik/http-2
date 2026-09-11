@@ -86,12 +86,6 @@ module HTTP2
 
       STATIC_TABLE_SIZE = STATIC_TABLE.size
 
-      DEFAULT_OPTIONS = {
-        huffman: :shorter,
-        index: :all,
-        table_size: 4096
-      }.freeze
-
       STATIC_ALL = %i[all static].freeze
 
       STATIC_NEVER = %i[never static].freeze
@@ -99,12 +93,12 @@ module HTTP2
       # Current table of header key-value pairs.
       attr_reader :table
 
-      # Current encoding options
+      # Current encoding settings
       #
       #   :table_size  Integer  maximum dynamic table size in bytes
       #   :huffman     Symbol   :always, :never, :shorter
       #   :index       Symbol   :all, :static, :never
-      attr_reader :options
+      attr_reader :settings
 
       # Current table size in octets
       attr_reader :current_table_size
@@ -112,16 +106,16 @@ module HTTP2
       # Initializes compression context with appropriate client/server
       # defaults and maximum size of the dynamic table.
       #
-      # @param options [Hash] encoding options
+      # @param settings [Settings] contain encoding options
       #   :table_size  Integer  maximum dynamic table size in bytes
       #   :huffman     Symbol   :always, :never, :shorter
       #   :index       Symbol   :all, :static, :never
-      def initialize(options = {})
+      def initialize(settings = Settings.new)
         @table = []
         @table_by_field = Hash.new { |hs, k| hs[k] = [] }
         @unshifts = 0
-        @options = DEFAULT_OPTIONS.merge(options)
-        @limit = @options[:table_size]
+        @settings = settings
+        @limit = settings.table_size
         @_table_updated = false
         @current_table_size = 0
       end
@@ -129,7 +123,7 @@ module HTTP2
       # Duplicates current compression context
       # @return [EncodingContext]
       def dup
-        other = EncodingContext.new(@options)
+        other = EncodingContext.new(@settings)
         t = @table
         tbf = @table_by_field.transform_values(&:dup)
         unshifts = @unshifts
@@ -181,7 +175,7 @@ module HTTP2
 
           # we can receive multiple table size change commands inside a header frame. However,
           # we should blow up if we receive another frame where the new table size is bigger.
-          table_size_updated = @limit != @options[:table_size]
+          table_size_updated = @limit != @settings.table_size
 
           raise CompressionError, "dynamic table size update exceed limit" if !table_size_updated && value > @limit
 
@@ -241,7 +235,7 @@ module HTTP2
       # @return [Array] array of commands
       def encode(headers)
         # Literals commands are marked with :noindex when index is not used
-        noindex = STATIC_NEVER.include?(@options[:index])
+        noindex = STATIC_NEVER.include?(@settings.index)
 
         headers.each do |field, value|
           # Literal header names MUST be translated to lowercase before
@@ -274,7 +268,7 @@ module HTTP2
         # @type var name_only: Integer?
         name_only = nil
 
-        index_type = @options[:index]
+        index_type = @settings.index
 
         if STATIC_ALL.include?(index_type) &&
            STATIC_TABLE_BY_FIELD.key?(field)
