@@ -8,6 +8,17 @@ RSpec.describe HTTP2::Connection do
   let(:conn) { Client.new }
   let(:f) { Framer.new }
 
+  it "tracks promised streams until their close callback without scanning streams" do
+    parent = conn.new_stream
+    promised = conn.__send__(:activate_stream, id: 2, parent: parent)
+    expect(conn.instance_variable_get(:@promised_stream_count)).to eq 1
+
+    promised.emit(:close)
+    expect(conn.instance_variable_get(:@promised_stream_count)).to eq 0
+    promised.emit(:close)
+    expect(conn.instance_variable_get(:@promised_stream_count)).to eq 0
+  end
+
   context "Headers pre/post processing" do
     let(:conn) do
       client = Client.new

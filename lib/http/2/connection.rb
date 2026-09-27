@@ -67,6 +67,7 @@ module HTTP2
       @decompressor = Header::Decompressor.new(@local_settings)
 
       @active_stream_count = 0
+      @promised_stream_count = 0
       @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
@@ -298,7 +299,7 @@ module HTTP2
               verify_pseudo_headers(frame)
 
               verify_stream_order(stream_id)
-              priority = @idle_stream_priorities.delete(stream_id) || {}
+              priority = @idle_stream_priorities.delete(stream_id)
               if frame[:flags].anybits?(PRIORITY)
                 priority = {
                   weight: frame[:weight],
@@ -308,9 +309,9 @@ module HTTP2
               end
               stream = activate_stream(
                 id: stream_id,
-                weight: priority.fetch(:weight, DEFAULT_WEIGHT),
-                dependency: priority.fetch(:dependency, 0),
-                exclusive: priority.fetch(:exclusive, false)
+                weight: priority&.[](:weight) || DEFAULT_WEIGHT,
+                dependency: priority&.[](:dependency) || 0,
+                exclusive: priority&.[](:exclusive) || false
               )
               emit(:stream, stream)
             end
@@ -370,8 +371,7 @@ module HTTP2
             _verify_pseudo_headers(frame, REQUEST_MANDATORY_HEADERS)
             verify_stream_order(pid)
 
-            promised_stream_count = @streams.each_value.count(&:parent)
-            if promised_stream_count >= @local_settings[:settings_max_concurrent_streams]
+            if @promised_stream_count >= @local_settings[:settings_max_concurrent_streams]
               send(type: :rst_stream, stream: pid, error: :refused_stream)
               next
             end
@@ -398,8 +398,9 @@ module HTTP2
                 # the draining connection open.
                 next if closed? && stream_id <= @last_stream_id
 
-                unless @idle_stream_priorities.key?(stream_id)
-                  next if @idle_stream_priorities.size >= @local_settings[:settings_max_concurrent_streams]
+                if !@idle_stream_priorities.key?(stream_id) &&
+                   (@idle_stream_priorities.size >= @local_settings[:settings_max_concurrent_streams])
+                  next
                 end
 
                 priority = {
@@ -582,10 +583,8 @@ module HTTP2
     end
 
     def validate_push_promise(stream_id)
-      connection_error(:protocol_error, msg: "clients cannot send PUSH_PROMISE") if @local_role == :server
-      if @local_settings[:settings_enable_push].zero?
-        connection_error(:protocol_error, msg: "received PUSH_PROMISE while push is disabled")
-      end
+      connection_error(:protocol_error, msg: "clients cannot send PUSH_PROMISE") if @remote_role == :client
+      connection_error(:protocol_error, msg: "push promises are disabled") if @local_settings[:settings_enable_push].zero?
       unless stream_id.positive? && stream_id.even? && stream_id > @last_promised_stream_id
         connection_error(:protocol_error, msg: "invalid promised stream ID")
       end
@@ -831,9 +830,11 @@ module HTTP2
       raise StreamLimitExceeded if @active_stream_count >= max_concurrent_streams
 
       stream = Stream.new(connection: self, id: id, **args)
+      @promised_stream_count += 1 if stream.parent
 
       stream.once(:close) do
         @streams.delete(id)
+        @promised_stream_count -= 1 if stream.parent
 
         # A graceful GOAWAY leaves the connection :closing until the
         # tracked streams complete (Section 6.8); the last one to close
