@@ -237,6 +237,101 @@ RSpec.describe HTTP2::Header do
 
         expect { cc.process(type: :changetablesize, value: 150_000_000) }.to raise_error(CompressionError)
       end
+
+      it "should accept table size update up to increased maximum" do
+        cc = EncodingContext.new(Settings.new(table_size: 4096))
+        cc.max_table_size = 8192
+
+        expect { cc.process(type: :changetablesize, value: 8192) }.not_to raise_error
+        expect { cc.process(type: :changetablesize, value: 8193) }.to raise_error(CompressionError)
+      end
+
+      it "should not change table size when maximum is reduced" do
+        cc = EncodingContext.new(Settings.new(table_size: 2048))
+        cc.process(name: "test1", value: "1" * 1024, type: :incremental)
+        cc.max_table_size = 0
+
+        expect(cc.table.size).to eq 1
+      end
+
+      it "should require table size update when maximum is reduced below table size" do
+        cc = EncodingContext.new
+        cc.max_table_size = 256
+
+        expect { cc.process(name: 1, type: :indexed) }.to raise_error(CompressionError)
+      end
+
+      it "should require smallest maximum when maximum is reduced and increased" do
+        cc = EncodingContext.new
+        cc.max_table_size = 256
+        cc.max_table_size = 4096
+
+        cc.process(type: :changetablesize, value: 1024)
+        expect { cc.process(name: 1, type: :indexed) }.to raise_error(CompressionError)
+
+        cc = EncodingContext.new
+        cc.max_table_size = 256
+        cc.max_table_size = 4096
+
+        cc.process(type: :changetablesize, value: 256)
+        cc.process(type: :changetablesize, value: 4096)
+        expect { cc.process(name: 1, type: :indexed) }.not_to raise_error
+      end
+    end
+
+    context "table size updates" do
+      def updates(buffer)
+        cmds = []
+        dc = Decompressor.new
+        until buffer.empty?
+          cmd = dc.header(buffer)
+          break unless cmd[:type] == :changetablesize
+
+          cmds << cmd[:value]
+        end
+        cmds
+      end
+
+      it "should not emit table size update without changes" do
+        expect(updates(c.encode(REQUEST_HEADERS))).to be_empty
+      end
+
+      it "should emit table size update in the next header block after maximum is reduced" do
+        c.table_size = 256
+
+        expect(updates(c.encode(REQUEST_HEADERS))).to eq [256]
+        expect(updates(c.encode(REQUEST_HEADERS))).to be_empty
+      end
+
+      it "should emit smallest and final table size when maximum is reduced and increased" do
+        c.table_size = 256
+        c.table_size = 1024
+
+        expect(updates(c.encode(REQUEST_HEADERS))).to eq [256, 1024]
+      end
+
+      it "should emit smallest table size when maximum is reduced and restored" do
+        c.table_size = 256
+        c.table_size = 4096
+
+        expect(updates(c.encode(REQUEST_HEADERS))).to eq [256, 4096]
+      end
+
+      it "should not grow table above own table size" do
+        c.table_size = 65_536
+
+        expect(updates(c.encode(REQUEST_HEADERS))).to be_empty
+      end
+
+      it "should keep decoder in sync" do
+        d.table_size = 0
+        c.table_size = 0
+
+        3.times do
+          expect(d.decode(c.encode(REQUEST_HEADERS))).to eq REQUEST_HEADERS
+        end
+        expect(d.instance_eval { @cc.table }).to be_empty
+      end
     end
 
     context "encode" do

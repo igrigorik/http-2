@@ -15,9 +15,11 @@ module HTTP2
         @cc = EncodingContext.new(settings)
       end
 
-      # Set dynamic table +size+ in EncodingContext
+      # Set the maximum dynamic table +size+ allowed by our acknowledged
+      # SETTINGS_HEADER_TABLE_SIZE. When the current table is larger, the
+      # next header block has to start with a dynamic table size update.
       def table_size=(size)
-        @cc.table_size = size
+        @cc.max_table_size = size
       end
 
       # Decodes integer value from provided +buffer+.
