@@ -90,6 +90,88 @@ RSpec.describe HTTP2::Client do
     end
   end
 
+  context "header table size" do
+    def sent_headers(conn)
+      frames = []
+      conn.on(:frame) { |bytes| frames << f.parse(bytes) }
+      yield
+      frames.select { |frame| frame[:type] == :headers }
+    end
+
+    def peer_settings(payload)
+      settings = settings_frame
+      settings[:payload] = payload
+      f.generate(settings)
+    end
+
+    def response_headers(stream, payload)
+      f.generate(type: :headers, stream: stream.id, flags: END_HEADERS | END_STREAM, payload: payload)
+    end
+
+    it "should signal remote SETTINGS_HEADER_TABLE_SIZE reduction in the next header block" do
+      client << peer_settings([[:settings_header_table_size, 0]])
+
+      headers = sent_headers(client) do
+        client.new_stream.headers(REQUEST_HEADERS, end_stream: true)
+        client.new_stream.headers(REQUEST_HEADERS, end_stream: true)
+      end
+
+      # Dynamic table size update to 0.
+      expect(headers[0][:payload].getbyte(0)).to eq 0x20
+      expect(headers[1][:payload].getbyte(0)).not_to eq 0x20
+
+      peer = Decompressor.new
+      peer.table_size = 0
+      headers.each { |frame| expect(peer.decode(frame[:payload])).to eq REQUEST_HEADERS }
+    end
+
+    it "should keep own table size when remote SETTINGS_HEADER_TABLE_SIZE is larger" do
+      client << peer_settings([[:settings_header_table_size, 65_536], [:settings_max_concurrent_streams, 1000]])
+
+      # The peer's decoder keeps the default table size until it receives
+      # a dynamic table size update.
+      peer = Decompressor.new
+
+      # Unique headers fill the table, a repeated one refers to an old entry.
+      extra = Array.new(100) { |i| [["x-request-id", format("%<i>03d-%<pad>s", i: i, pad: "a" * 40)], %w[x-app shared]] }
+      headers = sent_headers(client) do
+        extra.each { |h| client.new_stream.headers(REQUEST_HEADERS + h, end_stream: true) }
+      end
+
+      headers.zip(extra).each do |frame, h|
+        expect(peer.decode(frame[:payload]).last(2)).to eq h
+      end
+    end
+
+    it "should accept header blocks with a table size update after local SETTINGS_HEADER_TABLE_SIZE reduction" do
+      client = Client.new(settings_header_table_size: 256)
+      client << peer_settings([])
+      stream = client.new_stream
+      stream.headers(REQUEST_HEADERS, end_stream: true)
+      client << f.generate(type: :settings, stream: 0, payload: [], flags: ACK)
+      expect(client.local_settings[:settings_header_table_size]).to eq 256
+
+      peer = Compressor.new
+      peer.table_size = 256
+      received = nil
+      stream.on(:headers) { |h| received = h }
+      client << response_headers(stream, peer.encode(RESPONSE_HEADERS + [%w[x-app shared]]))
+
+      expect(received).to eq RESPONSE_HEADERS + [%w[x-app shared]]
+    end
+
+    it "should reject header blocks without a table size update after local SETTINGS_HEADER_TABLE_SIZE reduction" do
+      client = Client.new(settings_header_table_size: 256)
+      client << peer_settings([])
+      stream = client.new_stream
+      stream.headers(REQUEST_HEADERS, end_stream: true)
+      client << f.generate(type: :settings, stream: 0, payload: [], flags: ACK)
+
+      payload = Compressor.new.encode(RESPONSE_HEADERS)
+      expect { client << response_headers(stream, payload) }.to raise_error(CompressionError)
+    end
+  end
+
   context "upgrade" do
     it "fails when client has already created streams" do
       client.new_stream

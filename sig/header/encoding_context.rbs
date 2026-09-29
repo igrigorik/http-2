@@ -26,6 +26,10 @@ module HTTP2
 
       @limit: Integer
 
+      @max_limit: Integer
+
+      @lowest_max_limit: Integer
+
       @_table_updated: bool
 
       def dup: () -> EncodingContext
@@ -39,6 +43,8 @@ module HTTP2
       def addcmd: (String name, String value) -> header_command
 
       def table_size=: (Integer) -> void
+
+      def max_table_size=: (Integer) -> void
 
       def listen_on_table: { () -> void } -> void
 

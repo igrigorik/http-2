@@ -667,12 +667,15 @@ module HTTP2
           end
 
         when :settings_header_table_size
-          # Setting header table size might cause some headers evicted
+          # The value is the maximum table size for the encoder of the other
+          # side: our setting limits the peer's encoder (our decompressor),
+          # and the peer's setting limits our encoder (our compressor).
+          # The table itself changes with the next dynamic table size update.
           case side
           when :local
-            @compressor.table_size = v
-          when :remote
             @decompressor.table_size = v
+          when :remote
+            @compressor.table_size = v
           end
 
         when :settings_enable_push

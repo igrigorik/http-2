@@ -101,12 +101,20 @@ module HTTP2
 
       # Initializes compression context with appropriate client/server
       # +settings+ and maximum size of the dynamic table.
+      #
+      # The dynamic table starts at +settings.table_size+ octets. The same
+      # value is the initial maximum size allowed for the table.
       def initialize(settings = Settings.new)
         @table = []
         @table_by_field = Hash.new { |hs, k| hs[k] = [] }
         @unshifts = 0
         @settings = settings
+        # Current dynamic table size, as known to both encoder and decoder.
         @limit = settings.table_size
+        # Maximum dynamic table size allowed by SETTINGS_HEADER_TABLE_SIZE.
+        @max_limit = @limit
+        # Smallest maximum size set since the last dynamic table size update.
+        @lowest_max_limit = @limit
         @_table_updated = false
         @current_table_size = 0
       end
@@ -118,11 +126,15 @@ module HTTP2
         tbf = @table_by_field.transform_values(&:dup)
         unshifts = @unshifts
         l = @limit
+        ml = @max_limit
+        lml = @lowest_max_limit
         other.instance_eval do
           @table = t.dup # shallow copy
           @table_by_field = tbf
           @unshifts = unshifts
           @limit = l
+          @max_limit = ml
+          @lowest_max_limit = lml
         end
         other
       end
@@ -152,16 +164,21 @@ module HTTP2
         name = cmd[:name]
         value = cmd[:value]
 
+        # The maximum size was reduced below the current table size and the
+        # encoder has not signalled a size that fits into it.
+        raise CompressionError, "dynamic table size update required" if type != :changetablesize && @lowest_max_limit < @limit
+
         case type
         when :changetablesize
           raise CompressionError, "tried to change table size after adding elements to table" if @_table_updated
 
-          # we can receive multiple table size change commands inside a header frame. However,
-          # we should blow up if we receive another frame where the new table size is bigger.
-          table_size_updated = @limit != @settings.table_size
+          # The new maximum size MUST be lower than or equal to the limit set
+          # by SETTINGS_HEADER_TABLE_SIZE.
+          # - https://www.rfc-editor.org/rfc/rfc7541#section-6.3
+          raise CompressionError, "dynamic table size update exceed limit" if value > @max_limit
 
-          raise CompressionError, "dynamic table size update exceed limit" if !table_size_updated && value > @limit
-
+          # The smallest maximum size set since the last update is signalled.
+          @lowest_max_limit = @max_limit if value <= @lowest_max_limit
           self.table_size = value
 
           nil
@@ -210,9 +227,25 @@ module HTTP2
       end
 
       # Plan +headers+ compression.
+      #
+      # Emits dynamic table size updates first when the table size has to
+      # change. See #max_table_size=.
       def encode(headers)
         # Literals commands are marked with :noindex when index is not used
         noindex = STATIC_NEVER.include?(@settings.index)
+
+        if @lowest_max_limit < @limit
+          self.table_size = @lowest_max_limit
+          yield({ type: :changetablesize, value: @limit })
+        end
+        @lowest_max_limit = @max_limit
+
+        size = @settings.table_size
+        size = @max_limit if @max_limit < size
+        if size != @limit
+          self.table_size = size
+          yield({ type: :changetablesize, value: size })
+        end
 
         headers.each do |field, value|
           # Literal header names MUST be translated to lowercase before
@@ -274,6 +307,24 @@ module HTTP2
       def table_size=(size)
         @limit = size
         resize_table(0)
+      end
+
+      # Set the maximum dynamic table +size+ allowed by
+      # SETTINGS_HEADER_TABLE_SIZE.
+      #
+      # The current table size does not change here. It changes only with a
+      # dynamic table size update at the beginning of a header block:
+      # - an encoder emits the update in the next #encode call. It uses
+      #   +settings.table_size+, capped by this maximum.
+      # - a decoder requires the update in the next header block when the
+      #   current table size exceeds this maximum.
+      #
+      # When the maximum is reduced and then increased again before the next
+      # header block, the smallest maximum has to be signalled first.
+      # - https://www.rfc-editor.org/rfc/rfc7541#section-4.2
+      def max_table_size=(size)
+        @max_limit = size
+        @lowest_max_limit = size if size < @lowest_max_limit
       end
 
       def listen_on_table
