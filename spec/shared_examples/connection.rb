@@ -317,14 +317,18 @@ RSpec.shared_examples "a connection" do
       expect(conn.active_stream_count).to eq(limit + 50)
     end
 
-    it "should initialize idle stream on PRIORITY frame" do
+    it "should retain idle priority without initializing a stream" do
       conn << f.generate(settings_frame)
 
       stream = nil
       conn.on(:stream) { |s| stream = s }
       conn << f.generate(priority_frame)
 
-      expect(stream.state).to eq :idle
+      expect(stream).to be_nil
+      expect(conn.instance_variable_get(:@streams)).to be_empty
+      expect(conn.instance_variable_get(:@idle_stream_priorities)[1]).to eq(
+        weight: 20, dependency: 0, exclusive: false
+      )
     end
   end
 
