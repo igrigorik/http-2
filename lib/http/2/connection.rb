@@ -390,7 +390,7 @@ module HTTP2
               case frame_type
               # Priority signaling is deprecated (RFC 9113 Section 5.3.2), but
               # a PRIORITY frame may still name a stream id not opened yet:
-              # activate it, so the priority sticks if the stream opens.
+              # retain its priority without creating a stream until it opens.
               when :priority
                 # After a GOAWAY, a PRIORITY for a stream already used and
                 # closed must not resurrect it: reprioritizing a closed
@@ -403,17 +403,11 @@ module HTTP2
                   next
                 end
 
-                priority = {
+                @idle_stream_priorities[stream_id] = {
                   weight: frame[:weight] || DEFAULT_WEIGHT,
                   dependency: frame[:dependency] || 0,
                   exclusive: frame[:exclusive] || false
                 }
-                @idle_stream_priorities[stream_id] = priority
-                stream = Stream.new(connection: self, id: stream_id, **priority)
-
-                emit(:stream, stream)
-                stream << frame
-
               # WINDOW_UPDATE can be sent by a peer that has sent a frame
               # bearing the END_STREAM flag. This means that a receiver could
               # receive a WINDOW_UPDATE frame on a "half-closed (remote)" or
