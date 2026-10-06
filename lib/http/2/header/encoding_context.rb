@@ -110,11 +110,11 @@ module HTTP2
         @unshifts = 0
         @settings = settings
         # Current dynamic table size, as known to both encoder and decoder.
-        @limit =
-          # Maximum dynamic table size allowed by SETTINGS_HEADER_TABLE_SIZE.
-          @max_size_limit =
-            # Smallest maximum size set since the last dynamic table size update.
-            @lowest_max_size_limit = settings.table_size
+        @limit = settings.table_size
+        # Maximum dynamic table size allowed by SETTINGS_HEADER_TABLE_SIZE.
+        @max_size_limit =
+          # Smallest maximum size set since the last dynamic table size update.
+          @lowest_max_size_limit = MAX_HEADER_TABLE_SIZE
         @_table_updated = @_max_table_size_updated = false
         @current_table_size = 0
       end
@@ -340,7 +340,7 @@ module HTTP2
         end
         @lowest_max_size_limit = @max_size_limit
 
-        max_table_size = @settings.table_size
+        max_table_size = MAX_HEADER_TABLE_SIZE
         max_table_size = @max_size_limit if @max_size_limit < max_table_size
 
         return unless max_table_size != @limit

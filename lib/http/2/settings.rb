@@ -2,10 +2,11 @@
 
 module HTTP2
   MAX_HEADER_LIST_SIZE = (2 << 30) - 1
+  MAX_HEADER_TABLE_SIZE = 4096
 
   # Default values for SETTINGS frame, as defined by the spec.
   SPEC_DEFAULT_CONNECTION_SETTINGS = {
-    settings_header_table_size: 4096,
+    settings_header_table_size: MAX_HEADER_TABLE_SIZE,
     settings_enable_push: 1, # enabled for servers
     settings_max_concurrent_streams: Framer::MAX_STREAM_ID, # unlimited
     settings_initial_window_size: 65_535,
@@ -31,7 +32,7 @@ module HTTP2
   ) do
     def initialize(
       # connection settings
-      settings_header_table_size: 4096,
+      settings_header_table_size: MAX_HEADER_TABLE_SIZE,
       settings_enable_push: 1,
       settings_max_concurrent_streams: 100,
       settings_initial_window_size: 65_535,
@@ -40,7 +41,7 @@ module HTTP2
       # encoding context settings
       huffman: :shorter,
       index: :all,
-      table_size: 4096
+      table_size: MAX_HEADER_TABLE_SIZE
     )
       super
     end
