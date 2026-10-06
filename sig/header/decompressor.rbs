@@ -7,6 +7,8 @@ module HTTP2
 
       @cc: EncodingContext
 
+      attr_writer max_header_list_size: Integer
+
       def max_table_size=: (Integer) -> void
 
       def integer: (String, Integer) -> Integer

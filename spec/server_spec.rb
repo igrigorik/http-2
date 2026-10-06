@@ -137,6 +137,17 @@ RSpec.describe HTTP2::Server do
   end
 
   context "stream management" do
+    it "should raise an error if receiving a header block over header list size" do
+      srv << CONNECTION_PREFACE_MAGIC
+      settings = settings_frame
+      settings[:payload] << [:settings_max_header_list_size, 128]
+      srv << f.generate(settings)
+
+      expect do
+        srv << f.generate(headers_frame)
+      end.to raise_error(HTTP2::Error::ProtocolError)
+    end
+
     it "should initialize stream with HEADERS priority value" do
       srv << CONNECTION_PREFACE_MAGIC
       srv << f.generate(settings_frame)

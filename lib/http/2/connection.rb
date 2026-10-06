@@ -684,6 +684,13 @@ module HTTP2
         when :settings_max_frame_size
           @framer.remote_max_frame_size = v
 
+        when :settings_max_header_list_size
+          case side
+          when :remote
+            @decompressor.max_header_list_size = v
+            # when :local
+            # not enforcing this on the client side
+          end
           # else # ignore unknown settings
         end
       end
