@@ -7,6 +7,8 @@ module HTTP2
 
       @cc: EncodingContext
 
+      @accept_invalid_headers: bool
+
       attr_writer max_header_list_size: Integer
 
       def max_table_size=: (Integer) -> void
@@ -19,6 +21,9 @@ module HTTP2
 
       def decode: (String, frame?) -> Array[header_pair]
                 | (String) -> Array[header_pair]
+
+      def accept_invalid_headers!: () -> void
+
       private
 
       def initialize: (?Settings settings) -> void

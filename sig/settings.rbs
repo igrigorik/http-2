@@ -1,6 +1,8 @@
 module HTTP2
   MAX_HEADER_LIST_SIZE: Integer
 
+  MAX_HEADER_TABLE_SIZE: Integer
+
   SPEC_DEFAULT_CONNECTION_SETTINGS: Hash[Symbol, Integer]
 
   ENCODING_CONTEXT_SETTINGS: Array[Symbol]

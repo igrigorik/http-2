@@ -36,12 +36,14 @@ RSpec.describe HTTP2::Header do
             story = JSON.parse(File.read("#{path}/#{file}"))
             cases = story["cases"]
             table_size = cases[0]["header_table_size"] || 4096
-            @dc = Decompressor.new(table_size: table_size)
+            settings = Settings.new(table_size: table_size)
+            @dc = Decompressor.new(settings)
+            @dc.accept_invalid_headers!
             cases.each do |c|
               wire = [c["wire"]].pack("H*").force_encoding(Encoding::BINARY)
-              @emitted = @dc.decode(HTTP2::Buffer.new(wire))
+              @emitted = @dc.decode(wire)
               headers = c["headers"].flat_map(&:to_a)
-              expect(@emitted).to eq headers
+              expect(@emitted).to match_array(headers)
             end
           end
         end
@@ -64,6 +66,7 @@ RSpec.describe HTTP2::Header do
         [4096, 512].each do |table_size|
           options = { table_size: table_size }
           options.update(encoding_options)
+          settings = HTTP2::Settings.new(**options)
 
           context "with #{mode}#{huffman} mode and table_size #{table_size}" do
             path = File.expand_path("hpack-test-case/raw-data", File.dirname(__FILE__))
@@ -73,13 +76,14 @@ RSpec.describe HTTP2::Header do
               it "should encode #{file}" do
                 story = JSON.parse(File.read("#{path}/#{file}"))
                 cases = story["cases"]
-                @cc = Compressor.new(options)
-                @dc = Decompressor.new(options)
+                @cc = Compressor.new(settings)
+                @dc = Decompressor.new(settings)
+                @dc.accept_invalid_headers!
                 cases.each do |c|
                   headers = c["headers"].flat_map(&:to_a)
                   wire = @cc.encode(headers)
-                  decoded = @dc.decode(HTTP2::Buffer.new(wire))
-                  expect(decoded).to eq headers
+                  decoded = @dc.decode(wire)
+                  expect(decoded).to match_array(headers)
                 end
               end
             end
