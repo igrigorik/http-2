@@ -297,6 +297,10 @@ module HTTP2
 
               priority = @idle_stream_priorities.delete(stream_id)
               if frame[:flags].anybits?(PRIORITY)
+                if stream_id == frame[:dependency]
+                  connection_error(:protocol_error, msg: "stream can't depend on itself")
+                end
+
                 priority = frame.slice(:weight, :dependency, :exclusive)
               end
 
