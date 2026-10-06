@@ -161,12 +161,13 @@ module HTTP2
       # - http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#section-4.1
       def process(cmd)
         type = cmd[:type]
-        name = cmd[:name]
-        value = cmd[:value]
 
         # The maximum size was reduced below the current table size and the
         # encoder has not signalled a size that fits into it.
         raise CompressionError, "dynamic table size update required" if type != :changetablesize && @lowest_max_limit < @limit
+
+        name = cmd[:name]
+        value = cmd[:value]
 
         case type
         when :changetablesize
@@ -236,15 +237,16 @@ module HTTP2
 
         if @lowest_max_limit < @limit
           self.table_size = @lowest_max_limit
-          yield({ type: :changetablesize, value: @limit })
+          yield({ type: :changetablesize, value: @lowest_max_limit })
         end
         @lowest_max_limit = @max_limit
 
-        size = @settings.table_size
-        size = @max_limit if @max_limit < size
-        if size != @limit
-          self.table_size = size
-          yield({ type: :changetablesize, value: size })
+        max_table_size = @settings.table_size
+        max_table_size = @max_limit if @max_limit < max_table_size
+
+        if max_table_size != @limit
+          self.table_size = max_table_size
+          yield({ type: :changetablesize, value: max_table_size })
         end
 
         headers.each do |field, value|
