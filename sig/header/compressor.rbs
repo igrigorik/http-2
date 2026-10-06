@@ -6,7 +6,7 @@ module HTTP2
 
       @cc: EncodingContext
 
-      def table_size=: (Integer) -> void
+      def max_table_size=: (Integer) -> void
 
       def integer: (Integer, Integer, buffer: String, ?offset: Integer) -> String
 

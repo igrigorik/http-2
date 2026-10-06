@@ -673,9 +673,9 @@ module HTTP2
           # The table itself changes with the next dynamic table size update.
           case side
           when :local
-            @decompressor.table_size = v
+            @decompressor.max_table_size = v
           when :remote
-            @compressor.table_size = v
+            @compressor.max_table_size = v
           end
 
         when :settings_enable_push

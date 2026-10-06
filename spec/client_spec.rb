@@ -121,7 +121,7 @@ RSpec.describe HTTP2::Client do
       expect(headers[1][:payload].getbyte(0)).not_to eq 0x20
 
       peer = Decompressor.new
-      peer.table_size = 0
+      peer.max_table_size = 0
       headers.each { |frame| expect(peer.decode(frame[:payload])).to eq REQUEST_HEADERS }
     end
 
@@ -152,7 +152,7 @@ RSpec.describe HTTP2::Client do
       expect(client.local_settings[:settings_header_table_size]).to eq 256
 
       peer = Compressor.new
-      peer.table_size = 256
+      peer.max_table_size = 256
       received = nil
       stream.on(:headers) { |h| received = h }
       client << response_headers(stream, peer.encode(RESPONSE_HEADERS + [%w[x-app shared]]))

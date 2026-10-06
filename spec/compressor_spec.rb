@@ -297,35 +297,35 @@ RSpec.describe HTTP2::Header do
       end
 
       it "should emit table size update in the next header block after maximum is reduced" do
-        c.table_size = 256
+        c.max_table_size = 256
 
         expect(updates(c.encode(REQUEST_HEADERS))).to eq [256]
         expect(updates(c.encode(REQUEST_HEADERS))).to be_empty
       end
 
       it "should emit smallest and final table size when maximum is reduced and increased" do
-        c.table_size = 256
-        c.table_size = 1024
+        c.max_table_size = 256
+        c.max_table_size = 1024
 
         expect(updates(c.encode(REQUEST_HEADERS))).to eq [256, 1024]
       end
 
       it "should emit smallest table size when maximum is reduced and restored" do
-        c.table_size = 256
-        c.table_size = 4096
+        c.max_table_size = 256
+        c.max_table_size = 4096
 
         expect(updates(c.encode(REQUEST_HEADERS))).to eq [256, 4096]
       end
 
       it "should not grow table above own table size" do
-        c.table_size = 65_536
+        c.max_table_size = 65_536
 
         expect(updates(c.encode(REQUEST_HEADERS))).to be_empty
       end
 
       it "should keep decoder in sync" do
-        d.table_size = 0
-        c.table_size = 0
+        d.max_table_size = 0
+        c.max_table_size = 0
 
         3.times do
           expect(d.decode(c.encode(REQUEST_HEADERS))).to eq REQUEST_HEADERS

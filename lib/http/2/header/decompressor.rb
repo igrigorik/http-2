@@ -18,7 +18,7 @@ module HTTP2
       # Set the maximum dynamic table +size+ allowed by our acknowledged
       # SETTINGS_HEADER_TABLE_SIZE. When the current table is larger, the
       # next header block has to start with a dynamic table size update.
-      def table_size=(size)
+      def max_table_size=(size)
         @cc.max_table_size = size
       end
 
