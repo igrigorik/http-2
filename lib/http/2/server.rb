@@ -93,9 +93,6 @@ module HTTP2
         type: :headers,
         flags: END_HEADERS,
         stream: 1,
-        weight: DEFAULT_WEIGHT,
-        dependency: 0,
-        exclusive: false,
         payload: headers
       } #: headers_frame
 

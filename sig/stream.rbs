@@ -3,6 +3,8 @@ module HTTP2
     include FlowBuffer
     include Emitter
 
+    DEFAULT_WEIGHT: Integer
+
     STREAM_OPEN_STATES: Array[Symbol]
 
     attr_reader id: Integer

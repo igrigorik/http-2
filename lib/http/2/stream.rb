@@ -40,6 +40,9 @@ module HTTP2
     include Emitter
     include Error
 
+    # Default stream priority (lower values are higher priority).
+    DEFAULT_WEIGHT = 16
+
     STREAM_OPEN_STATES = %i[open half_closed_local half_closing closing].freeze
 
     # Stream ID (odd for client initiated streams, even otherwise).
@@ -75,7 +78,7 @@ module HTTP2
     # @param window [Integer]
     # @param parent [Stream]
     # @param state [Symbol]
-    def initialize(connection:, id:, weight: 16, dependency: 0, exclusive: false, parent: nil, state: :idle)
+    def initialize(connection:, id:, weight: DEFAULT_WEIGHT, dependency: 0, exclusive: false, parent: nil, state: :idle)
       stream_error(:protocol_error, msg: "stream can't depend on itself") if id == dependency
 
       @connection = connection

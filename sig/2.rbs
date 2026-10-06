@@ -15,8 +15,6 @@ module HTTP2
 
   type settings_enum = Enumerable[[Symbol, Integer]]
 
-  DEFAULT_WEIGHT: Integer
-
   CONNECTION_PREFACE_MAGIC: String
 
   REQUEST_MANDATORY_HEADERS: Array[String]

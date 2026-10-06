@@ -10,9 +10,6 @@ module HTTP2
   # Default stream_limit
   DEFAULT_MAX_CONCURRENT_STREAMS = 100
 
-  # Default stream priority (lower values are higher priority).
-  DEFAULT_WEIGHT = 16
-
   # Default connection "fast-fail" preamble string as defined by the spec.
   CONNECTION_PREFACE_MAGIC = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
@@ -66,22 +63,20 @@ module HTTP2
       @compressor   = Header::Compressor.new(@local_settings)
       @decompressor = Header::Decompressor.new(@local_settings)
 
-      @active_stream_count = 0
-      @promised_stream_count = 0
-      @last_stream_id = 0
+      @active_stream_count =
+        @promised_stream_count =
+          @last_promised_stream_id =
+            @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
       @idle_stream_priorities = {}
       @oldest_stream_recently_closed = nil
-      @last_promised_stream_id = 0
       @pending_settings = []
 
       @framer = Framer.new(@local_settings.settings_max_frame_size)
 
-      @local_window_limit = @local_settings.settings_initial_window_size
-      @local_window = @local_window_limit
-      @remote_window_limit = @remote_settings.settings_initial_window_size
-      @remote_window = @remote_window_limit
+      @local_window = @local_window_limit = @local_settings.settings_initial_window_size
+      @remote_window = @remote_window_limit = @remote_settings.settings_initial_window_size
 
       @recv_buffer = "".b
       @continuation = []
@@ -299,20 +294,13 @@ module HTTP2
               verify_pseudo_headers(frame)
 
               verify_stream_order(stream_id)
+
               priority = @idle_stream_priorities.delete(stream_id)
               if frame[:flags].anybits?(PRIORITY)
-                priority = {
-                  weight: frame[:weight],
-                  dependency: frame[:dependency],
-                  exclusive: frame[:exclusive]
-                }
+                priority = frame.slice(:weight, :dependency, :exclusive)
               end
-              stream = activate_stream(
-                id: stream_id,
-                weight: priority&.[](:weight) || DEFAULT_WEIGHT,
-                dependency: priority&.[](:dependency) || 0,
-                exclusive: priority&.[](:exclusive) || false
-              )
+
+              stream = activate_stream(id: stream_id, **priority)
               emit(:stream, stream)
             end
 
@@ -371,7 +359,7 @@ module HTTP2
             _verify_pseudo_headers(frame, REQUEST_MANDATORY_HEADERS)
             verify_stream_order(pid)
 
-            if @promised_stream_count >= @local_settings[:settings_max_concurrent_streams]
+            if @promised_stream_count >= @local_settings.settings_max_concurrent_streams
               send(type: :rst_stream, stream: pid, error: :refused_stream)
               next
             end
@@ -399,15 +387,15 @@ module HTTP2
                 next if closed? && stream_id <= @last_stream_id
 
                 if !@idle_stream_priorities.key?(stream_id) &&
-                   (@idle_stream_priorities.size >= @local_settings[:settings_max_concurrent_streams])
+                   (@idle_stream_priorities.size >= @local_settings.settings_max_concurrent_streams)
                   next
                 end
 
-                @idle_stream_priorities[stream_id] = {
-                  weight: frame[:weight] || DEFAULT_WEIGHT,
-                  dependency: frame[:dependency] || 0,
-                  exclusive: frame[:exclusive] || false
-                }
+                if frame[:stream] == frame[:dependency]
+                  connection_error(:protocol_error, msg: "stream can't depend on itself")
+                end
+
+                @idle_stream_priorities[stream_id] = frame.slice(:weight, :dependency, :exclusive)
               # WINDOW_UPDATE can be sent by a peer that has sent a frame
               # bearing the END_STREAM flag. This means that a receiver could
               # receive a WINDOW_UPDATE frame on a "half-closed (remote)" or
@@ -578,7 +566,7 @@ module HTTP2
 
     def validate_push_promise(stream_id)
       connection_error(:protocol_error, msg: "clients cannot send PUSH_PROMISE") if @remote_role == :client
-      connection_error(:protocol_error, msg: "push promises are disabled") if @local_settings[:settings_enable_push].zero?
+      connection_error(:protocol_error, msg: "push promises are disabled") if @local_settings.settings_enable_push.zero?
       unless stream_id.positive? && stream_id.even? && stream_id > @last_promised_stream_id
         connection_error(:protocol_error, msg: "invalid promised stream ID")
       end
