@@ -112,10 +112,10 @@ module HTTP2
         # Current dynamic table size, as known to both encoder and decoder.
         @limit =
           # Maximum dynamic table size allowed by SETTINGS_HEADER_TABLE_SIZE.
-          @max_limit =
+          @max_size_limit =
             # Smallest maximum size set since the last dynamic table size update.
-            @lowest_max_limit = settings.table_size
-        @_table_updated = false
+            @lowest_max_size_limit = settings.table_size
+        @_table_updated = @_max_table_size_updated = false
         @current_table_size = 0
       end
 
@@ -126,15 +126,15 @@ module HTTP2
         tbf = @table_by_field.transform_values(&:dup)
         unshifts = @unshifts
         l = @limit
-        ml = @max_limit
-        lml = @lowest_max_limit
+        ml = @max_size_limit
+        lml = @lowest_max_size_limit
         other.instance_eval do
           @table = t.dup # shallow copy
           @table_by_field = tbf
           @unshifts = unshifts
           @limit = l
-          @max_limit = ml
-          @lowest_max_limit = lml
+          @max_size_limit = ml
+          @lowest_max_size_limit = lml
         end
         other
       end
@@ -164,7 +164,10 @@ module HTTP2
 
         # The maximum size was reduced below the current table size and the
         # encoder has not signalled a size that fits into it.
-        raise CompressionError, "dynamic table size update required" if type != :changetablesize && @lowest_max_limit < @limit
+        if type != :changetablesize && @lowest_max_size_limit < @limit
+          raise CompressionError,
+                "dynamic table size update required"
+        end
 
         name = cmd[:name]
         value = cmd[:value]
@@ -176,10 +179,10 @@ module HTTP2
           # The new maximum size MUST be lower than or equal to the limit set
           # by SETTINGS_HEADER_TABLE_SIZE.
           # - https://www.rfc-editor.org/rfc/rfc7541#section-6.3
-          raise CompressionError, "dynamic table size update exceed limit" if value > @max_limit
+          raise CompressionError, "dynamic table size update exceed limit" if value > @max_size_limit
 
           # The smallest maximum size set since the last update is signalled.
-          @lowest_max_limit = @max_limit if value <= @lowest_max_limit
+          @lowest_max_size_limit = @max_size_limit if value <= @lowest_max_size_limit
           self.table_size = value
 
           nil
@@ -231,22 +234,13 @@ module HTTP2
       #
       # Emits dynamic table size updates first when the table size has to
       # change. See #max_table_size=.
-      def encode(headers)
+      def encode(headers, &block)
         # Literals commands are marked with :noindex when index is not used
         noindex = STATIC_NEVER.include?(@settings.index)
 
-        if @lowest_max_limit < @limit
-          self.table_size = @lowest_max_limit
-          yield({ type: :changetablesize, value: @lowest_max_limit })
-        end
-        @lowest_max_limit = @max_limit
-
-        max_table_size = @settings.table_size
-        max_table_size = @max_limit if @max_limit < max_table_size
-
-        if max_table_size != @limit
-          self.table_size = max_table_size
-          yield({ type: :changetablesize, value: max_table_size })
+        if @_max_table_size_updated
+          encode_change_table_size(&block)
+          @_max_table_size_updated = false
         end
 
         headers.each do |field, value|
@@ -325,8 +319,10 @@ module HTTP2
       # header block, the smallest maximum has to be signalled first.
       # - https://www.rfc-editor.org/rfc/rfc7541#section-4.2
       def max_table_size=(size)
-        @max_limit = size
-        @lowest_max_limit = size if size < @lowest_max_limit
+        @max_size_limit = size
+        # alternative: clamp size based on @max_size_limit, instead of failing later on #process
+        @lowest_max_size_limit = size if size < @lowest_max_size_limit
+        @_max_table_size_updated = true
       end
 
       def listen_on_table
@@ -336,6 +332,22 @@ module HTTP2
       end
 
       private
+
+      def encode_change_table_size
+        if @lowest_max_size_limit < @limit
+          self.table_size = @lowest_max_size_limit
+          yield({ type: :changetablesize, value: @lowest_max_size_limit })
+        end
+        @lowest_max_size_limit = @max_size_limit
+
+        max_table_size = @settings.table_size
+        max_table_size = @max_size_limit if @max_size_limit < max_table_size
+
+        return unless max_table_size != @limit
+
+        self.table_size = max_table_size
+        yield({ type: :changetablesize, value: max_table_size })
+      end
 
       def resize_table(cmdsize)
         return if @table.empty?

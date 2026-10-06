@@ -26,19 +26,21 @@ module HTTP2
 
       @limit: Integer
 
-      @max_limit: Integer
+      @max_size_limit: Integer
 
-      @lowest_max_limit: Integer
+      @lowest_max_size_limit: Integer
 
       @_table_updated: bool
+
+      @_max_table_size_updated: bool
 
       def dup: () -> EncodingContext
 
       def dereference: (Integer) -> header_pair
 
-      def process: (header_command cmd) -> header_pair?
+      def process: (change_table_size_command | header_command cmd) -> header_pair?
 
-      def encode: (_Each[header_pair]) { (header_command) -> void } -> void
+      def encode: (_Each[header_pair]) { (change_table_size_command | header_command) -> void } -> void
 
       def addcmd: (String name, String value) -> header_command
 
@@ -51,6 +53,8 @@ module HTTP2
       private
 
       def initialize: (?Settings settings) -> void
+
+      def encode_change_table_size: () { (change_table_size_command) -> void } -> void
 
       def add_to_table: (string name, string value) -> void
 

@@ -12,7 +12,7 @@ module HTTP2
 
       def string: (String, ?String buffer) -> String
 
-      def header: (header_command, ?String) -> String
+      def header: (change_table_size_command | header_command, ?String) -> String
 
       def encode: (Enumerable[header_pair]) -> String
 

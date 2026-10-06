@@ -13,7 +13,7 @@ module HTTP2
 
       def string: (String) -> String
 
-      def header: (String) -> header_command
+      def header: (String) -> (change_table_size_command | header_command)
 
       def decode: (String, frame?) -> Array[header_pair]
                 | (String) -> Array[header_pair]
