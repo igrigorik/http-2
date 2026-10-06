@@ -297,9 +297,7 @@ module HTTP2
 
               priority = @idle_stream_priorities.delete(stream_id)
               if frame[:flags].anybits?(PRIORITY)
-                if stream_id == frame[:dependency]
-                  connection_error(:protocol_error, msg: "stream can't depend on itself")
-                end
+                connection_error(:protocol_error, msg: "stream can't depend on itself") if stream_id == frame[:dependency]
 
                 priority = frame.slice(:weight, :dependency, :exclusive)
               end
@@ -395,9 +393,7 @@ module HTTP2
                   next
                 end
 
-                if frame[:stream] == frame[:dependency]
-                  connection_error(:protocol_error, msg: "stream can't depend on itself")
-                end
+                connection_error(:protocol_error, msg: "stream can't depend on itself") if frame[:stream] == frame[:dependency]
 
                 @idle_stream_priorities[stream_id] = frame.slice(:weight, :dependency, :exclusive)
               # WINDOW_UPDATE can be sent by a peer that has sent a frame
