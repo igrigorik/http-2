@@ -8,6 +8,7 @@ module HTTP2
   DEFAULT_MAX_CONCURRENT_STREAMS: Integer
 
   EMPTY: []
+  EMPTY_HASH: {}
 
   type connection_opts = Hash[Symbol, untyped]
 

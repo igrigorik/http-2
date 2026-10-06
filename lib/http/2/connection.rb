@@ -295,7 +295,9 @@ module HTTP2
 
               verify_stream_order(stream_id)
 
-              priority = @idle_stream_priorities.delete(stream_id)
+              # TODO: remove EMPTY_HASH after dropping support for ruby < 3.4 (recent rubies can
+              # receive nil as kwarg splat)
+              priority = @idle_stream_priorities.delete(stream_id) || EMPTY_HASH
               if frame[:flags].anybits?(PRIORITY)
                 connection_error(:protocol_error, msg: "stream can't depend on itself") if stream_id == frame[:dependency]
 

@@ -4,6 +4,7 @@ require "http/2/version"
 
 module HTTP2
   EMPTY = [].freeze
+  EMPTY_HASH = {}.freeze
 end
 
 require "http/2/extensions"
