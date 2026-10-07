@@ -89,9 +89,9 @@ module HTTP2
       @send_buffer = FrameBuffer.new
 
       process_priority(weight: weight, dependency: dependency, exclusive: exclusive)
-      @local_window_max_size = connection.local_settings[:settings_initial_window_size]
-      @local_window = connection.local_settings[:settings_initial_window_size]
-      @remote_window = connection.remote_settings[:settings_initial_window_size]
+      @local_window_max_size = connection.local_settings.settings_initial_window_size
+      @local_window = connection.local_settings.settings_initial_window_size
+      @remote_window = connection.remote_settings.settings_initial_window_size
       @parent = parent
       @state  = state
       @error  = false
