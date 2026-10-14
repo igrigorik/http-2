@@ -172,8 +172,10 @@ RSpec.describe HTTP2::Server do
       srv.on(:stream) { |stream| streams << stream }
       srv << f.generate(priority_frame.merge(stream: 1, weight: 20))
       srv << f.generate(priority_frame.merge(stream: 1, weight: 30))
+      expect(streams).to be_empty
       srv << f.generate(headers_frame)
 
+      expect(streams).not_to be_empty
       expect(streams.last.weight).to eq 30
     end
 

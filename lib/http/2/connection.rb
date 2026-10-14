@@ -69,7 +69,6 @@ module HTTP2
             @last_stream_id = 0
       @streams = {}
       @streams_recently_closed = {}
-      @idle_stream_priorities = {}
       @oldest_stream_recently_closed = nil
       @pending_settings = []
 
@@ -289,15 +288,14 @@ module HTTP2
             # Skip only this frame: later ones may serve completing streams.
             next if closed? && (stream_id > @last_stream_id || !@streams.key?(stream_id))
 
-            stream = @streams[stream_id]
-            if stream.nil?
+            unless (stream = @streams[stream_id])
               verify_pseudo_headers(frame)
 
               verify_stream_order(stream_id)
 
               # TODO: remove EMPTY_HASH after dropping support for ruby < 3.4 (recent rubies can
               # receive nil as kwarg splat)
-              priority = @idle_stream_priorities.delete(stream_id) || EMPTY_HASH
+              priority = EMPTY_HASH
               if frame[:flags].anybits?(PRIORITY)
                 connection_error(:protocol_error, msg: "stream can't depend on itself") if stream_id == frame[:dependency]
 
@@ -305,9 +303,10 @@ module HTTP2
               end
 
               stream = activate_stream(id: stream_id, **priority)
-              emit(:stream, stream)
             end
 
+            # streams are only emitted in a non-idle state.
+            emit(:stream, stream)
             stream << frame
 
           when :push_promise
@@ -390,14 +389,12 @@ module HTTP2
                 # the draining connection open.
                 next if closed? && stream_id <= @last_stream_id
 
-                if !@idle_stream_priorities.key?(stream_id) &&
-                   (@idle_stream_priorities.size >= @local_settings.settings_max_concurrent_streams)
-                  next
-                end
-
                 connection_error(:protocol_error, msg: "stream can't depend on itself") if frame[:stream] == frame[:dependency]
 
-                @idle_stream_priorities[stream_id] = frame.slice(:weight, :dependency, :exclusive)
+                priority = frame.slice(:weight, :dependency, :exclusive)
+
+                stream = activate_stream(id: stream_id, **priority)
+                stream << frame
               # WINDOW_UPDATE can be sent by a peer that has sent a frame
               # bearing the END_STREAM flag. This means that a receiver could
               # receive a WINDOW_UPDATE frame on a "half-closed (remote)" or
