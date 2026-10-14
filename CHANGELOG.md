@@ -1,3 +1,24 @@
+## 1.3.0
+
+### Improvements
+
+* PRIORITY frame handling will create the stream object, but not yielded it to the user via the `:stream` callback; it'll eventually be yielded by the time the corresponding HEADERS frame comes in.
+* internally, settings are stored in struct objects, which improve memory usage and methods lookups when compared to the previous Hash representation, and should reduce the potential for typos.
+
+### Bugfixes
+
+* Fixed handling of the SETTINGS_HEADER_TABLE_SIZE setting, which besides setting the max table size on the wrong encoder, was doing so without sending back the table size update in the subsequent header block.
+* The SETTINGS_MAX_HEADER_LIST_SIZE setting is now enforced, gating the header block decoding flow; the setting renegotiation is therefore not ignored anymore.
+* PUSH_PROMISE streams are now disallowed for clients, and discarded when SETTINGS_ENABLE_PUSH is set to 0 on servers. It also respects the SETTINGS_MAX_CONCURRENT_STREAMS setting.
+
+### Internal changes
+
+* `HTTP2::Compressor` and `HTTP2::Decompressor`'s `#table_size=` method renamed to `#max_table_size=`. It's an API breaking change, but from components considered internal to the core.
+
+### Chore
+
+* HPACK conformance tests were (re)added to the test suite.
+
 ## 1.2.3
 
 ### Improvements
