@@ -1,37 +1,74 @@
 name: Release
 
 on:
-  pull_request:
-    types:
-      - closed
+  push:
     branches:
       - main
     paths:
-      - lib/http/2/version.rb
+      - lib/http-2/version.rb
+  workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  release:
-    if: github.event.pull_request.merged == true
+  check:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    name: Check for a new version
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      released: ${{ steps.version.outputs.released }}
 
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          bundler-cache: true
-          ruby-version: 3.4
-
-      - name: Publish to RubyGems
-        uses: rubygems/release-gem@v1
-
-      - name: Create GitHub release
+          ruby-version: '4.0'
+      - name: Read the version
+        id: version
         run: |
-          tag_name="$(git describe --tags --abbrev=0)"
-          gh release create "${tag_name}" --verify-tag --draft --generate-notes pkg/*.gem
+          version=$(ruby -r ./lib/http/2/version -e 'print HTTP2::VERSION')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: check
+    if: needs.check.outputs.released == 'false'
+    runs-on: ubuntu-latest
+    name: Push v${{ needs.check.outputs.version }} to RubyGems
+    environment:
+      name: rubygems
+      url: https://rubygems.org/gems/http-2/versions/${{ needs.check.outputs.version }}
+    permissions:
+      # Tag release.
+      contents: write
+      # Trusted publishing
+      id-token: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+      - name: Build the gem
+        run: gem build http-2.gemspec
+      - name: Get RubyGems credentials
+        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
+      - name: Push the gem
+        run: gem push "http-2-$VERSION.gem"
+      - name: Tag the release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes
