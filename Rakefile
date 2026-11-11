@@ -15,6 +15,7 @@ RSpec::Core::RakeTask.new(:spec) do |t|
 end
 
 RSpec::Core::RakeTask.new(:hpack) do |t|
+  ENV["RUBYOPT"] = nil # disable RBS, without this the time to run these balloons to >10m!
   t.pattern = "./spec/hpack_test_spec.rb"
 end
 
@@ -35,15 +36,56 @@ RDoc::Task.new do |rdoc|
   rdoc.rdoc_files.add %w[README.md CHANGELOG.md lib/**/*.rb]
 end
 
+class BadgeFormatter
+  def initialize(output = nil)
+    @output = output || $stdout
+  end
+
+  def format(result)
+    min_thresholds = SimpleCov.minimum_coverage
+    covered_percent = result.source_files.covered_percent.round(0)
+    color =
+      if min_thresholds.any?
+        if SimpleCov::CoverageViolations.minimum_overall(result, SimpleCov.minimum_coverage).any?
+          "#ff0000"
+        else
+          "#ffffcc" # green
+        end
+      else
+        "#808080"
+      end
+    image = RepoSmallBadge::Image.new(
+      {
+        output_path: SimpleCov.coverage_dir,
+        value_color: color
+      }
+    )
+    image.badge("total", "total", "#{covered_percent}%")
+  end
+end
+
 namespace :coverage do
   desc "Aggregates coverage reports"
   task :report do
-    return unless ENV.key?("CI")
+    next unless ENV.key?("CI")
 
     require "simplecov"
+    require "repo_small_badge"
 
     puts Dir["coverage/**/.resultset.json"].inspect
-    SimpleCov.collate Dir["coverage/**/.resultset.json"]
+    SimpleCov.collate(Dir["coverage/**/.resultset.json"]) do
+      skip ".bundle/"
+      skip "vendor/"
+      skip "spec/"
+      skip "lib/http/2/base64"
+      minimum_coverage 93
+      formatter SimpleCov::Formatter::MultiFormatter.new(
+        [
+          SimpleCov::Formatter::HTMLFormatter,
+          BadgeFormatter
+        ]
+      )
+    end
   end
 end
 

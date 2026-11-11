@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+ENV["COVERAGE_DIR"] ||= "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}-hpack"
+
 require "helper"
 require "json"
 

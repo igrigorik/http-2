@@ -2,9 +2,12 @@
 
 GC.auto_compact = true if GC.respond_to?(:auto_compact=)
 
-if ENV.key?("CI")
+if ENV.key?("CI") && RUBY_VERSION >= "3.2.0"
   require "simplecov"
-  SimpleCov.start
+  SimpleCov.start do
+    merging true
+    finalize_merge false
+  end
 end
 
 RSpec.configure(&:disable_monkey_patching!)
