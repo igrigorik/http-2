@@ -2,6 +2,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/http-2.svg)](http://rubygems.org/gems/http-2)
 [![Build status](https://github.com/igrigorik/http-2/actions/workflows/ci.yml/badge.svg)](https://github.com/igrigorik/http-2)
+[![coverage report](https://igrigorik.github.io/http-2/merged/badge_total.svg)](https://igrigorik.github.io/http-2/merged/#_AllFiles)
 
 Pure Ruby, framework and transport agnostic, implementation of HTTP/2 protocol and HPACK header compression with support for:
 

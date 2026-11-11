@@ -10,8 +10,11 @@ require "uri"
 # This will enable coverage within the CI environment
 if ENV.key?("CI") && RUBY_VERSION >= "3.2.0"
   require "simplecov"
-  SimpleCov.command_name "#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec"
-  SimpleCov.coverage_dir "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec"
+  SimpleCov.start do
+    coverage_dir ENV.fetch("COVERAGE_DIR") { "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec" }
+    merging true
+    finalize_merge false
+  end
 end
 
 require "http/2"

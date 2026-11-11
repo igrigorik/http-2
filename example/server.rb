@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+ENV["COVERAGE_DIR"] ||= "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec-test"
+
 require_relative "helper"
 
 options = { port: 8080 }

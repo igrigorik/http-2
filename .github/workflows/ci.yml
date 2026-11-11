@@ -9,7 +9,7 @@ on:
       - main
 
 env:
-  ruby_version: 3.4
+  CI: 1
 
 jobs:
   test:
@@ -29,8 +29,6 @@ jobs:
           bundler-cache: true
 
       - name: Tests
-        env:
-          CI: 1
         run: |
           RUBY_VERSION=`ruby -e 'puts RUBY_VERSION'`
           RUBY_PLATFORM=`ruby -e 'puts RUBY_PLATFORM'`
@@ -53,6 +51,10 @@ jobs:
           include-hidden-files: true
 
   coverage:
+    permissions:
+      id-token: write
+      pages: write
+      checks: write
     needs: test
     runs-on: ubuntu-latest
 
@@ -62,7 +64,7 @@ jobs:
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: 3.3
+          ruby-version: 4.0
           bundler-cache: true
 
       - name: Download coverage results
@@ -73,12 +75,25 @@ jobs:
 
       - name: coverage
         env:
-          CI: 1
+          COVERAGE_DIR: coverage/merged
         run: |
-          find coverage -name "*resultset.json" -exec sed -i 's?${{ github.workspace }}?'`pwd`'?' {} \;
           bundle exec rake coverage:report
 
-      - uses: srozen/simplecov-check-action@support-simplecov-1
-        if: ${{ github.repository == 'igrigorik/http-2' }}
+      - name: Upload simplecov results
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage
+        if: github.ref == 'refs/heads/main'
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        if: github.ref == 'refs/heads/main'
+
+      - name: Check coverage
+        uses: srozen/simplecov-check-action@support-simplecov-1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          coverage_path: 'coverage/merged/.last_run.json'
+          coverage_json_path: 'coverage/merged/coverage.json'
+          minimum_suite_coverage: 93
