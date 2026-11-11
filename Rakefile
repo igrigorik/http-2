@@ -38,7 +38,7 @@ end
 namespace :coverage do
   desc "Aggregates coverage reports"
   task :report do
-    return unless ENV.key?("CI")
+    next unless ENV.key?("CI")
 
     require "simplecov"
 
