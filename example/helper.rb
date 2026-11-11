@@ -8,7 +8,7 @@ require "openssl"
 require "uri"
 
 # This will enable coverage within the CI environment
-if ENV.key?("CI")
+if ENV.key?("CI") && RUBY_VERSION >= "3.2.0"
   require "simplecov"
   SimpleCov.command_name "#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec"
   SimpleCov.coverage_dir "coverage/#{RUBY_ENGINE}-#{RUBY_VERSION}-h2spec"

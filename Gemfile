@@ -18,7 +18,13 @@ end
 
 group :test do
   gem "rspec"
-  gem "simplecov", require: false
+end
+
+if RUBY_VERSION >= "3.2.0"
+  group :coverage do
+    gem "repo-small-badge", require: false
+    gem "simplecov", ">= 1.0.0", require: false
+  end
 end
 
 group :types do
